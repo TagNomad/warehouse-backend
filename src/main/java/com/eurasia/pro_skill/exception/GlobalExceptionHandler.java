@@ -4,6 +4,7 @@ import com.eurasia.pro_skill.dto.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
@@ -55,6 +56,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ApiError handleNotFound(NoResourceFoundException ex, HttpServletRequest request) {
         return new ApiError(HttpStatus.NOT_FOUND.value(), "资源不存在: " + request.getRequestURI(), request.getRequestURI());
+    }
+
+    // ── 403 方法级权限不足（@PreAuthorize 抛出，在 Controller 层被捕获）────────
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return new ApiError(HttpStatus.FORBIDDEN.value(), "无权访问此资源", request.getRequestURI());
     }
 
     // ── 500 兜底 ──────────────────────────────────────────────────────────────
