@@ -2,7 +2,7 @@ package com.eurasia.pro_skill.controller;
 
 import com.eurasia.pro_skill.common.PageResponse;
 import com.eurasia.pro_skill.domain.User;
-import com.eurasia.pro_skill.service.UserService;
+import com.eurasia.pro_skill.application.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

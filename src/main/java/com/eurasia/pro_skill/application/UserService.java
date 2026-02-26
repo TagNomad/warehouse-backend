@@ -1,4 +1,4 @@
-package com.eurasia.pro_skill.service;
+package com.eurasia.pro_skill.application;
 
 import com.eurasia.pro_skill.common.PageResponse;
 import com.eurasia.pro_skill.converter.UserConverter;

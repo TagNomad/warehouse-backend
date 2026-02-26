@@ -2,7 +2,7 @@ package com.eurasia.pro_skill.controller;
 
 import com.eurasia.pro_skill.controller.request.LoginRequest;
 import com.eurasia.pro_skill.controller.response.LoginResponse;
-import com.eurasia.pro_skill.service.AuthService;
+import com.eurasia.pro_skill.application.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

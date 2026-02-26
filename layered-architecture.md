@@ -11,12 +11,12 @@ com.eurasia.pro_skill/
 ├── controller/
 │   ├── request/        XxxxRequest      HTTP 入参
 │   └── response/       XxxxResponse     HTTP 出参（按需建，见下文）
-├── service/            业务逻辑
+├── application/        XxxxService      业务逻辑（Use Case 编排）
 ├── mapper/             数据访问（MyBatis）
 ├── entity/             XxxxEntity       DB PO，1:1 映射表结构
 ├── domain/             Xxxx             业务核心对象
 ├── converter/          XxxxConverter    Entity ↔ Domain 转换（MapStruct）
-└── common/             ApiResult 等公共结构
+└── common/             ApiError、PageResponse 等公共结构
 ```
 
 ---
@@ -26,12 +26,12 @@ com.eurasia.pro_skill/
 ### `entity/XxxxEntity` — DB 持久化对象
 
 - 1:1 映射数据库表（含 `password`、`createdAt` 等所有原始字段）
-- 只在 `Mapper ↔ Service` 之间流通，**不出 Service 层**
+- 只在 `Mapper ↔ XxxxService` 之间流通，**不出 `application/` 层**
 - 命名带 `Entity` 后缀，明确表达"这是有 DB 技术绑定的实现细节"
 
 ### `domain/Xxxx` — 业务核心对象
 
-- 业务语言的第一公民，是 Service 层的通用语言
+- 业务语言的第一公民，是 `application/` 层的通用语言
 - **不含技术实现细节**（无 DB 注解、无序列化注解）
 - `password` 等敏感/技术字段不出现在 Domain 中，天然安全
 - 命名最简洁，不加任何后缀（`User`、`Order`、`Product`）
@@ -40,7 +40,7 @@ com.eurasia.pro_skill/
 
 - 对应一个具体的 HTTP 接口入参，放在 `controller/request/` 包下
 - 携带 `@NotBlank`、`@Valid` 等校验注解
-- 只在 Controller 层使用，**不传入 Service**（Controller 负责转换）
+- 只在 Controller 层使用，**不传入 `XxxxService`**（Controller 负责转换）
 
 ### `controller/response/XxxxResponse` — HTTP 出参（按需建）
 
@@ -57,6 +57,34 @@ com.eurasia.pro_skill/
 | 对外 API / 接口契约需稳定隔离 | Domain 变动不应直接影响接口 |
 
 > **原则：Domain 设计得干净，Response 自然就少。**
+
+### `application/XxxxService` — 应用服务层
+
+- **编排业务流程**（Use Case），是业务逻辑的唯一入口
+- 管理**事务边界**（`@Transactional`），不在 Controller 或 Mapper 上加事务
+- 可调用多个 Mapper，将多步 DB 操作组合为一个原子业务操作
+- **不做 HTTP 相关逻辑**（不感知 `HttpServletRequest`、Header、状态码）
+- **不做 DB 技术细节操作**（SQL 归 Mapper，字段映射归 Converter）
+- 入参为基本类型或 Domain 对象，出参为 Domain 对象或 `PageResponse`
+
+### `domain/Xxxx` 中的业务行为
+
+Domain 对象可以（也应该）包含**纯业务行为**，例如状态流转、不变量校验：
+
+```java
+public class Order {
+    private OrderStatus status;
+
+    public void cancel() {
+        if (status == OrderStatus.SHIPPED) {
+            throw new BusinessException("已发货订单不可取消");
+        }
+        this.status = OrderStatus.CANCELLED;
+    }
+}
+```
+
+Domain **不包含**任何外部依赖：无 `@Table`、无数据库注解、无 `@JsonIgnore`、不注入 Spring Bean。
 
 ### `converter/XxxxConverter` — 对象转换
 
@@ -93,19 +121,33 @@ public PageResponse<User> listPage(
 
 ---
 
+## 异常约定
+
+- **`XxxxService`** 抛出业务异常（`BusinessException` 等自定义运行时异常），携带明确的错误信息
+- **Controller 层不捕获业务异常**，一律由 `GlobalExceptionHandler` 统一转换为标准错误响应
+- **不用 `null` 表示异常情况**，找不到资源时抛 `NotFoundException`，而非返回 `null` 让调用方猜
+
+```
+XxxxService 抛 BusinessException
+    → GlobalExceptionHandler 捕获
+    → 返回 ApiError { code, message, path, timestamp }
+```
+
+---
+
 ## 依赖流向
 
 ```
-Controller  →  Service  →  Mapper
-    ↓              ↓           ↓
- Request       Domain /    Entity
- Response      Entity
+Controller  →  Application  →  Mapper
+    ↓               ↓              ↓
+ Request        Domain /        Entity
+ Response       Entity
 ```
 
 **核心原则：内层不依赖外层。**
 
-- `Service` 不返回 `XxxxResponse`（那是 Controller 的职责）
-- `Entity` 不出 `Service` 层
+- `XxxxService` 不返回 `XxxxResponse`（那是 Controller 的职责）
+- `Entity` 不出 `application/` 层
 - `Domain` 对 `Controller`、`Mapper` 一无所知
 
 ---
@@ -115,16 +157,29 @@ Controller  →  Service  →  Mapper
 ```
 HTTP Request
     → XxxxRequest（Controller 接收）
-    → Domain / 参数（Controller 调 Service）
-    → XxxxEntity（Service 经 Converter 转换后调 Mapper）
+    → Domain / 参数（Controller 调 XxxxService）
+    → XxxxEntity（XxxxService 经 Converter 转换后调 Mapper）
     → DB
 
 DB
     → XxxxEntity（Mapper 返回）
-    → Domain（Service 经 Converter 转换）
+    → Domain（XxxxService 经 Converter 转换）
     → Domain 或 XxxxResponse（Controller 返回，视需要而定）
     → HTTP Response
 ```
+
+---
+
+## 反例（禁止）
+
+| 反例 | 违反的原则 | 正确做法 |
+|---|---|---|
+| `UserEntity` 直接序列化返回前端 | Entity 不出 `application/` 层，且含敏感字段 | 返回 `User`（Domain）或 `XxxxResponse` |
+| `XxxxService` 方法返回 `XxxxResponse` | 内层不依赖外层，Service 不关心展示 | 返回 Domain，Controller 做转换 |
+| `Domain` 上加 `@Table`、`@JsonIgnore` 等注解 | Domain 不含技术实现细节 | DB 注解放 Entity，序列化控制放 Response |
+| `Controller` 直接调 `Mapper` | 跳过 Application 层，事务与业务逻辑无处安放 | 所有业务入口经过 `XxxxService` |
+| 用 `null` 表示"未找到" | 语义不清晰，调用方被迫防御性判空 | 抛 `NotFoundException`，全局异常处理器处理 |
+| `@Transactional` 写在 `Controller` 上 | 事务边界属于业务，不应感知 HTTP 层 | 事务注解只出现在 `XxxxService` 方法上 |
 
 ---
 
