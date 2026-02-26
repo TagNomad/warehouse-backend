@@ -46,4 +46,5 @@ Authorization: Bearer {{token}}
 
 ### 获取所有用户 — 未携带 token（应返回 401）
 GET {{baseUrl}}/users
+Content-Type: application/json
 Accept: application/json

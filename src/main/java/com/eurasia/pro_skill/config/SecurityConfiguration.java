@@ -1,10 +1,15 @@
 package com.eurasia.pro_skill.config;
 
+import com.eurasia.pro_skill.dto.ApiError;
 import com.eurasia.pro_skill.security.JwtAuthenticationFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,6 +20,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -26,11 +32,45 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
+    // ── Filter 层错误处理（@ControllerAdvice 无法捕获）────────────────────────
+
+    /**
+     * 401 — 未携带 token 或 token 无效/过期
+     */
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+            ApiError error = new ApiError(
+                    HttpStatus.UNAUTHORIZED.value(),
+                    "未认证，请先登录",
+                    request.getRequestURI()
+            );
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            objectMapper.writeValue(response.getWriter(), error);
+            response.flushBuffer(); // 提交响应，阻止 Tomcat 再转发到 /error
+        };
+    }
+
+    /**
+     * 403 — 已认证但无访问权限
+     */
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            ApiError error = new ApiError(
+                    HttpStatus.FORBIDDEN.value(),
+                    "无权访问此资源",
+                    request.getRequestURI()
+            );
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            objectMapper.writeValue(response.getWriter(), error);
+            response.flushBuffer(); // 提交响应，阻止 Tomcat 再转发到 /error
         };
     }
 
@@ -44,14 +84,17 @@ public class SecurityConfiguration {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 未认证时返回 401
+                // 未认证时返回 401；已认证无权限时返回 403
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authenticationEntryPoint()))
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                        .accessDeniedHandler(accessDeniedHandler()))
 
                 // 请求鉴权规则
                 .authorizeHttpRequests(auth -> auth
                         // 登录接口放行
                         .requestMatchers("/auth/**").permitAll()
+                        // 错误处理端点放行（避免 /error 转发时再次触发 Security）
+                        .requestMatchers("/error").permitAll()
                         // Swagger / OpenAPI 放行
                         .requestMatchers(
                                 "/swagger-ui/**",
