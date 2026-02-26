@@ -74,8 +74,22 @@ public interface UserConverter {
 
 ### `common/` — 全局公共结构
 
-- `ApiResult<T>`：统一响应包装 `{ code, message, data }`
-- `PageRequest` / `PageResponse`：分页通用结构
+- `ApiError`：统一错误响应体 `{ code, message, path, timestamp }`
+- `PageResponse<T>`：分页响应包装，字段与 AntDV `<a-pagination>` 对齐
+
+```json
+{ "current": 1, "pageSize": 10, "total": 42, "records": [...] }
+```
+
+分页请求参数直接用 `@RequestParam` 接收，无需单独建 `PageRequest` 类：
+
+```java
+@GetMapping
+public PageResponse<User> listPage(
+        @RequestParam(defaultValue = "1")  int current,
+        @RequestParam(defaultValue = "10") int pageSize
+) { ... }
+```
 
 ---
 
