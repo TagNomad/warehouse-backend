@@ -1,6 +1,6 @@
 package com.eurasia.pro_skill.exception;
 
-import com.eurasia.pro_skill.dto.ApiError;
+import com.eurasia.pro_skill.common.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;

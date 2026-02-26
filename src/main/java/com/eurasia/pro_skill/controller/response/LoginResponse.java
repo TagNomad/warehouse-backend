@@ -1,4 +1,4 @@
-package com.eurasia.pro_skill.dto;
+package com.eurasia.pro_skill.controller.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

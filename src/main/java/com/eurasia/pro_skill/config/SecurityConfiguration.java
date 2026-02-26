@@ -1,6 +1,6 @@
 package com.eurasia.pro_skill.config;
 
-import com.eurasia.pro_skill.dto.ApiError;
+import com.eurasia.pro_skill.common.ApiError;
 import com.eurasia.pro_skill.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;

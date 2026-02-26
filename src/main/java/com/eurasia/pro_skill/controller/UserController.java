@@ -1,7 +1,7 @@
 package com.eurasia.pro_skill.controller;
 
+import com.eurasia.pro_skill.domain.User;
 import com.eurasia.pro_skill.service.UserService;
-import com.eurasia.pro_skill.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class UserController {
     @Operation(summary = "获取所有用户", description = "返回系统内全部用户列表（不含密码），仅 ADMIN 可访问")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public List<UserVO> listAll() {
+    public List<User> listAll() {
         return userService.listAll();
     }
 }

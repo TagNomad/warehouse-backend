@@ -1,4 +1,4 @@
-package com.eurasia.pro_skill.dto;
+package com.eurasia.pro_skill.common;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
