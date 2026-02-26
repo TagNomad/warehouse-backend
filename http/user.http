@@ -1,0 +1,49 @@
+### 变量
+@baseUrl = http://localhost:8080
+
+### =============================================
+### 1. 登录 — 获取 JWT token
+### POST /auth/login
+### =============================================
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+
+### 登录失败：密码错误
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "wrong_password"
+}
+
+### 登录失败：用户名为空（Validation 校验）
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "",
+  "password": "Admin@123"
+}
+
+### =============================================
+### 2. 获取所有用户（需携带 token）
+### GET /users
+### =============================================
+### 🔑 先执行上方登录请求，将返回的 token 替换到下方 @token 变量中
+
+@token = {{login.response.body.token}}
+
+GET {{baseUrl}}/users
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 获取所有用户 — 未携带 token（应返回 401）
+GET {{baseUrl}}/users
+Accept: application/json

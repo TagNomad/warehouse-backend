@@ -1,0 +1,27 @@
+-- V2: 演示用户（密码哈希有误，已由 V3__fix_seed_passwords.sql 修正）
+INSERT INTO `tb_user` (`username`, `password`, `display_name`, `role`, `email`, `phone`)
+VALUES
+    ('admin',
+     '$2b$10$0ImMTcs5Nivm9eW63gcmdOfm9vn7nihzTrdSZZlYwn8XQcJQYQxcS',
+     '系统管理员',
+     'ADMIN',
+     'admin@example.com',
+     '13800000001'),
+    ('wh_manager',
+     '$2b$10$0ImMTcs5Nivm9eW63gcmdOfm9vn7nihzTrdSZZlYwn8XQcJQYQxcS',
+     '仓库管理员',
+     'WAREHOUSE_MANAGER',
+     'wh_manager@example.com',
+     '13800000002'),
+    ('operator',
+     '$2b$10$0ImMTcs5Nivm9eW63gcmdOfm9vn7nihzTrdSZZlYwn8XQcJQYQxcS',
+     '库管员',
+     'OPERATOR',
+     'operator@example.com',
+     '13800000003'),
+    ('business',
+     '$2b$10$0ImMTcs5Nivm9eW63gcmdOfm9vn7nihzTrdSZZlYwn8XQcJQYQxcS',
+     '采购/销售/财务',
+     'BUSINESS',
+     'business@example.com',
+     '13800000004');
