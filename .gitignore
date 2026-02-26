@@ -48,3 +48,5 @@ logs/
 
 ### ===== Local dev config (per-developer, must NOT be committed) =====
 src/main/resources/application.default.yml
+
+opencode.json
