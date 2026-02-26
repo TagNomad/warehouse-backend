@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 用户持久化对象（PO），1:1 映射 tb_user 表。
  *
- * <p>含 password 等所有原始字段，仅在 Mapper ↔ Service 之间流通，不出 Service 层。
+ * <p>含 password 等所有原始字段，仅在 Mapper ↔ XxxxService 之间流通，不出 application/ 层。
  */
 @Data
 public class UserEntity {

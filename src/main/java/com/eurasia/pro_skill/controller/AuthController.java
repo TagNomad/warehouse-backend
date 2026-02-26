@@ -26,6 +26,7 @@ public class AuthController {
     @Operation(summary = "登录", description = "用户名 + 密码登录，成功后返回 JWT token")
     @PostMapping("/login")
     public LoginResponse login(@RequestBody @Valid LoginRequest request) {
-        return authService.login(request.getUsername(), request.getPassword());
+        var authToken = authService.login(request.getUsername(), request.getPassword());
+        return new LoginResponse(authToken.token(), authToken.username(), authToken.role());
     }
 }

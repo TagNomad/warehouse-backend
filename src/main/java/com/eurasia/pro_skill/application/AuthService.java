@@ -1,7 +1,7 @@
 package com.eurasia.pro_skill.application;
 
-import com.eurasia.pro_skill.controller.response.LoginResponse;
 import com.eurasia.pro_skill.converter.UserConverter;
+import com.eurasia.pro_skill.domain.AuthToken;
 import com.eurasia.pro_skill.domain.User;
 import com.eurasia.pro_skill.entity.UserEntity;
 import com.eurasia.pro_skill.mapper.UserMapper;
@@ -28,9 +28,9 @@ public class AuthService {
      *
      * @param username 登录账号
      * @param password 明文密码
-     * @return 包含 token 及基本用户信息的登录响应
+     * @return {@link AuthToken} Domain 级登录结果，由 Controller 负责转换为响应体
      */
-    public LoginResponse login(String username, String password) {
+    public AuthToken login(String username, String password) {
         // 委托 Spring Security 完成认证（密码校验、用户状态校验）
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
@@ -40,6 +40,6 @@ public class AuthService {
         User user = userConverter.toDomain(entity);
 
         String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
-        return new LoginResponse(token, user.getUsername(), user.getRole());
+        return new AuthToken(token, user.getUsername(), user.getRole());
     }
 }
