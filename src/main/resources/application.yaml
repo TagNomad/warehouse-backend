@@ -3,12 +3,13 @@ spring:
     name: pro-skill
 
   # 导入本地开发数据库配置（文件存在则加载，不存在则跳过）
-  # 开发者需在 src/main/resources/ 中创建 application.default.yml 并填写本机 DB 信息，该文件已被 .gitignore 忽略
+  # 开发者需在 src/main/resources/ 中创建 application-local.properties 并填写本机 DB 信息，该文件已被 .gitignore 忽略
   config:
-    import: optional:classpath:application.default.yml
+    import: optional:classpath:application-local.properties
 
-  # 数据源（具体连接信息写在 application.default.yml 中）
+  # 数据源（具体连接信息写在 application-local.properties 中）
   datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2

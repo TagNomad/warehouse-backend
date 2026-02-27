@@ -4,15 +4,17 @@ Spring Boot 后端服务。
 
 ## 本地开发前置准备
 
-1. 在 `src/main/resources/` 目录下创建 `application.default.yml`，填写本机数据库连接信息（参考同目录下的同名模板文件）：
+1. 在 `src/main/resources/` 目录下创建 `application-local.properties`，填写本机数据库连接信息（参考同目录下的同名模板文件）：
 
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:mysql://localhost:3306/pro_skill?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-       username: root
-       password: your_password
-   ```
+    ```properties
+    db.host=localhost
+    db.port=3306
+    db.name=pro_skill
+
+    spring.datasource.url=jdbc:mysql://${db.host}:${db.port}/${db.name}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    spring.datasource.username=root
+    spring.datasource.password=your_password
+    ```
 
    > 此文件已加入 `.gitignore`，不会被提交。
 
