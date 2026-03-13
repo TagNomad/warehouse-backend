@@ -5,7 +5,6 @@ import com.eurasia.pro_skill.controller.request.WarehouseCreateRequest;
 import com.eurasia.pro_skill.controller.request.WarehouseUpdateRequest;
 import com.eurasia.pro_skill.domain.Warehouse;
 import com.eurasia.pro_skill.application.WarehouseService;
-import com.eurasia.pro_skill.converter.WarehouseConverter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,17 +15,15 @@ import org.springframework.web.bind.annotation.*;
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
-    private final WarehouseConverter warehouseConverter;
 
     @PostMapping
     public Warehouse create(@Valid @RequestBody WarehouseCreateRequest request) {
-        Warehouse domain = warehouseConverter.createRequestToDomain(request);
-        return warehouseService.create(domain);
+        return warehouseService.create(toCreateDomain(request));
     }
 
     @PutMapping("/{id}")
     public Warehouse update(@PathVariable Long id, @Valid @RequestBody WarehouseUpdateRequest request) {
-        return warehouseService.update(id, request);
+        return warehouseService.update(id, toUpdateDomain(request));
     }
 
     @DeleteMapping("/{id}")
@@ -49,5 +46,29 @@ public class WarehouseController {
             @RequestParam(required = false) String status
     ) {
         return warehouseService.listPage(current, pageSize, code, name, type, status);
+    }
+
+    private Warehouse toCreateDomain(WarehouseCreateRequest request) {
+        return Warehouse.builder()
+                .code(request.getCode())
+                .name(request.getName())
+                .type(request.getType())
+                .address(request.getAddress())
+                .manager(request.getManager())
+                .phone(request.getPhone())
+                .capacity(request.getCapacity())
+                .build();
+    }
+
+    private Warehouse toUpdateDomain(WarehouseUpdateRequest request) {
+        return Warehouse.builder()
+                .name(request.getName())
+                .type(request.getType())
+                .address(request.getAddress())
+                .manager(request.getManager())
+                .phone(request.getPhone())
+                .status(request.getStatus())
+                .capacity(request.getCapacity())
+                .build();
     }
 }

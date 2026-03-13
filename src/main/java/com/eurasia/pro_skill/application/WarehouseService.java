@@ -4,7 +4,6 @@ import com.eurasia.pro_skill.common.BusinessException;
 import com.eurasia.pro_skill.common.PageResponse;
 import com.eurasia.pro_skill.converter.WarehouseConverter;
 import com.eurasia.pro_skill.domain.Warehouse;
-import com.eurasia.pro_skill.controller.request.WarehouseUpdateRequest;
 import com.eurasia.pro_skill.entity.WarehouseEntity;
 import com.eurasia.pro_skill.mapper.WarehouseMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +21,20 @@ public class WarehouseService {
     private final WarehouseMapper warehouseMapper;
     private final WarehouseConverter warehouseConverter;
 
-    public Warehouse create(Warehouse domain) {
-        // 检查编码唯一性
-        WarehouseEntity existing = warehouseMapper.getByCode(domain.getCode());
+    public Warehouse create(Warehouse input) {
+        WarehouseEntity existing = warehouseMapper.getByCode(input.getCode());
         if (existing != null) {
-            throw new BusinessException("WAREHOUSE_CODE_EXISTS", "仓库编码已存在：" + domain.getCode());
+            throw new BusinessException("WAREHOUSE_CODE_EXISTS", "仓库编码已存在：" + input.getCode());
         }
 
-        WarehouseEntity entity = warehouseConverter.toEntity(domain);
+        WarehouseEntity entity = new WarehouseEntity();
+        entity.setCode(input.getCode());
+        entity.setName(input.getName());
+        entity.setType(input.getType());
+        entity.setAddress(input.getAddress());
+        entity.setManager(input.getManager());
+        entity.setPhone(input.getPhone());
+        entity.setCapacity(input.getCapacity());
         entity.setStatus(Warehouse.STATUS_ENABLED);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
@@ -38,23 +43,23 @@ public class WarehouseService {
         return warehouseConverter.toDomain(entity);
     }
 
-    public Warehouse update(Long id, WarehouseUpdateRequest request) {
+    public Warehouse update(Long id, Warehouse changes) {
         WarehouseEntity entity = warehouseMapper.getById(id);
         if (entity == null) {
             throw new BusinessException("WAREHOUSE_NOT_FOUND", "仓库不存在：" + id);
         }
 
-        // 使用 Converter 将 Request 转换并更新到 Domain
-        Warehouse domain = warehouseConverter.toDomain(entity);
-        warehouseConverter.updateRequestToDomain(request, domain);
+        entity.setName(changes.getName());
+        entity.setType(changes.getType());
+        entity.setAddress(changes.getAddress());
+        entity.setManager(changes.getManager());
+        entity.setPhone(changes.getPhone());
+        entity.setStatus(changes.getStatus());
+        entity.setCapacity(changes.getCapacity());
+        entity.setUpdatedAt(LocalDateTime.now());
 
-        // 将更新后的 Domain 转回 Entity
-        WarehouseEntity updated = warehouseConverter.toEntity(domain);
-        updated.setId(id);
-        updated.setUpdatedAt(LocalDateTime.now());
-
-        warehouseMapper.update(updated);
-        return warehouseConverter.toDomain(updated);
+        warehouseMapper.update(entity);
+        return warehouseConverter.toDomain(entity);
     }
 
     public void delete(Long id) {
@@ -76,9 +81,9 @@ public class WarehouseService {
     @Transactional(readOnly = true)
     public PageResponse<Warehouse> listPage(Integer current, Integer pageSize,
                                             String code, String name, String type, String status) {
-        // 分页上限保护
-        int safePageSize = Math.min(pageSize, 100);
-        int offset = (current - 1) * safePageSize;
+        int safeCurrent = Math.max(current, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+        int offset = (safeCurrent - 1) * safePageSize;
         List<WarehouseEntity> entities = warehouseMapper.listPage(offset, safePageSize, code, name, type, status);
         long total = warehouseMapper.count(code, name, type, status);
 
@@ -86,6 +91,6 @@ public class WarehouseService {
                 .map(warehouseConverter::toDomain)
                 .toList();
 
-        return PageResponse.of(current, safePageSize, total, domains);
+        return PageResponse.of(safeCurrent, safePageSize, total, domains);
     }
 }
