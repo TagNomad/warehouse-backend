@@ -1,0 +1,17 @@
+-- 仓库表
+CREATE TABLE IF NOT EXISTS warehouse (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    code VARCHAR(50) NOT NULL COMMENT '仓库编码',
+    name VARCHAR(100) NOT NULL COMMENT '仓库名称',
+    type VARCHAR(50) NOT NULL COMMENT '仓库类型：RAW_MATERIAL/FINISHED_GOODS/TRANSFER',
+    address VARCHAR(255) COMMENT '仓库地址',
+    manager VARCHAR(50) COMMENT '负责人',
+    phone VARCHAR(20) COMMENT '联系电话',
+    status VARCHAR(20) DEFAULT 'ENABLED' COMMENT '状态：ENABLED/DISABLED',
+    capacity INT COMMENT '库容量',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_code (code),
+    KEY idx_type (type),
+    KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='仓库表';

@@ -1,6 +1,7 @@
 package com.eurasia.pro_skill.exception;
 
 import com.eurasia.pro_skill.common.ApiError;
+import com.eurasia.pro_skill.common.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -56,6 +57,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ApiError handleNotFound(NoResourceFoundException ex, HttpServletRequest request) {
         return new ApiError(HttpStatus.NOT_FOUND.value(), "资源不存在: " + request.getRequestURI(), request.getRequestURI());
+    }
+
+    // ── 400 业务异常 ─────────────────────────────────────────────────────────
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(BusinessException.class)
+    public ApiError handleBusiness(BusinessException ex, HttpServletRequest request) {
+        return new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
     }
 
     // ── 403 方法级权限不足（@PreAuthorize 抛出，在 Controller 层被捕获）────────
