@@ -48,6 +48,7 @@ metadata:
 ### controller/request/XxxxRequest
 - 只用于 Controller 入参，携带校验注解（@Valid/@NotBlank 等）
 - 禁止：Request 直接传入 Application(XxxxService)（Controller 负责转换）
+- 审查时重点看：Service 方法签名、import 列表、Converter 是否出现 `controller.request` 引用
 
 ### controller/response/XxxxResponse（按需）
 - 默认返回 Domain；仅在必要时创建 Response：
@@ -64,11 +65,13 @@ metadata:
 - 禁止：HTTP 相关逻辑（不感知 HttpServletRequest/Header/状态码）
 - 禁止：DB 技术细节（SQL 属于 Mapper；字段映射属于 Converter）
 - 入参：基本类型或 Domain；出参：Domain 或 PageResponse
+- 重点反例：`update(Long id, XxxxUpdateRequest request)`、`import controller.request.*`
 
 ### converter/XxxxConverter（MapStruct）
 - 仅做 Entity ↔ Domain 转换
 - @Mapper(componentModel = SPRING)
 - 命名为 XxxxConverter，避免与 MyBatis @Mapper 混淆
+- 若同时承担 Request ↔ Domain 转换，通常意味着 Controller 边界正在向内泄漏，需要优先审查 Service 是否已依赖 Request
 
 ### common
 - ApiError：{ code, message, path, timestamp }
@@ -83,10 +86,28 @@ metadata:
 ## 4. 禁止清单（命中即判违规）
 - Controller 直接调用 Mapper
 - XxxxService 返回 XxxxResponse
+- XxxxService import 或接收 `controller.request.XxxxRequest`
+- XxxxConverter 同时承担 `Request ↔ Domain` 与 `Entity ↔ Domain`
 - Domain 上出现 @Table/@JsonIgnore 等技术注解
 - @Transactional 写在 Controller 上
 - Entity 被直接序列化返回前端
 - 用 DTO/VO 命名替代 Request/Response/Domain
+
+<!-- Evolution: 2026-03-13 | source: warehouse-service-refactor | skill: layered-architecture-guard -->
+
+## Pattern Added (2026-03-13)
+
+**Pattern**: Review `Service` imports and converter responsibilities together when checking layering
+
+**Source**: Warehouse service review/refactor
+
+**Confidence**: 0.95
+
+### Updated Checklist
+- [ ] `application/*Service` 不 import `controller.request` 或 `controller.response`
+- [ ] Controller 在进入 Service 前完成 Request -> Domain/primitive 转换
+- [ ] `converter/*Converter` 只负责 Entity <-> Domain 映射
+- [ ] 分页接口同时检查 `current/pageSize` 的上下限保护
 
 # 审查输出格式（必须按此输出）
 
