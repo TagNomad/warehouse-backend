@@ -1,0 +1,129 @@
+### 变量
+@baseUrl = http://localhost:8080
+
+### =============================================
+### 0. 登录 — 获取 JWT token
+### =============================================
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+
+### =============================================
+@token = {{login.response.body.token}}
+
+### =============================================
+### 1. 创建仓库
+### POST /api/warehouses
+### =============================================
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "code": "WH-001",
+  "name": "华东原料仓",
+  "type": "RAW_MATERIAL",
+  "address": "上海市浦东新区XX路100号",
+  "manager": "张三",
+  "phone": "13800000001",
+  "capacity": 5000
+}
+
+### 创建仓库 — 编码重复（应返回 400）
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "code": "WH-001",
+  "name": "重复编码仓库",
+  "type": "RAW_MATERIAL"
+}
+
+### 创建仓库 — 缺少必填字段（Validation 校验）
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "缺少编码的仓库",
+  "type": "RAW_MATERIAL"
+}
+
+### =============================================
+### 2. 查询单个仓库
+### GET /api/warehouses/{id}
+### =============================================
+GET {{baseUrl}}/api/warehouses/1
+Authorization: Bearer {{token}}
+
+### 查询不存在的仓库（应返回 400）
+GET {{baseUrl}}/api/warehouses/99999
+Authorization: Bearer {{token}}
+
+### =============================================
+### 3. 分页查询仓库列表
+### GET /api/warehouses/list
+### =============================================
+
+### 默认分页
+GET {{baseUrl}}/api/warehouses/list
+Authorization: Bearer {{token}}
+
+### 按类型筛选
+GET {{baseUrl}}/api/warehouses/list?type=RAW_MATERIAL
+Authorization: Bearer {{token}}
+
+### 按名称模糊搜索 + 分页
+GET {{baseUrl}}/api/warehouses/list?name=华东&current=1&pageSize=5
+Authorization: Bearer {{token}}
+
+### 多条件组合筛选
+GET {{baseUrl}}/api/warehouses/list?status=ENABLED&type=RAW_MATERIAL&current=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### =============================================
+### 4. 更新仓库
+### PUT /api/warehouses/{id}
+### =============================================
+PUT {{baseUrl}}/api/warehouses/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "华东原料仓（已扩容）",
+  "type": "RAW_MATERIAL",
+  "address": "上海市浦东新区XX路100号（二期）",
+  "manager": "李四",
+  "phone": "13900000002",
+  "status": "ENABLED",
+  "capacity": 8000
+}
+
+### 禁用仓库
+PUT {{baseUrl}}/api/warehouses/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "华东原料仓（已扩容）",
+  "type": "RAW_MATERIAL",
+  "status": "DISABLED",
+  "capacity": 8000
+}
+
+### =============================================
+### 5. 删除仓库
+### DELETE /api/warehouses/{id}
+### =============================================
+DELETE {{baseUrl}}/api/warehouses/1
+Authorization: Bearer {{token}}
+
+### 删除不存在的仓库（应返回 400）
+DELETE {{baseUrl}}/api/warehouses/99999
+Authorization: Bearer {{token}}
