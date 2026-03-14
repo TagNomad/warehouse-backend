@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/warehouses")
+@RequestMapping("/warehouses")
 @RequiredArgsConstructor
 public class WarehouseController {
 
