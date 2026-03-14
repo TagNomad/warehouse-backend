@@ -3,6 +3,7 @@ package com.eurasia.pro_skill.converter;
 import com.eurasia.pro_skill.domain.User;
 import com.eurasia.pro_skill.entity.UserEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 /**
@@ -20,5 +21,6 @@ public interface UserConverter {
     User toDomain(UserEntity entity);
 
     /** Domain → Entity（写入 DB 前转换，password 需调用方单独设置） */
+    @Mapping(target = "password", ignore = true)
     UserEntity toEntity(User domain);
 }
