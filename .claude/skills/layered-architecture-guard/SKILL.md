@@ -72,6 +72,7 @@ metadata:
 - @Mapper(componentModel = SPRING)
 - 命名为 XxxxConverter，避免与 MyBatis @Mapper 混淆
 - 若同时承担 Request ↔ Domain 转换，通常意味着 Controller 边界正在向内泄漏，需要优先审查 Service 是否已依赖 Request
+- 若出现 `XxxxConverter` Bean 注入失败、生成实现异常、另一台机器正常但本机异常，先排查 Maven / IDE / 注解处理器构建链路，再判断是否为分层设计问题
 
 ### common
 - ApiError：{ code, message, path, timestamp }
@@ -107,6 +108,7 @@ metadata:
 - [ ] `application/*Service` 不 import `controller.request` 或 `controller.response`
 - [ ] Controller 在进入 Service 前完成 Request -> Domain/primitive 转换
 - [ ] `converter/*Converter` 只负责 Entity <-> Domain 映射
+- [ ] 若 Converter Bean 异常，先排除 MapStruct / IDE autobuild / Maven 产物污染，再做架构定责
 - [ ] 分页接口同时检查 `current/pageSize` 的上下限保护
 
 # 审查输出格式（必须按此输出）
