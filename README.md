@@ -18,7 +18,21 @@ Spring Boot 后端服务。
 
    > 此文件已加入 `.gitignore`，不会被提交。
 
-2. 确保本地 MySQL 中已创建数据库 `pro_skill`，Flyway 会在启动时自动执行迁移脚本。
+2. 创建数据库 `pro_skill`：
+
+    打开 MySQL 命令行或客户端工具，执行：
+
+    ```sql
+    CREATE DATABASE pro_skill DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    ```
+
+    或使用命令行：
+
+    ```bash
+    mysql -u root -p -e "CREATE DATABASE pro_skill DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    ```
+
+    > Flyway 会在应用启动时自动执行迁移脚本，无需手动建表。
 
 ## 启动
 
