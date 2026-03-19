@@ -33,7 +33,41 @@ Content-Type: application/json
 }
 
 ### =============================================
-### 2. 获取所有用户（需携带 token）
+### 2. 注册 — 创建新用户
+### POST /auth/register
+### =============================================
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "newuser",
+  "password": "Password@123",
+  "displayName": "新用户",
+  "email": "newuser@example.com",
+  "phone": "13800138000"
+}
+
+### 注册失败：用户名已存在
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Password@123",
+  "displayName": "管理员"
+}
+
+### 注册失败：用户名太短（Validation 校验）
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "ab",
+  "password": "Password@123"
+}
+
+### =============================================
+### 3. 获取所有用户（需携带 token）
 ### GET /users
 ### =============================================
 ### 🔑 先执行上方登录请求，将返回的 token 替换到下方 @token 变量中
@@ -48,3 +82,46 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/users
 Content-Type: application/json
 Accept: application/json
+
+### =============================================
+### 4. 创建用户 — 管理员专用（可指定角色）
+### POST /users
+### =============================================
+### 需要使用 ADMIN 角色的 token
+
+POST {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "manager1",
+  "password": "Manager@123",
+  "displayName": "经理1",
+  "role": "USER",
+  "email": "manager1@example.com",
+  "phone": "13900139000"
+}
+
+### 创建管理员用户
+POST {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "admin2",
+  "password": "Admin2@123",
+  "displayName": "管理员2",
+  "role": "ADMIN",
+  "email": "admin2@example.com"
+}
+
+### 创建失败：用户名已存在
+POST {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "admin",
+  "password": "Password@123",
+  "role": "USER"
+}

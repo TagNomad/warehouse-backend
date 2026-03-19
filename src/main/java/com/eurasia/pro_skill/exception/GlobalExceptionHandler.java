@@ -10,6 +10,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // ── 400 参数校验失败 ──────────────────────────────────────────────────────
 
@@ -67,6 +71,12 @@ public class GlobalExceptionHandler {
         return new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ApiError handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        return new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
+    }
+
     // ── 403 方法级权限不足（@PreAuthorize 抛出，在 Controller 层被捕获）────────
 
     @ResponseStatus(HttpStatus.FORBIDDEN)
@@ -80,6 +90,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public ApiError handleGeneral(Exception ex, HttpServletRequest request) {
+        log.error("服务器内部错误 - URI: {}, 异常: {}", request.getRequestURI(), ex.getMessage(), ex);
         return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务器内部错误", request.getRequestURI());
     }
 }
