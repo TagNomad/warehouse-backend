@@ -4,6 +4,15 @@ Spring Boot 后端服务。
 
 ## 本地开发前置准备
 
+0. **JDK 21 或以上**（`pom.xml` 中 `java.version=21`）。终端执行 `java -version` 应显示 21+；若仍是 17，在 `~/.zshrc` 中设置：
+
+    ```bash
+    export JAVA_HOME="/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"
+    export PATH="$JAVA_HOME/bin:$PATH"
+    ```
+
+    Homebrew 安装：`brew install openjdk`（或 `openjdk@21`）。修改后执行 `source ~/.zshrc` 或新开终端。
+
 1. 在 `src/main/resources/` 目录下创建 `application-local.properties`，填写本机数据库连接信息（参考同目录下的同名模板文件）：
 
     ```properties

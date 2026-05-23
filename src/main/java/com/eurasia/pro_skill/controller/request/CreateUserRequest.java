@@ -26,7 +26,8 @@ public class CreateUserRequest {
     private String displayName;
 
     @NotBlank(message = "角色不能为空")
-    @Schema(description = "角色", example = "USER", allowableValues = {"ADMIN", "USER"})
+    @Schema(description = "角色", example = "OPERATOR",
+            allowableValues = {"ADMIN", "WAREHOUSE_MANAGER", "OPERATOR", "BUSINESS"})
     private String role;
 
     @Schema(description = "邮箱", example = "user@example.com")

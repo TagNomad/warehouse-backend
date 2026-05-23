@@ -6,6 +6,7 @@ import com.eurasia.pro_skill.controller.response.LoginResponse;
 import com.eurasia.pro_skill.controller.response.RegisterResponse;
 import com.eurasia.pro_skill.application.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 鉴权控制器：提供登录与 token 签发能力
  */
 @Tag(name = "鉴权", description = "登录 / 注册 / token 签发")
+@SecurityRequirements
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor

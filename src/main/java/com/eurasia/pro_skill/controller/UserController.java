@@ -2,6 +2,7 @@ package com.eurasia.pro_skill.controller;
 
 import com.eurasia.pro_skill.common.PageResponse;
 import com.eurasia.pro_skill.controller.request.CreateUserRequest;
+import com.eurasia.pro_skill.controller.request.UpdateUserRequest;
 import com.eurasia.pro_skill.controller.response.CreateUserResponse;
 import com.eurasia.pro_skill.domain.User;
 import com.eurasia.pro_skill.application.UserService;
@@ -11,8 +12,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,9 +35,19 @@ public class UserController {
     @GetMapping
     public PageResponse<User> listPage(
             @Parameter(description = "页码，1-based") @RequestParam(defaultValue = "1") int current,
-            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") int pageSize
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") int pageSize,
+            @Parameter(description = "用户名模糊搜索") @RequestParam(required = false) String username,
+            @Parameter(description = "角色") @RequestParam(required = false) String role,
+            @Parameter(description = "状态：1-启用 0-禁用") @RequestParam(required = false) Integer status
     ) {
-        return userService.listPage(current, pageSize);
+        return userService.listPage(current, pageSize, username, role, status);
+    }
+
+    @Operation(summary = "获取用户详情", description = "按 ID 查询用户（不含密码），仅 ADMIN 可访问")
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}")
+    public User getById(@Parameter(description = "用户 ID") @PathVariable Long id) {
+        return userService.getById(id);
     }
 
     @Operation(summary = "创建用户", description = "创建新用户，可指定角色，仅 ADMIN 可访问")
@@ -49,5 +63,30 @@ public class UserController {
                 request.getPhone()
         );
         return new CreateUserResponse(userId, request.getUsername(), request.getRole(), "创建成功");
+    }
+
+    @Operation(summary = "更新用户", description = "更新显示名、角色、联系方式、状态；password 可选（不传则不修改），仅 ADMIN 可访问")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public User updateUser(
+            @Parameter(description = "用户 ID") @PathVariable Long id,
+            @RequestBody @Valid UpdateUserRequest request
+    ) {
+        return userService.update(
+                id,
+                request.getDisplayName(),
+                request.getRole(),
+                request.getEmail(),
+                request.getPhone(),
+                request.getStatus(),
+                request.getPassword()
+        );
+    }
+
+    @Operation(summary = "禁用用户", description = "将用户状态设为禁用（软删除），仅 ADMIN 可访问")
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public void deleteUser(@Parameter(description = "用户 ID") @PathVariable Long id) {
+        userService.delete(id);
     }
 }
