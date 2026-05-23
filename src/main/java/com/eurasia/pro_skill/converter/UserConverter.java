@@ -7,20 +7,30 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 /**
- * UserEntity (PO) ↔ User (Domain) 转换器
+ * UserEntity ↔ User 转换器（MapStruct 在编译期自动生成实现类）。
  *
- * <p>MapStruct 在编译期自动生成实现类，字段同名则直接映射。
- * Domain 无 password 字段，MapStruct 自动忽略，无需 @Mapping 显式声明。
+ * <p>为什么需要它？
+ * <ul>
+ *   <li>查库得到的是 Entity（含 password）</li>
+ *   <li>返回 API 要用 Domain（无 password）</li>
+ *   <li>手写 get/set 易漏字段，MapStruct 按同名属性自动拷贝</li>
+ * </ul>
  *
- * <p>componentModel = SPRING：生成的实现类带 @Component，可直接 @RequiredArgsConstructor 注入。
+ * <p>{@code componentModel = SPRING}：生成的类带 {@code @Component}，可被注入到 UserService。
  */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface UserConverter {
 
-    /** Entity → Domain（password 字段因 Domain 无对应字段而自动忽略） */
+    /**
+     * 数据库对象 → 业务对象。
+     * Domain 无 password 字段，MapStruct 会自动忽略 Entity.password。
+     */
     User toDomain(UserEntity entity);
 
-    /** Domain → Entity（写入 DB 前转换，password 需调用方单独设置） */
+    /**
+     * 业务对象 → 数据库对象（如需从 Domain 写库时使用）。
+     * password 必须 ignore，由 Service 单独 {@code passwordEncoder.encode} 后 set。
+     */
     @Mapping(target = "password", ignore = true)
     UserEntity toEntity(User domain);
 }

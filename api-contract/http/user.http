@@ -97,7 +97,7 @@ Authorization: Bearer {{token}}
   "username": "manager1",
   "password": "Manager@123",
   "displayName": "经理1",
-  "role": "USER",
+  "role": "OPERATOR",
   "email": "manager1@example.com",
   "phone": "13900139000"
 }

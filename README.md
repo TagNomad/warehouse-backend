@@ -43,6 +43,14 @@ Spring Boot 后端服务。
 
     > Flyway 会在应用启动时自动执行迁移脚本，无需手动建表。
 
+## 教学文档（用户 CRUD 全流程）
+
+零基础学生建议先阅读：
+
+- [docs/用户管理CRUD全流程.md](docs/用户管理CRUD全流程.md) — **从零加接口 + Swagger 逐步点击**（每个接口怎么写代码、怎么在 Swagger 里填参数）
+
+源码中 `UserController` / `UserService` / `UserMapper` 等已配有详细中文注释，可与文档对照阅读。
+
 ## 启动
 
 ```bash
