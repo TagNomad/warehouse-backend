@@ -1,0 +1,38 @@
+# 本地开发用 MySQL + Adminer，一键启动：
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Spring Boot 连 localhost:3306；Adminer 打开 http://localhost:8081
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: pro-skill-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pro_skill
+    ports:
+      - "3306:3306"
+    volumes:
+      - pro-skill-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  adminer:
+    image: adminer:4
+    container_name: pro-skill-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  pro-skill-mysql-data:
