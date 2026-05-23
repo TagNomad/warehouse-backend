@@ -47,7 +47,8 @@ Spring Boot 后端服务。
 
 零基础学生建议先阅读：
 
-- [docs/用户管理CRUD全流程.md](docs/用户管理CRUD全流程.md) — **从零加接口 + Swagger 逐步点击**（每个接口怎么写代码、怎么在 Swagger 里填参数）
+- [docs/用户管理CRUD上课教案.md](docs/用户管理CRUD上课教案.md) — **讲师用**：知识点、话术、时间分配、演示顺序  
+- [docs/用户管理CRUD全流程.md](docs/用户管理CRUD全流程.md) — **学生用**：从零加接口 + Swagger 逐步点击
 
 源码中 `UserController` / `UserService` / `UserMapper` 等已配有详细中文注释，可与文档对照阅读。
 

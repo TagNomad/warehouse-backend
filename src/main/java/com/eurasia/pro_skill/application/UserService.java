@@ -82,10 +82,10 @@ public class UserService {
     /**
      * 创建用户（Create）。
      *
-     * <p>关键步骤：查重 → 组装 Entity → 加密密码 → insert → 返回自增 id。
+     * <p>关键步骤：查重 → 组装 Entity → 加密密码 → insert → 返回 Domain。
      * <p>注意：必须调用 {@code userMapper.insert}，否则 Swagger 仍可能返回「创建成功」但库里无数据。
      */
-    public Long createUser(String username, String password, String displayName, String role,
+    public User createUser(String username, String password, String displayName, String role,
                            String email, String phone) {
         // 1. 业务规则：用户名唯一
         if (userMapper.findByUsername(username) != null) {
@@ -108,7 +108,7 @@ public class UserService {
         // 3. 执行 INSERT（SQL 在 UserMapper 接口上）
         userMapper.insert(newUser);
         // insert 成功后，MyBatis 会把数据库生成的 id 写回 newUser.getId()
-        return newUser.getId();
+        return userConverter.toDomain(newUser);
     }
 
     /**

@@ -69,12 +69,25 @@ java -version    # 必须是 21 或以上
 | ⑤ | `application/UserService.java` | 业务逻辑 |
 | ⑥ | `controller/request/CreateUserRequest.java` | 创建接口 JSON 入参 |
 | ⑦ | `controller/request/UpdateUserRequest.java` | 更新接口 JSON 入参 |
-| ⑧ | `controller/response/CreateUserResponse.java` | 创建接口专用返回（可选） |
-| ⑨ | `controller/UserController.java` | 定义 URL，对接 Swagger |
+| ⑧ | `controller/response/*.java` | 对外 JSON：`UserResponse`、`UserPageResponse`、`CreateUserResponse` 等 |
+| ⑨ | `controller/response/UserResponseMapper.java` | Domain → Response 转换 |
+| ⑩ | `controller/UserController.java` | 定义 URL，返回 *Response |
 
 表结构由 Flyway 脚本 `db/migration/V1__init_schema.sql` 建好，**不用手写建表 SQL**。
 
-每做一个接口，通常是：**Mapper 加 SQL → Service 加方法 → Controller 加方法 → 重启 → Swagger 点 Execute**。
+每做一个接口，通常是：**Mapper 加 SQL → Service 加方法（返回 Domain）→ 写 *Response → Controller 转换并返回 → 重启 → Swagger 点 Execute**。
+
+### Response 约定（五个接口各有对应类）
+
+| 接口 | Response 类 | 结构要点 |
+|------|-------------|----------|
+| GET /users | `UserPageResponse` | current、pageSize、total、records（`UserResponse` 列表） |
+| GET /users/{id} | `UserDetailResponse` | user + message |
+| POST /users | `CreateUserResponse` | userId + user + message |
+| PUT /users/{id} | `UpdateUserResponse` | user + message |
+| DELETE /users/{id} | `DeleteUserResponse` | userId + message |
+
+用户信息字段统一放在 **`UserResponse`**（无 password），与 Domain `User` 字段一致。
 
 ---
 
@@ -131,7 +144,7 @@ public PageResponse<User> listPage(
 
 ### 2.3 成功时 Response 长什么样
 
-**Code: 200**，body 类似：
+**Code: 200**，body 类似（`UserPageResponse`）：
 
 ```json
 {
@@ -145,7 +158,10 @@ public PageResponse<User> listPage(
       "displayName": "系统管理员",
       "role": "ADMIN",
       "status": 1,
-      ...
+      "email": "admin@example.com",
+      "phone": "13800000001",
+      "createdAt": "...",
+      "updatedAt": "..."
     }
   ]
 }
@@ -204,17 +220,21 @@ public User getById(@PathVariable Long id) {
 | 3 | **id** 填 `1`（先由列表接口看有哪些 id） |
 | 4 | **Execute** |
 
-### 3.3 成功响应示例
+### 3.3 成功响应示例（`UserDetailResponse`）
 
 ```json
 {
-  "id": 1,
-  "username": "admin",
-  "displayName": "系统管理员",
-  "role": "ADMIN",
-  "email": "admin@example.com",
-  "status": 1,
-  ...
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "displayName": "系统管理员",
+    "role": "ADMIN",
+    "email": "admin@example.com",
+    "status": 1,
+    "createdAt": "...",
+    "updatedAt": "..."
+  },
+  "message": "查询成功"
 }
 ```
 
@@ -248,17 +268,13 @@ int insert(UserEntity entity);
 4. **`userMapper.insert(newUser)`** ← 漏这句会「Swagger 成功但库里没数据」  
 5. `return newUser.getId()`
 
-**④ 新建 `CreateUserResponse.java`**（userId、username、role、message）
+**④ 新建 `CreateUserResponse`、`UserResponse`、`UserResponseMapper`**
 
 **⑤ UserController**
 
 ```java
-@PostMapping
-@PreAuthorize("hasRole('ADMIN')")
-public CreateUserResponse createUser(@RequestBody @Valid CreateUserRequest request) {
-    Long userId = userService.createUser(...);
-    return new CreateUserResponse(userId, request.getUsername(), request.getRole(), "创建成功");
-}
+User user = userService.createUser(...);
+return new CreateUserResponse(user.getId(), UserResponseMapper.from(user), "创建成功");
 ```
 
 重启项目。
@@ -291,20 +307,29 @@ public CreateUserResponse createUser(@RequestBody @Valid CreateUserRequest reque
 
 | 4 | **Execute** |
 
-### 4.3 成功响应示例
+### 4.3 成功响应示例（`CreateUserResponse`）
 
 ```json
 {
   "userId": 5,
-  "username": "student01",
-  "role": "OPERATOR",
+  "user": {
+    "id": 5,
+    "username": "student01",
+    "displayName": "学生01",
+    "role": "OPERATOR",
+    "email": "student01@example.com",
+    "phone": "13800138001",
+    "status": 1,
+    "createdAt": "...",
+    "updatedAt": "..."
+  },
   "message": "创建成功"
 }
 ```
 
 **检查点：**
 
-- `userId` **不能是 null**
+- `userId` 与 `user.id` **不能是 null**
 - 再调 **`GET /users`** 或 **`GET /users/5`** 能查到
 - 控制台有 `UserMapper.insert` 和 `<== Updates: 1`
 
@@ -370,9 +395,20 @@ public User updateUser(@PathVariable Long id, @RequestBody @Valid UpdateUserRequ
 
 | 5 | **Execute** |
 
-### 5.3 成功响应
+### 5.3 成功响应（`UpdateUserResponse`）
 
-返回更新后的 **User** 对象（无 password），`displayName` 等应为新值。
+```json
+{
+  "user": {
+    "id": 5,
+    "displayName": "学生01-已改名",
+    "role": "OPERATOR",
+    "status": 1,
+    ...
+  },
+  "message": "更新成功"
+}
+```
 
 再用 **`GET /users/5`** 核对。
 
@@ -412,9 +448,14 @@ public void deleteUser(@PathVariable Long id) {
 | 3 | **id** 填 `5` |
 | 4 | **Execute** |
 
-### 6.3 成功时
+### 6.3 成功时（`DeleteUserResponse`）
 
-**Code: 200**，响应体通常为空。
+```json
+{
+  "userId": 5,
+  "message": "禁用成功"
+}
+```
 
 验证：
 
@@ -429,11 +470,11 @@ public void deleteUser(@PathVariable Long id) {
 | # | Swagger 标题 | 方法 | 路径 | Body | 路径/Query 参数 |
 |---|--------------|------|------|------|-----------------|
 | 0 | 登录 | POST | `/auth/login` | username, password | 先执行，再 Authorize |
-| 1 | 分页获取用户列表 | GET | `/users` | 无 | current, pageSize, username?, role?, status? |
-| 2 | 获取用户详情 | GET | `/users/{id}` | 无 | id |
-| 3 | 创建用户 | POST | `/users` | CreateUserRequest JSON | 无 |
-| 4 | 更新用户 | PUT | `/users/{id}` | UpdateUserRequest JSON | id |
-| 5 | 禁用用户 | DELETE | `/users/{id}` | 无 | id |
+| 1 | 分页获取用户列表 | GET | `/users` | UserPageResponse | current, pageSize, username?, role?, status? |
+| 2 | 获取用户详情 | GET | `/users/{id}` | UserDetailResponse | id |
+| 3 | 创建用户 | POST | `/users` | CreateUserResponse | CreateUserRequest JSON |
+| 4 | 更新用户 | PUT | `/users/{id}` | UpdateUserResponse | id + UpdateUserRequest JSON |
+| 5 | 禁用用户 | DELETE | `/users/{id}` | DeleteUserResponse | id |
 
 ---
 
