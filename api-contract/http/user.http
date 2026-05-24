@@ -125,3 +125,56 @@ Authorization: Bearer {{token}}
   "password": "Password@123",
   "role": "USER"
 }
+
+### =============================================
+### 5. 获取用户详情
+### GET /users/{id}
+### =============================================
+GET {{baseUrl}}/users/1
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 用户不存在
+GET {{baseUrl}}/users/99999
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### =============================================
+### 6. 更新用户
+### PUT /users/{id}
+### =============================================
+PUT {{baseUrl}}/users/6
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "displayName": "API Test Updated",
+  "role": "OPERATOR",
+  "email": "updated@example.com",
+  "phone": "13900139001",
+  "status": 1
+}
+
+### 更新密码（可选字段）
+PUT {{baseUrl}}/users/6
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "displayName": "API Test Updated",
+  "role": "OPERATOR",
+  "password": "NewPass@123"
+}
+
+### =============================================
+### 7. 禁用用户（软删除）
+### DELETE /users/{id}
+### =============================================
+DELETE {{baseUrl}}/users/6
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 禁用失败：用户不存在
+DELETE {{baseUrl}}/users/99999
+Accept: application/json
+Authorization: Bearer {{token}}
