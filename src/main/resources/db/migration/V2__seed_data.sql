@@ -1,4 +1,4 @@
--- V2: 演示用户（密码哈希有误，已由 V3__fix_seed_passwords.sql 修正）
+-- V2: 演示用户（明文密码均为 Admin@123，此处存 BCrypt 哈希）
 INSERT INTO `tb_user` (`username`, `password`, `display_name`, `role`, `email`, `phone`)
 VALUES
     ('admin',
