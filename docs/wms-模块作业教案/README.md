@@ -25,7 +25,8 @@
 | --- | --- | --- |
 | V3 | `V3__create_warehouse_table.sql` | 仓库表 |
 | V4 | `V4__create_warehouse_zone_and_location.sql` | 库区表 + 库位表 |
-| V5 | `V5__seed_warehouse_zone_location.sql` | WH-001 演示库区/库位 |
+| V5 | `V5__seed_warehouse_zone_location.sql` | 为 **已存在的** WH-001 插入演示库区/库位（无 WH-001 时 0 行） |
+| V6 | `V6__seed_warehouse_wh001_demo.sql` | **完整演示数据**：WH-001 仓库 + 2 库区 + 3 库位（幂等） |
 
 ---
 
