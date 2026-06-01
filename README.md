@@ -138,14 +138,20 @@ mysql -u root -p -e "CREATE DATABASE pro_skill DEFAULT CHARACTER SET utf8mb4 COL
 
 `application-local.properties` 中密码改为本机 MySQL 实际密码。注意 **不要与 Docker MySQL 同时占用 3306 端口**。
 
-## 教学文档（用户 CRUD 全流程）
+## 教学文档
 
 零基础学生建议先阅读：
 
 - [docs/用户管理CRUD上课教案.md](docs/用户管理CRUD上课教案.md) — **讲师用**：知识点、话术、时间分配、演示顺序  
 - [docs/用户管理CRUD全流程.md](docs/用户管理CRUD全流程.md) — **学生用**：从零加接口 + Swagger 逐步点击
 
-源码中 `UserController` / `UserService` / `UserMapper` 等已配有详细中文注释，可与文档对照阅读。
+**WMS FR-01 仓库与库位管理（需求分析 + 系统设计作业）**：
+
+- [docs/wms-模块作业教案/README.md](docs/wms-模块作业教案/README.md) — FR-01 完整模块说明  
+- [docs/wms-模块作业教案/01-需求分析.md](docs/wms-模块作业教案/01-需求分析.md) — 报告第 1 章  
+- [docs/wms-模块作业教案/02-系统设计.md](docs/wms-模块作业教案/02-系统设计.md) — 报告第 2 章（含库区/库位表与接口）  
+
+源码中 `UserController` / `WarehouseController` 等已配有详细中文注释，可与文档对照阅读。
 
 ## 启动
 

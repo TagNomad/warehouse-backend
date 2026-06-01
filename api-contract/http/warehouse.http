@@ -2,7 +2,7 @@
 @baseUrl = http://localhost:8080
 
 ### =============================================
-### 0. 登录 — 获取 JWT token
+### 0. 登录
 ### =============================================
 # @name login
 POST {{baseUrl}}/auth/login
@@ -13,14 +13,14 @@ Content-Type: application/json
   "password": "Admin@123"
 }
 
-### =============================================
 @token = {{login.response.body.token}}
 
 ### =============================================
-### 1. 创建仓库
-### POST /api/warehouses
+### FR-01 仓库
 ### =============================================
-POST {{baseUrl}}/api/warehouses
+
+### 创建仓库
+POST {{baseUrl}}/warehouses
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -34,96 +34,135 @@ Authorization: Bearer {{token}}
   "capacity": 5000
 }
 
-### 创建仓库 — 编码重复（应返回 400）
-POST {{baseUrl}}/api/warehouses
-Content-Type: application/json
+### 仓库列表
+GET {{baseUrl}}/warehouses/list
 Authorization: Bearer {{token}}
 
-{
-  "code": "WH-001",
-  "name": "重复编码仓库",
-  "type": "RAW_MATERIAL"
-}
-
-### 创建仓库 — 缺少必填字段（Validation 校验）
-POST {{baseUrl}}/api/warehouses
-Content-Type: application/json
+### 仓库详情
+GET {{baseUrl}}/warehouses/1
 Authorization: Bearer {{token}}
 
-{
-  "name": "缺少编码的仓库",
-  "type": "RAW_MATERIAL"
-}
-
-### =============================================
-### 2. 查询单个仓库
-### GET /api/warehouses/{id}
-### =============================================
-GET {{baseUrl}}/api/warehouses/1
+### 库位视图（树形）
+GET {{baseUrl}}/warehouses/1/tree
 Authorization: Bearer {{token}}
 
-### 查询不存在的仓库（应返回 400）
-GET {{baseUrl}}/api/warehouses/99999
-Authorization: Bearer {{token}}
-
-### =============================================
-### 3. 分页查询仓库列表
-### GET /api/warehouses/list
-### =============================================
-
-### 默认分页
-GET {{baseUrl}}/api/warehouses/list
-Authorization: Bearer {{token}}
-
-### 按类型筛选
-GET {{baseUrl}}/api/warehouses/list?type=RAW_MATERIAL
-Authorization: Bearer {{token}}
-
-### 按名称模糊搜索 + 分页
-GET {{baseUrl}}/api/warehouses/list?name=华东&current=1&pageSize=5
-Authorization: Bearer {{token}}
-
-### 多条件组合筛选
-GET {{baseUrl}}/api/warehouses/list?status=ENABLED&type=RAW_MATERIAL&current=1&pageSize=10
-Authorization: Bearer {{token}}
-
-### =============================================
-### 4. 更新仓库
-### PUT /api/warehouses/{id}
-### =============================================
-PUT {{baseUrl}}/api/warehouses/1
+### 更新仓库
+PUT {{baseUrl}}/warehouses/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "name": "华东原料仓（已扩容）",
   "type": "RAW_MATERIAL",
-  "address": "上海市浦东新区XX路100号（二期）",
-  "manager": "李四",
-  "phone": "13900000002",
   "status": "ENABLED",
   "capacity": 8000
 }
 
-### 禁用仓库
-PUT {{baseUrl}}/api/warehouses/1
+### =============================================
+### FR-01 库区
+### =============================================
+
+### 在仓库下创建存储区
+POST {{baseUrl}}/warehouses/1/zones
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "华东原料仓（已扩容）",
-  "type": "RAW_MATERIAL",
-  "status": "DISABLED",
-  "capacity": 8000
+  "code": "Z-STORAGE-01",
+  "name": "A区存储区",
+  "type": "STORAGE"
+}
+
+### 在仓库下创建拣货区
+POST {{baseUrl}}/warehouses/1/zones
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "code": "Z-PICK-01",
+  "name": "B区拣货区",
+  "type": "PICKING"
+}
+
+### 仓库下库区列表
+GET {{baseUrl}}/warehouses/1/zones/list
+Authorization: Bearer {{token}}
+
+### 库区详情
+GET {{baseUrl}}/warehouse-zones/1
+Authorization: Bearer {{token}}
+
+### 更新库区
+PUT {{baseUrl}}/warehouse-zones/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "A区存储区（扩容）",
+  "type": "STORAGE",
+  "status": "ENABLED"
 }
 
 ### =============================================
-### 5. 删除仓库
-### DELETE /api/warehouses/{id}
+### FR-01 库位
 ### =============================================
-DELETE {{baseUrl}}/api/warehouses/1
+
+### 在库区下创建库位
+POST {{baseUrl}}/warehouse-zones/1/locations
+Content-Type: application/json
 Authorization: Bearer {{token}}
 
-### 删除不存在的仓库（应返回 400）
-DELETE {{baseUrl}}/api/warehouses/99999
+{
+  "code": "A-01-01",
+  "name": "A区1排1位",
+  "spec": "1.2m×1m×2m"
+}
+
+### 库区下库位列表
+GET {{baseUrl}}/warehouse-zones/1/locations/list
+Authorization: Bearer {{token}}
+
+### 全局库位列表（按仓库筛选）
+GET {{baseUrl}}/warehouse-locations/list?warehouseId=1
+Authorization: Bearer {{token}}
+
+### 库位详情
+GET {{baseUrl}}/warehouse-locations/1
+Authorization: Bearer {{token}}
+
+### 库位完整详情（含库区+仓库）
+GET {{baseUrl}}/warehouse-locations/1/detail
+Authorization: Bearer {{token}}
+
+### 更新库位
+PUT {{baseUrl}}/warehouse-locations/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "A区1排1位",
+  "spec": "1.2m×1m×2.2m",
+  "status": "AVAILABLE"
+}
+
+### 禁用库位
+PUT {{baseUrl}}/warehouse-locations/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "A区1排1位",
+  "status": "DISABLED"
+}
+
+### 删除库位
+DELETE {{baseUrl}}/warehouse-locations/1
+Authorization: Bearer {{token}}
+
+### 删除库区（有库位时应失败）
+DELETE {{baseUrl}}/warehouse-zones/1
+Authorization: Bearer {{token}}
+
+### 删除仓库（有库区时应失败）
+DELETE {{baseUrl}}/warehouses/1
 Authorization: Bearer {{token}}
