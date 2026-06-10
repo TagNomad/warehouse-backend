@@ -11,7 +11,8 @@
 | 1 | [01-需求分析](./01-需求分析.md) | 第 1 章 |
 | 2 | [02-系统设计](./02-系统设计.md) | 第 2 章 |
 | 3 | [03-作业一评阅总结](./03-作业一评阅总结.md) | 讲评 / 改进参考（教师用） |
-| 4 | 学校模版第 3～4 章 | 实现与测试 |
+| 4 | [04-测试与质量保障](./04-测试与质量保障.md) | 第 4 章（测试） |
+| 5 | 学校模版第 3 章 | 实现说明 |
 
 **对照材料**：
 
@@ -40,6 +41,15 @@
 | FR-01 库位管理 | `/warehouse-zones/{id}/locations`、`/warehouse-locations` | 含 `/detail` 库位详情 |
 
 测试文件：[api-contract/http/warehouse.http](../api-contract/http/warehouse.http)
+
+自动化测试（JUnit + Mockito + MockMvc）：
+
+| 类型 | 路径 |
+| --- | --- |
+| 单元测试 | `src/test/java/.../application/Warehouse*Test.java` |
+| 集成测试 | `src/test/java/.../controller/WarehouseControllerIntegrationTest.java` |
+| 覆盖率报告 | 执行 `mvn test jacoco:report` → `target/site/jacoco/index.html` |
+| 测试教案 | [04-测试与质量保障](./04-测试与质量保障.md) |
 
 ---
 

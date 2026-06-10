@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: pro-skill-test
+
+  datasource:
+    url: jdbc:h2:mem:proskill_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  flyway:
+    enabled: false
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema-test.sql
+      data-locations: classpath:sql/data-test.sql
+
+logging:
+  level:
+    root: WARN
+    com.eurasia.pro_skill: INFO
+
+app:
+  jwt:
+    secret: bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb24=
+    expiration: 86400000
