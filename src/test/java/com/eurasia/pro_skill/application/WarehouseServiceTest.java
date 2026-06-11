@@ -67,19 +67,43 @@ class WarehouseServiceTest {
     @Test
     @DisplayName("创建仓库成功")
     void create_success() {
+        // ========== Given：准备假环境（不连真数据库） ==========
+        //
+        // 被测方法 WarehouseService.create() 的第一步是：
+        //   warehouseMapper.getByCode(input.getCode())
+        // 这里用 when(...).thenReturn(null) 告诉 Mockito：
+        //   「如果有人调 getByCode("WH-TEST")，就假装查不到，返回 null」
+        // 等价于：数据库里还没有 WH-TEST 这条记录 → 允许继续创建。
         when(warehouseMapper.getByCode("WH-TEST")).thenReturn(null);
+
+        // create() 的第二步会调 warehouseMapper.insert(entity)。
+        // 真数据库 insert 后会有自增 id，但 Mock 的 Mapper 不会自动给 id。
+        // 所以用 thenAnswer：在 insert 被调用时，手动给传入的 entity 设 id=1L，
+        // 模拟「插入成功且数据库分配了主键」的行为。
+        // 返回值 1 表示影响了 1 行（与 MyBatis @Insert 返回 int 一致）。
         when(warehouseMapper.insert(any(WarehouseEntity.class))).thenAnswer(invocation -> {
-            WarehouseEntity entity = invocation.getArgument(0);
-            entity.setId(1L);
+            WarehouseEntity entity = invocation.getArgument(0); // 拿到 Service 传进来的 entity
+            entity.setId(1L);                                   // 模拟数据库自增 id
             return 1;
         });
 
+        // ========== When：执行被测方法 ==========
+        //
+        // createInput 在 @BeforeEach 里已准备好（code=WH-TEST, name=测试仓, ...）。
+        // warehouseService 是 @InjectMocks 创建的，内部的 warehouseMapper 是 @Mock 假对象。
+        // 因此这次 create() 只会走 Service 业务逻辑，不会碰 MySQL。
         Warehouse result = warehouseService.create(createInput);
 
+        // ========== Then：断言返回值 + 验证副作用 ==========
+        //
+        // 断言：Service 应把 Entity 转成 Domain 并返回（经 @Spy 的真实 WarehouseConverter）
         assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals("WH-TEST", result.getCode());
-        assertEquals(Warehouse.STATUS_ENABLED, result.getStatus());
+        assertEquals(1L, result.getId());                          // insert 后应有 id
+        assertEquals("WH-TEST", result.getCode());                 // 编码与输入一致
+        assertEquals(Warehouse.STATUS_ENABLED, result.getStatus()); // 业务规则：新建默认 ENABLED
+
+        // verify：确认 Service 确实调用了 insert（不是只查重就返回了）
+        // any(WarehouseEntity.class) 表示「任意一个 WarehouseEntity 参数都算匹配」
         verify(warehouseMapper).insert(any(WarehouseEntity.class));
     }
 
