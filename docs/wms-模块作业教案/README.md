@@ -13,6 +13,7 @@
 | 3 | [03-作业一评阅总结](./03-作业一评阅总结.md) | 讲评 / 改进参考（教师用） |
 | 4 | [04-测试与质量保障](./04-测试与质量保障.md) | 第 4 章（测试） |
 | 4b | [06-Kimi生成单元测试操作指南](./06-Kimi生成单元测试操作指南.md) | 用 Kimi 对话写单元测试 |
+| 4c | [07-Postman性能测试零基础教程](./07-Postman性能测试零基础教程.md) | 第 4 章 4.3.1 性能测试（Postman 一步一步） |
 | 5 | 学校模版第 3 章 | 实现说明 |
 
 **对照材料**：
@@ -41,7 +42,9 @@
 | FR-01 库区管理 | `/warehouses/{id}/zones`、`/warehouse-zones` | 库区 CRUD |
 | FR-01 库位管理 | `/warehouse-zones/{id}/locations`、`/warehouse-locations` | 含 `/detail` 库位详情 |
 
-测试文件：[api-contract/http/warehouse.http](../api-contract/http/warehouse.http)
+测试文件：[api-contract/http/warehouse.http](../api-contract/http/warehouse.http)（功能测试）
+
+性能测试（Postman）：[api-contract/postman/FR-01-性能测试.postman_collection.json](../api-contract/postman/FR-01-性能测试.postman_collection.json) — 见 [07-Postman性能测试零基础教程](./07-Postman性能测试零基础教程.md)
 
 自动化测试（JUnit + Mockito + MockMvc）：
 
