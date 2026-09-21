@@ -1,0 +1,101 @@
+<mxfile host="app.diagrams.net" agent="WMS-Course" version="22.1.0">
+  <diagram id="flow-fr01" name="图1-1 FR-01 完整业务流程">
+    <mxGraphModel dx="1400" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="FR-01 仓库与库位管理 — 完整业务流程（基础建模）" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-admin" value="系统管理员 / 仓库管理员" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=36;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="480" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="start" value="" style="ellipse;fillColor=#000000;strokeColor=none;" vertex="1" parent="lane-admin">
+          <mxGeometry x="225" y="50" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="a0" value="① 登录系统&#xa;认证登录，获取访问令牌" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="lane-admin">
+          <mxGeometry x="150" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="② 创建仓库&#xa;提交创建仓库请求" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="lane-admin">
+          <mxGeometry x="150" y="180" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="③ 创建库区&#xa;在仓库下创建库区&#xa;类型：存储区 / 拣货区" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="lane-admin">
+          <mxGeometry x="130" y="270" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="④ 创建库位&#xa;在库区下创建库位&#xa;填写编码、规格" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="lane-admin">
+          <mxGeometry x="130" y="370" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="⑤ 查看库位视图&#xa;获取库位树形结构" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="lane-admin">
+          <mxGeometry x="150" y="470" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="⑥ 查看库位详情&#xa;获取库位详细信息" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="lane-admin">
+          <mxGeometry x="130" y="550" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="⑦ 分页查询列表&#xa;查询仓库列表&#xa;查询库区列表&#xa;查询库位列表" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-admin">
+          <mxGeometry x="120" y="630" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" value="⑧ 修改 / 停用 / 删除&#xa;有下级数据则拒绝" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="lane-admin">
+          <mxGeometry x="130" y="730" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="" style="ellipse;shape=doubleEllipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="lane-admin">
+          <mxGeometry x="225" y="820" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-sys" value="系统（控制器 → 服务 → 数据访问 → 数据库）" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=36;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="540" y="60" width="620" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="s0" value="校验账号，签发访问令牌" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-sys">
+          <mxGeometry x="200" y="100" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="校验编码唯一 → 写入仓库表&#xa;状态 = 启用" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-sys">
+          <mxGeometry x="180" y="180" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="校验仓库存在&#xa;同仓编码唯一 → 写入库区表" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-sys">
+          <mxGeometry x="170" y="270" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="校验库区存在&#xa;同区编码唯一 → 写入库位表&#xa;状态 = 可用" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-sys">
+          <mxGeometry x="160" y="370" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="查询仓库、库区、库位&#xa;组装库位树视图并返回" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="lane-sys">
+          <mxGeometry x="160" y="470" width="280" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="聚合库位、库区、仓库信息&#xa;返回库位详情" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="lane-sys">
+          <mxGeometry x="160" y="550" width="280" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s6" value="分页查询 + 条件筛选&#xa;返回分页结果" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="lane-sys">
+          <mxGeometry x="190" y="640" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="有下级&#xa;数据？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" vertex="1" parent="lane-sys">
+          <mxGeometry x="230" y="720" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="s7ok" value="允许修改 / 删除" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="lane-sys">
+          <mxGeometry x="180" y="820" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s7fail" value="拒绝：仓库仍有库区&#xa;库区仍有库位&#xa;库位已被占用" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" vertex="1" parent="lane-sys">
+          <mxGeometry x="420" y="725" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="note" value="说明：本流程仅维护主数据，不涉及库存变更；「占用」状态由后续入库模块写入" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1060" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e01" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="start" target="a0"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e02" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a0" target="a1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e03" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a1" target="a2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e04" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a2" target="a3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e05" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a3" target="a4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e06" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a4" target="a5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e07" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a5" target="a6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e08" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a6" target="a7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e09" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-admin" source="a7" target="end"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es0" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a0" target="s0"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es1" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a1" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es2" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a2" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es3" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a3" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es4" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a4" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es5" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a5" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es6" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a6" target="s6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es7" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="a7" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es8" value="否" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-sys" source="d1" target="s7ok"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="es9" value="是" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="lane-sys" source="d1" target="s7fail"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

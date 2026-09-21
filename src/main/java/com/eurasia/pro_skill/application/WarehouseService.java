@@ -3,9 +3,18 @@ package com.eurasia.pro_skill.application;
 import com.eurasia.pro_skill.common.BusinessException;
 import com.eurasia.pro_skill.common.PageResponse;
 import com.eurasia.pro_skill.converter.WarehouseConverter;
+import com.eurasia.pro_skill.converter.WarehouseLocationConverter;
+import com.eurasia.pro_skill.converter.WarehouseZoneConverter;
 import com.eurasia.pro_skill.domain.Warehouse;
+import com.eurasia.pro_skill.domain.WarehouseLocation;
+import com.eurasia.pro_skill.domain.WarehouseTree;
+import com.eurasia.pro_skill.domain.WarehouseZone;
 import com.eurasia.pro_skill.entity.WarehouseEntity;
+import com.eurasia.pro_skill.entity.WarehouseLocationEntity;
+import com.eurasia.pro_skill.entity.WarehouseZoneEntity;
+import com.eurasia.pro_skill.mapper.WarehouseLocationMapper;
 import com.eurasia.pro_skill.mapper.WarehouseMapper;
+import com.eurasia.pro_skill.mapper.WarehouseZoneMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +28,11 @@ import java.util.List;
 public class WarehouseService {
 
     private final WarehouseMapper warehouseMapper;
+    private final WarehouseZoneMapper warehouseZoneMapper;
+    private final WarehouseLocationMapper warehouseLocationMapper;
     private final WarehouseConverter warehouseConverter;
+    private final WarehouseZoneConverter warehouseZoneConverter;
+    private final WarehouseLocationConverter warehouseLocationConverter;
 
     public Warehouse create(Warehouse input) {
         WarehouseEntity existing = warehouseMapper.getByCode(input.getCode());
@@ -67,6 +80,10 @@ public class WarehouseService {
         if (entity == null) {
             throw new BusinessException("WAREHOUSE_NOT_FOUND", "仓库不存在：" + id);
         }
+        long zoneCount = warehouseZoneMapper.countByWarehouseId(id);
+        if (zoneCount > 0) {
+            throw new BusinessException("WAREHOUSE_HAS_ZONES", "仓库下存在库区，无法删除：" + id);
+        }
         warehouseMapper.delete(id);
     }
 
@@ -92,5 +109,35 @@ public class WarehouseService {
                 .toList();
 
         return PageResponse.of(safeCurrent, safePageSize, total, domains);
+    }
+
+    /** FR-01 库位视图：仓库 → 库区 → 库位 树形结构 */
+    @Transactional(readOnly = true)
+    public WarehouseTree getTree(Long warehouseId) {
+        WarehouseEntity warehouseEntity = warehouseMapper.getById(warehouseId);
+        if (warehouseEntity == null) {
+            throw new BusinessException("WAREHOUSE_NOT_FOUND", "仓库不存在：" + warehouseId);
+        }
+
+        List<WarehouseZoneEntity> zoneEntities = warehouseZoneMapper.listByWarehouseId(warehouseId);
+        List<WarehouseTree.WarehouseZoneNode> zoneNodes = zoneEntities.stream()
+                .map(zoneEntity -> {
+                    WarehouseZone zone = warehouseZoneConverter.toDomain(zoneEntity);
+                    List<WarehouseLocationEntity> locationEntities =
+                            warehouseLocationMapper.listByZoneId(zoneEntity.getId());
+                    List<WarehouseLocation> locations = locationEntities.stream()
+                            .map(warehouseLocationConverter::toDomain)
+                            .toList();
+                    return WarehouseTree.WarehouseZoneNode.builder()
+                            .zone(zone)
+                            .locations(locations)
+                            .build();
+                })
+                .toList();
+
+        return WarehouseTree.builder()
+                .warehouse(warehouseConverter.toDomain(warehouseEntity))
+                .zones(zoneNodes)
+                .build();
     }
 }

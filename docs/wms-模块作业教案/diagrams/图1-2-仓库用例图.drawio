@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="WMS-Course" version="22.1.0">
+  <diagram id="uc-fr01" name="图1-2 FR-01 用例图">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="boundary" value="FR-01 仓库与库位管理" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="180" y="50" width="720" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="pkg-wh" value="仓库" style="swimlane;whiteSpace=wrap;html=1;startSize=24;fillColor=#dae8fc;" vertex="1" parent="boundary">
+          <mxGeometry x="20" y="40" width="200" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-wh1" value="创建仓库" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-wh">
+          <mxGeometry x="30" y="40" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-wh2" value="分页查询仓库列表" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-wh">
+          <mxGeometry x="20" y="95" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-wh3" value="修改/停用/删除仓库" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-wh">
+          <mxGeometry x="20" y="150" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-wh4" value="查看库位视图（树形）" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="pkg-wh">
+          <mxGeometry x="20" y="210" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="pkg-zone" value="库区" style="swimlane;whiteSpace=wrap;html=1;startSize=24;fillColor=#d5e8d4;" vertex="1" parent="boundary">
+          <mxGeometry x="250" y="40" width="200" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-z1" value="创建库区" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-zone">
+          <mxGeometry x="30" y="40" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-z2" value="分页查询库区列表" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-zone">
+          <mxGeometry x="20" y="95" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-z3" value="修改/停用/删除库区" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-zone">
+          <mxGeometry x="20" y="150" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="pkg-loc" value="库位" style="swimlane;whiteSpace=wrap;html=1;startSize=24;fillColor=#e1d5e7;" vertex="1" parent="boundary">
+          <mxGeometry x="480" y="40" width="220" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-l1" value="创建库位" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-loc">
+          <mxGeometry x="40" y="40" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-l2" value="分页查询库位列表" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-loc">
+          <mxGeometry x="30" y="95" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-l3" value="修改/禁用库位" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-loc">
+          <mxGeometry x="30" y="150" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-l4" value="查看库位详情" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="pkg-loc">
+          <mxGeometry x="25" y="210" width="170" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-l5" value="删除库位" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="pkg-loc">
+          <mxGeometry x="40" y="265" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="note" value="需求书输出：仓库列表 · 库位视图 · 库位详情" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontColor=#666666;" vertex="1" parent="boundary">
+          <mxGeometry x="180" y="340" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-admin" value="系统管理员" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="280" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-mgr" value="仓库管理员" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="180" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-op" value="库管员等" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="420" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="la1" style="endArrow=none;html=1;" edge="1" parent="1" source="actor-admin" target="uc-wh1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="la2" style="endArrow=none;html=1;" edge="1" parent="1" source="actor-admin" target="uc-z1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="la3" style="endArrow=none;html=1;" edge="1" parent="1" source="actor-admin" target="uc-l1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lm1" style="endArrow=none;dashed=1;html=1;" edge="1" parent="1" source="actor-mgr" target="uc-wh2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lm2" style="endArrow=none;dashed=1;html=1;" edge="1" parent="1" source="actor-mgr" target="uc-wh4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lm3" style="endArrow=none;dashed=1;html=1;" edge="1" parent="1" source="actor-mgr" target="uc-l4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lo1" style="endArrow=none;dashed=1;html=1;" edge="1" parent="1" source="actor-op" target="uc-l4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="legend" value="实线：主要维护者&#xa;虚线：只读/查询" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="520" width="120" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

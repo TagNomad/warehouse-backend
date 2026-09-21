@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" agent="WMS-Course" version="22.1.0">
+  <diagram id="class-fr01" name="图1-3 FR-01 实体类图">
+    <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="图1-3  FR-01 实体类属性图" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="wh" value="仓库&#xa;─────────────&#xa;- 编号: 长整型&#xa;- 编码: 字符串&#xa;- 名称: 字符串&#xa;- 类型: 字符串&#xa;- 地址: 字符串&#xa;- 负责人: 字符串&#xa;- 电话: 字符串&#xa;- 状态: 字符串&#xa;- 容量: 整型&#xa;- 创建时间: 日期时间&#xa;- 更新时间: 日期时间&#xa;─────────────&#xa;+ 是否可用(): 布尔&#xa;+ 是否指定类型(类型): 布尔" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="260" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="zone" value="库区&#xa;─────────────&#xa;- 编号: 长整型&#xa;- 所属仓库编号: 长整型&#xa;- 编码: 字符串&#xa;- 名称: 字符串&#xa;- 类型: 字符串&#xa;- 状态: 字符串&#xa;- 创建时间: 日期时间&#xa;- 更新时间: 日期时间&#xa;─────────────&#xa;+ 是否可用(): 布尔" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="260" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="loc" value="库位&#xa;─────────────&#xa;- 编号: 长整型&#xa;- 所属库区编号: 长整型&#xa;- 编码: 字符串&#xa;- 名称: 字符串&#xa;- 规格: 字符串&#xa;- 状态: 字符串&#xa;- 创建时间: 日期时间&#xa;- 更新时间: 日期时间&#xa;─────────────&#xa;+ 是否可用(): 布尔" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="260" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1" value="" style="endArrow=open;endFill=0;html=1;strokeWidth=1;" edge="1" parent="1" source="wh" target="zone">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1n1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=12;" vertex="1" connectable="0" parent="rel1">
+          <mxGeometry x="-0.75" relative="1" as="geometry"><mxPoint x="8" y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="rel1n2" value="*" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=12;" vertex="1" connectable="0" parent="rel1">
+          <mxGeometry x="0.8" relative="1" as="geometry"><mxPoint x="-8" y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="rel2" value="" style="endArrow=open;endFill=0;html=1;strokeWidth=1;" edge="1" parent="1" source="zone" target="loc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2n1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=12;" vertex="1" connectable="0" parent="rel2">
+          <mxGeometry x="-0.75" relative="1" as="geometry"><mxPoint x="8" y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="rel2n2" value="*" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=12;" vertex="1" connectable="0" parent="rel2">
+          <mxGeometry x="0.8" relative="1" as="geometry"><mxPoint x="-8" y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="note" value="对应数据表：仓库表 / 库区表 / 库位表（数据库迁移脚本 V3、V4）&#xa;关系：一个仓库包含多个库区，一个库区包含多个库位&#xa;注：库位树视图、库位详情为查询聚合对象，写在表1-5 文字说明中，不单独画类框" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="1020" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

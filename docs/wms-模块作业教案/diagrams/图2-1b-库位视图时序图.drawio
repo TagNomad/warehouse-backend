@@ -1,0 +1,46 @@
+<mxfile host="app.diagrams.net" agent="WMS-Course" version="22.1.0">
+  <diagram id="seq-tree" name="图2-1b 库位视图时序图">
+    <mxGraphModel dx="1300" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="图2-1b 库位视图时序图（获取库位树形结构）" style="text;html=1;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="450" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="actor" value="仓库管理员" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="70" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl" value=":仓库控制器" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="50" width="150" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" value=":仓库服务" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="50" width="150" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="zmapper" value=":库区数据访问" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="50" width="160" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="lmapper" value=":库位数据访问" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="50" width="180" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" value="1: 请求库位树形视图" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="70" y="130" as="sourcePoint" /><mxPoint x="200" y="130" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2: 调用获取树形结构方法（仓库编号）" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="210" y="170" as="sourcePoint" /><mxPoint x="400" y="170" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3" value="3: 按仓库编号查询库区列表" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="410" y="220" as="sourcePoint" /><mxPoint x="600" y="220" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m4" value="4: 对每个库区：按库区编号查询库位列表" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="410" y="280" as="sourcePoint" /><mxPoint x="820" y="280" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5: 组装库位树视图并返回" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="400" y="360" as="sourcePoint" /><mxPoint x="70" y="360" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="note" value="对应需求书输出「库位视图」" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="130" y="420" width="300" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
