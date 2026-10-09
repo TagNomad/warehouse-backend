@@ -1,7 +1,14 @@
-# 本地开发用 MySQL + Adminer，一键启动：
-#   docker compose -f docker-compose.dev.yml up -d
+# 第一部分基座：MySQL + Adminer + 应用。
+#   docker compose -f docker-compose.dev.yml up -d --build
 #
-# Spring Boot 连 localhost:3306；Adminer 打开 http://localhost:8081
+# 应用容器连服务名 mysql。要复现「容器里写 localhost」：
+#   docker compose -f docker-compose.dev.yml -f docker-compose.localhost.yml up -d --force-recreate app
+#
+# 打开 TraceId：
+#   APP_LESSON_TRACE_ID=on docker compose -f docker-compose.dev.yml up -d --force-recreate app
+#
+# 浏览器和 curl 仍访问 http://localhost:8080（映射到容器端口）。
+# Adminer：http://localhost:8081
 
 services:
   mysql:
@@ -33,6 +40,28 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  app:
+    build: .
+    image: pro-skill-app
+    container_name: pro-skill-app
+    restart: unless-stopped
+    environment:
+      APP_LESSON_DATASOURCE_HOST: ${APP_LESSON_DATASOURCE_HOST:-mysql}
+      APP_LESSON_TRACE_ID: ${APP_LESSON_TRACE_ID:-off}
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 60s
 
 volumes:
   pro-skill-mysql-data:

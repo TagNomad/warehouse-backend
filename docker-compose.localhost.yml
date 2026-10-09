@@ -1,0 +1,8 @@
+# 缺陷路径：应用容器把数据库主机写成 localhost。
+# 和 docker-compose.dev.yml 一起用：
+#   docker compose -f docker-compose.dev.yml -f docker-compose.localhost.yml up -d --force-recreate app
+
+services:
+  app:
+    environment:
+      APP_LESSON_DATASOURCE_HOST: localhost

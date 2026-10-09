@@ -5,7 +5,7 @@ alwaysApply: true
 
 # 综合能力实训 · 课堂项目约束
 
-本仓库是《综合能力实训》的课堂案例（WMS），不是学生的 15 个大作业题。main 已有：JWT 登录、用户 CRUD、仓库–库区–库位（Flyway V1–V6）、单测、Postman、Compose 仅 MySQL + Adminer。不要重做这些。
+本仓库是《综合能力实训》的课堂案例（WMS），不是学生的 15 个大作业题。main 已有：JWT 登录、用户 CRUD、仓库–库区–库位（Flyway V1–V6）、单测、Postman。Compose 里的 MySQL + Adminer 是教师自己搭的，学生没学过 Docker，第一部分要从头讲，并在此之上增加应用容器和 TraceId。不要把登录、用户、库位 CRUD 再当成新功能重做。
 
 ## 只新增这些
 
@@ -26,6 +26,6 @@ alwaysApply: true
 
 ## 实现顺序
 
-接上现有系统并埋 TraceId → 货品与库存表 → 入库 → 出库（先无锁超卖）→ 乐观锁、状态机、事务边界 → Redis 缓存与锁 → Redis 异步 → MinIO → 用 TraceId 排错 → 压测与 Prometheus/Grafana → Docker Compose → Nginx → Linux。
+接上现有系统，Docker 基座（localhost 与服务名两条路径）并埋 TraceId → 货品与库存表 → 入库 → 出库（先无锁超卖）→ 乐观锁、状态机、事务边界 → Redis 缓存与锁 → Redis 异步 → MinIO → 用 TraceId 排错 → 压测与 Prometheus/Grafana → 把后加服务收进同一份 Compose → Nginx → Linux。
 
 详细漏洞、作业截止（作业一第 11 周周三，作业二第 15 周周二，作业三第 16 周周二，答辩 16 课时）见 `docs/综合能力实训-教学上下文.md`。按内容块展开的教案见 `docs/备课/教案.md`，实现时按那份教案的块推进。

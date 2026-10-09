@@ -43,20 +43,40 @@ Spring Boot 后端服务。
 
 ## 本地 MySQL（Docker，推荐）
 
-项目根目录提供 `docker-compose.dev.yml`，包含 **MySQL 8** 和 **Adminer**（Web 数据库管理界面）。
+项目根目录提供 `docker-compose.dev.yml`，包含 **MySQL 8**、**Adminer** 和 **应用**。这是后面加 Redis、MinIO、Nginx 时用的同一份基座。
 
 ### 首次启动
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-会创建两个容器：
+会创建三个容器：
 
 | 容器名 | 用途 | 端口 |
 |--------|------|------|
 | `pro-skill-mysql` | MySQL，库名 `pro_skill` | `3306` |
 | `pro-skill-adminer` | Web 管理界面 | `8081` |
+| `pro-skill-app` | 本仓库的 Spring Boot | `8080` |
+
+应用容器里的数据库主机是服务名 `mysql`。要看写错主机会怎样：
+
+```bash
+docker compose -f docker-compose.dev.yml -f docker-compose.localhost.yml up -d --force-recreate app
+docker logs pro-skill-app
+```
+
+改回基座：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --force-recreate app
+```
+
+TraceId 默认关闭。打开：
+
+```bash
+APP_LESSON_TRACE_ID=on docker compose -f docker-compose.dev.yml up -d --force-recreate app
+```
 
 默认账号：`root` / `root`。数据库 `pro_skill` 会自动创建；**表结构由 Flyway 在应用启动时迁移，无需手动建表**。
 
@@ -142,21 +162,24 @@ mysql -u root -p -e "CREATE DATABASE pro_skill DEFAULT CHARACTER SET utf8mb4 COL
 
 本分支是备课分支。登录、用户、仓库–库区–库位仍可运行，用来接这学期的新内容。
 
+- [docs/备课/第一部分-讲义.html](docs/备课/第一部分-讲义.html) — 第 10 周课堂讲义，浏览器打开后按步骤讲
+- [docs/备课/第一部分-上课教案.md](docs/备课/第一部分-上课教案.md) — 第 10 周教师用的时间安排
 - [docs/备课/教案.md](docs/备课/教案.md) — 按内容块写的教案（周次标在每一块上）
 - [docs/综合能力实训-教学上下文.md](docs/综合能力实训-教学上下文.md) — 课表、作业时间和漏洞对照
 
 ## 启动
 
+Compose 会同时拉起 MySQL 和应用，应用在 `http://localhost:8080`。
+
 ```bash
-# 1. 确保 MySQL 在跑（Docker 方式）
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d --build
+```
 
-# 2. 启动后端
+要在宿主机上跑进程、数据库仍用容器时，先停掉应用容器，避免占用 8080，并准备好 `application-local.properties`（数据库主机 `localhost`）：
+
+```bash
+docker compose -f docker-compose.dev.yml stop app
 ./mvnw spring-boot:run
-
-# 或先打包再运行
-./mvnw package -DskipTests
-java -jar target/pro-skill-0.0.1-SNAPSHOT.jar
 ```
 
 ## Swagger UI
