@@ -140,18 +140,10 @@ mysql -u root -p -e "CREATE DATABASE pro_skill DEFAULT CHARACTER SET utf8mb4 COL
 
 ## 教学文档
 
-零基础学生建议先阅读：
+本分支是备课分支。登录、用户、仓库–库区–库位仍可运行，用来接这学期的新内容。
 
-- [docs/用户管理CRUD上课教案.md](docs/用户管理CRUD上课教案.md) — **讲师用**：知识点、话术、时间分配、演示顺序  
-- [docs/用户管理CRUD全流程.md](docs/用户管理CRUD全流程.md) — **学生用**：从零加接口 + Swagger 逐步点击
-
-**WMS FR-01 仓库与库位管理（需求分析 + 系统设计作业）**：
-
-- [docs/wms-模块作业教案/README.md](docs/wms-模块作业教案/README.md) — FR-01 完整模块说明  
-- [docs/wms-模块作业教案/01-需求分析.md](docs/wms-模块作业教案/01-需求分析.md) — 报告第 1 章  
-- [docs/wms-模块作业教案/02-系统设计.md](docs/wms-模块作业教案/02-系统设计.md) — 报告第 2 章（含库区/库位表与接口）  
-
-源码中 `UserController` / `WarehouseController` 等已配有详细中文注释，可与文档对照阅读。
+- [docs/备课/教案.md](docs/备课/教案.md) — 按内容块写的教案（周次标在每一块上）
+- [docs/综合能力实训-教学上下文.md](docs/综合能力实训-教学上下文.md) — 课表、作业时间和漏洞对照
 
 ## 启动
 
