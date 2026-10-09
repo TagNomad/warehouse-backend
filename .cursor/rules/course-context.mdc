@@ -1,0 +1,31 @@
+---
+description: 综合能力实训课堂 WMS 的教学范围、实现顺序和「先出问题再让学生查改」的教法。改业务或加中间件前先读 docs/综合能力实训-教学上下文.md。
+alwaysApply: true
+---
+
+# 综合能力实训 · 课堂项目约束
+
+本仓库是《综合能力实训》的课堂案例（WMS），不是学生的 15 个大作业题。main 已有：JWT 登录、用户 CRUD、仓库–库区–库位（Flyway V1–V6）、单测、Postman、Compose 仅 MySQL + Adminer。不要重做这些。
+
+## 只新增这些
+
+业务：货品 SKU、库存（货品+库位+数量+version）、入库完成加库存、出库完成减库存、单据状态机。不做盘点、FIFO、移库、复杂报表。
+
+工程：超卖实验、乐观锁、事务边界、Redis 缓存、Redis 锁与防重、Redis 异步（Stream 或 List，幂等；不用 RabbitMQ，Pub/Sub 不合格）、MinIO、TraceId、JMeter/k6、Prometheus+Grafana、应用 Dockerfile、Nginx（`/` 前端，`/api` 后端）、同一份 Compose 部署到 Linux。
+
+## 教法（每项都要遵守）
+
+不要先交正确实现。每项按四步：
+
+1. 讲清不这么设计的漏洞。
+2. 项目里先留着这个错，让操作自己复现。
+3. 学生自己查（日志、库、页面、TraceId）。
+4. 学生自己改，同一操作不再出错。
+
+实现时保留「有缺陷的路径」和「修复后的路径」，用开关、分支或提交顺序能演示前后对比。不要只留最终正确代码。
+
+## 实现顺序
+
+接上现有系统并埋 TraceId → 货品与库存表 → 入库 → 出库（先无锁超卖）→ 乐观锁、状态机、事务边界 → Redis 缓存与锁 → Redis 异步 → MinIO → 用 TraceId 排错 → 压测与 Prometheus/Grafana → Docker Compose → Nginx → Linux。
+
+详细漏洞、作业截止（作业一第 11 周周三，作业二第 15 周周二，作业三第 16 周周二，答辩 16 课时）见 `docs/综合能力实训-教学上下文.md`。
