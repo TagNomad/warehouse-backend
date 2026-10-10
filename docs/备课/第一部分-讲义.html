@@ -160,6 +160,27 @@
     text-decoration: none; background: #23496e; color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 15px;
   }
   .note { font-size: 15px; color: var(--muted); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .compare article { border-radius: 14px; padding: 14px; border: 1px solid var(--line); }
+  .compare .messy { background: var(--bad-soft); }
+  .compare .same { background: var(--ok-soft); }
+  .pcs { display: flex; gap: 8px; margin-top: 10px; }
+  .pc {
+    flex: 1; background: #fff; border-radius: 10px; padding: 8px; text-align: center; font-size: 14px; font-weight: 650;
+  }
+  .messy .pc { animation: shake 2.8s infinite; border: 1px solid #f3c0bb; }
+  .messy .pc:nth-child(2) { animation-delay: .2s; }
+  .messy .pc:nth-child(3) { animation-delay: .4s; }
+  .same .pc { border: 1px solid #b7e4c7; animation: settle 2.8s infinite; }
+  @keyframes shake {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes settle {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 3px rgba(6,118,71,.15); }
+  }
+  @media (max-width: 800px) { .compare { grid-template-columns: 1fr; } }
   @media (max-width: 800px) {
     .cards, .flow { display: block; }
     .box, .link { width: auto; margin: 8px 0; }
@@ -169,26 +190,135 @@
 <body class="mac">
 <header class="top">
   <h1>第一部分讲义：Docker 是什么，怎样把项目跑起来</h1>
-  <p>以前没讲过 Docker。这一份从安装开始。课堂上投这一页，做完一步，对一下绿色的「你应该看到」，再做下一步。</p>
+  <p>顺序是：先讲 Git，用 GitHub Desktop 克隆到本地并看懂本地仓库，再把项目跑起来，最后讲 fetch、pull、push、merge、rebase。绿字是要对照的结果。先选你的系统，后面的菜单和命令会跟着变。</p>
+  <div class="os" role="tablist">
+    <button type="button" id="btn-mac" class="on" onclick="setOs('mac')">macOS</button>
+    <button type="button" id="btn-win" onclick="setOs('win')">Windows</button>
+  </div>
   <nav class="jump">
-    <a href="#what">Docker 是什么</a>
-    <a href="#install">安装</a>
-    <a href="#day1">第一次课</a>
-    <a href="#day2">第二次课</a>
+    <a href="#git-idea">先讲 Git</a>
+    <a href="#git-install">安装 GitHub Desktop</a>
+    <a href="#git-clone">克隆到本地</a>
+    <a href="#idea">再讲 Docker，把项目跑起来</a>
+    <a href="#git-ops">fetch、pull、push、merge、rebase</a>
   </nav>
 </header>
 <main>
 
-<section id="what">
-  <h2>先弄清三件事</h2>
-  <p class="lead">先别敲命令。把下面三张卡片讲完，再去安装。</p>
+<section id="git-idea">
+  <h2>先讲 Git</h2>
+  <p class="lead">这一节先不安装。Git 是管「代码的历史」的。GitHub Desktop 是它的窗口，不是另一种 Git。</p>
+  <h3>它要解决的问题</h3>
+  <p>项目文件会改很多遍。没有历史时，只能靠复制文件夹：<code>项目-最终</code>、<code>项目-最终2</code>、<code>项目-真的最终</code>。两个人同时改同一个文件，后来的人会把前面的人盖掉。看不出谁在什么时候改了哪一行。</p>
+  <p>Git 把每一次完成的修改记成一条提交。提交堆在一条分支上。远程仓库是放在网上的那一份，本地仓库是你电脑里的那一份。两边不会自动变成一样，要靠后面的 fetch、pull、push。</p>
+  <h3>Git 是什么</h3>
+  <p>Git 只记录文件的变化，不负责把 Java 跑起来。你在本地改文件、做提交，历史先存在自己电脑上。网上的仓库叫远程，这份课堂仓库的远程在 Gitee，不在 GitHub。GitHub Desktop 这个软件可以管理任何 Git 地址，所以用它来克隆 Gitee，不要求先注册 GitHub。</p>
+  <h3>用在什么场景</h3>
+  <ul>
+    <li>把教师的项目下载到自己电脑，而且以后还能更新。</li>
+    <li>自己做了修改，留下提交，需要时再发到自己的远程仓库。</li>
+    <li>小组里两个人改了不同的分支，要把两边的修改合到一起。</li>
+  </ul>
+  <h3>这门课为什么先讲它</h3>
+  <p>作业一要求有个人 Gitee。项目要先到本地，才能往下装 Docker、把系统跑起来。所以顺序是：先拿到本地仓库，再跑项目，最后把五个同步动作用窗口点清楚。</p>
+  <div class="cards">
+    <div class="card"><strong>仓库</strong>一个项目的全部历史。本地一份，远程一份。</div>
+    <div class="card"><strong>提交</strong>一次记下来的修改，有说明。History 里的一行就是一条提交。</div>
+    <div class="card"><strong>分支</strong>一条独立的修改线。课堂代码在分支「第一部分」，练习不要直接改这条线。</div>
+  </div>
+</section>
+
+<section id="git-install">
+  <h2>安装 GitHub Desktop</h2>
+  <p class="lead">窗口里的按钮两边一样。不一样的是安装，以及菜单栏在哪里。</p>
+  <div data-os="mac">
+    <ol class="steps">
+      <li>打开 <a href="https://desktop.github.com/">desktop.github.com</a>，点 Download for macOS。</li>
+      <li>到「下载」文件夹，双击得到的 zip。解压后再双击里面的 GitHub Desktop。</li>
+      <li>如果问是否打开从网络下载的应用，选打开。程序会出现在「应用程序」里。</li>
+      <li>菜单在屏幕最上方，不在窗口里面。用到的是 File 和 Branch。</li>
+    </ol>
+  </div>
+  <div data-os="win">
+    <ol class="steps">
+      <li>打开 <a href="https://desktop.github.com/">desktop.github.com</a>，点 Download for Windows。需要 64 位 Windows 10 或更新版本。</li>
+      <li>到「下载」文件夹，双击 GitHub Desktop 的安装程序。安装完它会自己打开。</li>
+      <li>菜单在 GitHub Desktop 窗口的顶上。用到的是 File 和 Branch，名字和 Mac 相同。</li>
+    </ol>
+  </div>
+  <p>第一次打开如果要求登录 GitHub，选择跳过。课堂仓库不在 GitHub 上，不登录也能克隆。</p>
+</section>
+
+<section id="git-clone">
+  <h2>克隆到本地，先学会看本地仓库</h2>
+  <p>克隆就是把远程仓库完整抄到你的电脑，包括历史和分支。地址用 HTTPS，这个地址可以匿名读取，写讲义时确认过远程上有 <code>main</code>、<code>备课</code>、<code>第一部分</code> 三个分支。</p>
+  <pre data-os="both">https://gitee.com/dingsaier/warehouse-backend.git</pre>
+  <ol class="steps">
+    <li>菜单 File，点 Clone Repository。</li>
+    <li>点 URL 这个标签，不要停在 GitHub.com 那个列表上。把上面的地址粘进去。</li>
+    <li>Local Path 旁边点 Choose，选一个你找得到的文件夹，例如桌面或文稿。最后一级文件夹名可以用 <code>warehouse-backend</code>。</li>
+    <li>点 Clone。等它结束，窗口标题变成这个仓库。</li>
+  </ol>
+  <div class="see"><b>你应该看到</b> 上方有 Current Branch。第一次往往停在 <code>main</code>。点 Current Branch，选「第一部分」。History 里能看到已经有的提交。这就是本地仓库，文件已经在你刚选的文件夹里。</div>
+  <h3>在练习分支上做一次本地提交</h3>
+  <p>不要在「第一部分」上交作业式的修改。点 Current Branch，New Branch，名字用 <code>practice-你的学号</code>，基于「第一部分」，创建。</p>
+  <p>在仓库文件夹里新建一个文本文件 <code>我的练习.txt</code>，里面写你的名字。回到 GitHub Desktop，左侧 Changes 里会出现这个文件。勾上它，Summary 写成「记下我的名字」，点 Commit。</p>
+  <div class="see"><b>你应该看到</b> Changes 变空。点 History，最上面一条是你刚写的说明。到这一步还没有 Push。网上的仓库没有你这个文件。这就是「先记在本地」。</div>
+  <p>跑项目之前，Current Branch 再选回「第一部分」。练习分支留着，后面讲 merge 和 rebase 用。</p>
+</section>
+
+<section id="idea">
+  <h2>先讲 Docker</h2>
+  <p class="lead">这一节不安装，也不敲命令。讲完再往下。</p>
+
+  <h3>它要解决的问题</h3>
+  <p>同一份 Java 项目，换一台电脑就可能跑不起来。甲的电脑装了 MySQL 8，乙的还是 5.7，丙的 3306 端口被别的软件占着，丁根本没装数据库。代码没变，环境变了。所以常听到一句靠不住的话：在我电脑上是好的。</p>
+  <p>后面这门课还要把同一份东西放到 Linux 服务器上。如果每个人本机的装法都不一样，服务器上又是第三种装法，出了错就分不清是程序写错了，还是这台机器和那台机器不一样。</p>
+  <div class="compare">
+    <article class="messy">
+      <strong>每人自己装</strong>
+      <div class="pcs">
+        <div class="pc">甲<br>MySQL 8</div>
+        <div class="pc">乙<br>MySQL 5.7</div>
+        <div class="pc">丙<br>没装数据库</div>
+      </div>
+      <p class="note">项目相同，机器不同，结果对不上。</p>
+    </article>
+    <article class="same">
+      <strong>用同一份 Docker 描述</strong>
+      <div class="pcs">
+        <div class="pc">甲<br>mysql:8</div>
+        <div class="pc">乙<br>mysql:8</div>
+        <div class="pc">服务器<br>mysql:8</div>
+      </div>
+      <p class="note">Windows、Mac、以后的 Linux，启动的是同一份环境。</p>
+    </article>
+  </div>
+
+  <h3>Docker 是什么</h3>
+  <p>Docker 把「程序」和「它要的环境」打在一起，然后在你的电脑里单独跑起来。你的 Windows 或 Mac 不用真的装一套 MySQL。你装的是 Docker。MySQL 跑在 Docker 里面，版本、端口、密码都写在一份文件里。</p>
+  <p>它不是一种编程语言，也不代替 Java。Java 还是我们写的。Docker 负责把 Java 要连的数据库，以及后面要加的 Redis、文件服务，用同一种办法启动。</p>
+
+  <h3>用在什么场景</h3>
+  <ul>
+    <li>一个项目依赖数据库、缓存、文件服务。这些东西不想在每台电脑上分别安装、分别卸载。</li>
+    <li>开发自己的电脑、同学的电脑、最后的服务器，希望用同一份启动方式，而不是三套安装说明。</li>
+    <li>要同时看「库有没有起来」和「程序有没有连上库」。它们各跑各的，互不影响你电脑上别的软件。</li>
+  </ul>
+
+  <h3>这门课为什么用它</h3>
+  <p>作业一就要能用 Compose 把 MySQL 拉起来，并且能登录。第 16 周要把同一份 Compose 放到 Linux 上。中间还要加 Redis 和 MinIO。如果这周不先把 Docker 讲清楚，后面每加一个软件都要再教一遍「怎么在 Windows 上装、怎么在 Mac 上装」。</p>
+  <p>所以这周的顺序是：先知道它解决什么问题，再安装 Docker，再只用它启动 MySQL 和一个看数据库的网页。我们自己的 Java 程序，第二次课再放进去。</p>
+
+  <h3>三个词，对应刚才说的事</h3>
+  <p class="lead">词是后起的名字。先记住它们各自指什么，安装的时候还会再见到。</p>
   <div class="cards">
     <div class="card"><strong>镜像</strong>打包好的软件，还没运行。今天会用到 <code>mysql:8</code> 和 <code>adminer:4</code>。可以把它想成安装包。</div>
     <div class="card"><strong>容器</strong>镜像跑起来的那一个。可以启动，也可以停止。停掉之后，没放进数据卷的东西就没了。</div>
     <div class="card"><strong>Compose</strong>一个文件里写好要一起启动哪些容器。文件名是 <code>docker-compose.dev.yml</code>。</div>
   </div>
-  <h3>你的电脑，和电脑里面的两个容器</h3>
-  <p>浏览器开的 <code>localhost:8081</code>，是你的电脑。Adminer 和 MySQL 各在一个容器里。Adminer 如果去连 <code>localhost</code>，找的是它自己，不是旁边的 MySQL。</p>
+  <h3>等一下会碰到的一件事</h3>
+  <p>浏览器地址栏里的 <code>localhost</code> 是你的电脑。MySQL 和看数据库的网页各自跑在一个容器里。网页如果要连数据库，却填写 <code>localhost</code>，它找的是自己那个容器，不是旁边的 MySQL。第一次课会亲手做一次这个错误。先看下面两行，知道差别在哪。</p>
   <div class="stage" aria-hidden="true">
     <div class="flow">
       <div class="box browser">浏览器<br>localhost:8081</div>
@@ -209,11 +339,7 @@
 
 <section id="install">
   <h2>安装 Docker Desktop</h2>
-  <p class="lead">Windows 和 Mac 的安装不一样。先选你的系统。装好之后，两边都要看到 Client 和 Server。</p>
-  <div class="os" role="tablist">
-    <button type="button" id="btn-mac" class="on" onclick="setOs('mac')">macOS</button>
-    <button type="button" id="btn-win" onclick="setOs('win')">Windows</button>
-  </div>
+  <p class="lead">系统用页顶的 macOS / Windows 切换。装好之后，两边都要看到 Client 和 Server。</p>
 
   <div data-os="mac">
     <ol class="steps">
@@ -360,9 +486,45 @@ APP_LESSON_TRACE_ID=off</pre>
   <div class="see"><b>你应该看到</b> 再登录一次，响应头里没有 <code>X-Trace-Id</code>。然后把第 11 步的打开命令再执行一次，用 <code>lesson-001</code> 登录，编号又回到响应头和日志里。</div>
 </section>
 
+<section id="git-ops">
+  <h2>五个动作：fetch、pull、push、merge、rebase</h2>
+  <p class="lead">项目已经能在本地跑起来之后，再讲这五个。按钮在仓库窗口上方。Mac 的 Branch 菜单在屏幕最上方，Windows 的 Branch 菜单在窗口顶上，字是一样的。</p>
+  <div class="compare">
+    <article>
+      <strong>fetch</strong>
+      <p>问远程：你有没有新提交？只把消息拿下来，不改你正在看的文件。</p>
+    </article>
+    <article>
+      <strong>pull</strong>
+      <p>在 fetch 之后，把远程那些新提交合进你当前的分支。你的文件会变。</p>
+    </article>
+    <article>
+      <strong>push</strong>
+      <p>把你本地有、远程还没有的提交送上去。没有新提交时，这个按钮不会出现。</p>
+    </article>
+  </div>
+  <h3>fetch 和 pull</h3>
+  <p>Current Branch 停在「第一部分」。点 Fetch origin。</p>
+  <div class="see"><b>你应该看到</b> 远程没有更新时，按钮还是 Fetch origin。如果教师刚推过新提交，按钮会变成 Pull origin，旁边有向下的箭头。这时再点 Pull origin，History 里会出现你原来没有的提交，文件夹里的文件跟着变。Pull origin with rebase 是另一种拉法：把你的本地提交接到远程最新提交后面，而不是先做一个合并提交。当前分支上你还没有自己的提交时，两种拉法的结果一样。</div>
+  <h3>push</h3>
+  <p>切回 <code>practice-你的学号</code>。如果 History 里有还没送出的提交，上方会出现 Push origin。课堂这个 Gitee 仓库是教师的，你们没有写入权限，点下去会被拒绝。这是正常的。</p>
+  <div class="see"><b>你应该看到</b> 失败提示，而不是把「第一部分」改掉。Push 要练成功，用作业一你自己的 Gitee 仓库：File → Clone Repository → URL，克隆你自己的空仓库，在练习分支上 Commit，再点 Push origin。成功之后，用浏览器打开你的 Gitee 仓库，能看到刚才那个文件。</div>
+  <h3>merge</h3>
+  <p>merge 是把另一条分支上的提交并进你当前这条分支，两条线都留着，必要时多出一个合并提交。</p>
+  <p>在本地做，不要推送。Current Branch 放在「第一部分」。New Branch，名字 <code>practice-line-a</code>。新建文件 <code>a.txt</code>，内容写 A，Commit。再从「第一部分」拉出 <code>practice-line-b</code>，新建 <code>b.txt</code>，内容写 B，Commit。现在停在 line-b。点 Current Branch，点 Choose a branch to merge into practice-line-b，选 practice-line-a，点 Merge。</p>
+  <div class="see"><b>你应该看到</b> History 里两条线汇到一起。文件夹里同时有 <code>a.txt</code> 和 <code>b.txt</code>。如果 GitHub Desktop 在 Merge 按钮上方写出有冲突，先不要点，说明两个分支改了同一处，这节课先换成两个不同的文件再做一次。</div>
+  <h3>rebase</h3>
+  <p>rebase 是把你当前分支上的提交挪到另一条分支的最新位置后面，历史变成一条直线。它会改写当前分支上那些提交。别人正在用的分支不要 rebase。做完之后如果要推送，按钮会变成 Force push origin，课堂仓库上不要点。</p>
+  <p>Current Branch 停在 <code>practice-line-b</code>。菜单 Branch，点 Rebase Current Branch。选「第一部分」，点 Rebase，再点 Begin Rebase。</p>
+  <div class="see"><b>你应该看到</b> History 里你的提交接到「第一部分」最新提交的后面，不再分叉。文件还在。到此停止，不要点 Force push origin。</div>
+  <p>五个词可以收成三句。fetch 只看远程有没有新东西。pull 把远程的新东西拿进本地，push 把本地的新东西送到远程。merge 保留分叉并汇合，rebase 把分叉拉直。日常更新课堂代码用 Fetch origin，需要时再 Pull origin。自己的作业仓库才 Push origin。</p>
+</section>
+
 <section>
   <h2>这堂课做完，手里有什么</h2>
   <ul>
+    <li>GitHub Desktop 里能打开克隆下来的仓库，Current Branch 可以换成「第一部分」</li>
+    <li>能说清 fetch 只查看、pull 拿进来、push 送出去，merge 汇合，rebase 拉直</li>
     <li><code>docker version</code> 有 Client 和 Server</li>
     <li>Adminer 用服务器名 <code>mysql</code> 能看见 <code>tb_user</code> 里的 admin</li>
     <li>应用健康检查是 <code>"status":"UP"</code>，账号 <code>admin</code> / <code>Admin@123</code> 能登录</li>
