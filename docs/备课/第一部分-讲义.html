@@ -160,6 +160,9 @@
     text-decoration: none; background: #23496e; color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 15px;
   }
   .note { font-size: 15px; color: var(--muted); }
+  figure.shot { margin: 16px 0 8px; }
+  figure.shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
   .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
   .compare article { border-radius: 14px; padding: 14px; border: 1px solid var(--line); }
   .compare .messy { background: var(--bad-soft); }
@@ -260,6 +263,27 @@
     <li>点 Clone。等它结束，窗口标题变成这个仓库。</li>
   </ol>
   <div class="see"><b>你应该看到</b> 上方有 Current Branch。第一次往往停在 <code>main</code>。点 Current Branch，选「第一部分」。History 里能看到已经有的提交。这就是本地仓库，文件已经在你刚选的文件夹里。</div>
+  <p class="note">下面的图是在 Mac 上打开 GitHub Desktop 3.6.6 后截的，红圈是要点的位置。Windows 上这些按钮的英文一样。差别只在菜单：Mac 在屏幕最上方，Windows 在软件窗口的顶上。</p>
+  <figure class="shot">
+    <img src="figures/01-file-clone.png" alt="File 菜单里的 Clone Repository">
+    <figcaption>第 1 步。菜单 File，点 Clone Repository。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/02-clone-dialog.png" alt="克隆窗口，先点 URL 再粘贴地址">
+    <figcaption>第 2 步。先点 URL。地址粘贴 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。Local Path 选你自己的文件夹，图里的 Desktop 只是教师电脑上的例子。最后点 Clone。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/06-fetch-branch.png" alt="Current Branch 和 Fetch origin">
+    <figcaption>第 3 步。点 Current Branch 换成「第一部分」。点 Fetch origin 只是查看远程有没有新提交，不会改你的文件。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/03-branch-list.png" alt="分支列表里的 New Branch 和第一部分">
+    <figcaption>第 4 步。跑项目前，勾选「第一部分」。要做练习提交时，点 New Branch，名字用 practice-学号。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/07-commit.png" alt="Summary 和 Commit 按钮">
+    <figcaption>第 5 步。在练习分支上，Summary 写「记下我的名字」，再点 Commit。这一步只留在本地。</figcaption>
+  </figure>
   <h3>在练习分支上做一次本地提交</h3>
   <p>不要在「第一部分」上交作业式的修改。点 Current Branch，New Branch，名字用 <code>practice-你的学号</code>，基于「第一部分」，创建。</p>
   <p>在仓库文件夹里新建一个文本文件 <code>我的练习.txt</code>，里面写你的名字。回到 GitHub Desktop，左侧 Changes 里会出现这个文件。勾上它，Summary 写成「记下我的名字」，点 Commit。</p>
@@ -503,6 +527,18 @@ APP_LESSON_TRACE_ID=off</pre>
       <p>把你本地有、远程还没有的提交送上去。没有新提交时，这个按钮不会出现。</p>
     </article>
   </div>
+  <figure class="shot">
+    <img src="figures/06-fetch-branch.png" alt="Fetch origin 按钮">
+    <figcaption>Fetch origin 在窗口上方。点它只查看。按钮变成 Pull origin 时，再点一次才会把远程的新提交拿进本地。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/04-branch-menu.png" alt="Branch 菜单里的 Merge 和 Rebase">
+    <figcaption>菜单 Branch。合并点 Merge into Current Branch。变基点 Rebase Current Branch。Mac 的这个菜单位于屏幕最上方，Windows 位于窗口顶上。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/05-merge-dialog.png" alt="Merge into 第一部分 对话框">
+    <figcaption>这是点了合并之后实际弹出的窗口。先选要并进来的分支。图里选 main 时，它写着已经是最新，这时不要点 Create a merge commit。两条练习分支改了不同文件时，这个按钮才会真正合并。</figcaption>
+  </figure>
   <h3>fetch 和 pull</h3>
   <p>Current Branch 停在「第一部分」。点 Fetch origin。</p>
   <div class="see"><b>你应该看到</b> 远程没有更新时，按钮还是 Fetch origin。如果教师刚推过新提交，按钮会变成 Pull origin，旁边有向下的箭头。这时再点 Pull origin，History 里会出现你原来没有的提交，文件夹里的文件跟着变。Pull origin with rebase 是另一种拉法：把你的本地提交接到远程最新提交后面，而不是先做一个合并提交。当前分支上你还没有自己的提交时，两种拉法的结果一样。</div>
@@ -511,7 +547,7 @@ APP_LESSON_TRACE_ID=off</pre>
   <div class="see"><b>你应该看到</b> 失败提示，而不是把「第一部分」改掉。Push 要练成功，用作业一你自己的 Gitee 仓库：File → Clone Repository → URL，克隆你自己的空仓库，在练习分支上 Commit，再点 Push origin。成功之后，用浏览器打开你的 Gitee 仓库，能看到刚才那个文件。</div>
   <h3>merge</h3>
   <p>merge 是把另一条分支上的提交并进你当前这条分支，两条线都留着，必要时多出一个合并提交。</p>
-  <p>在本地做，不要推送。Current Branch 放在「第一部分」。New Branch，名字 <code>practice-line-a</code>。新建文件 <code>a.txt</code>，内容写 A，Commit。再从「第一部分」拉出 <code>practice-line-b</code>，新建 <code>b.txt</code>，内容写 B，Commit。现在停在 line-b。点 Current Branch，点 Choose a branch to merge into practice-line-b，选 practice-line-a，点 Merge。</p>
+  <p>在本地做，不要推送。Current Branch 放在「第一部分」。New Branch，名字 <code>practice-line-a</code>。新建文件 <code>a.txt</code>，内容写 A，Commit。再从「第一部分」拉出 <code>practice-line-b</code>，新建 <code>b.txt</code>，内容写 B，Commit。现在停在 line-b。打开菜单 Branch，点 Merge into Current Branch，选 practice-line-a。窗口下方如果写的是可以合并，再点 Create a merge commit。如果写着 already up to date，说明两条分支没有不同的修改，先不要点。</p>
   <div class="see"><b>你应该看到</b> History 里两条线汇到一起。文件夹里同时有 <code>a.txt</code> 和 <code>b.txt</code>。如果 GitHub Desktop 在 Merge 按钮上方写出有冲突，先不要点，说明两个分支改了同一处，这节课先换成两个不同的文件再做一次。</div>
   <h3>rebase</h3>
   <p>rebase 是把你当前分支上的提交挪到另一条分支的最新位置后面，历史变成一条直线。它会改写当前分支上那些提交。别人正在用的分支不要 rebase。做完之后如果要推送，按钮会变成 Force push origin，课堂仓库上不要点。</p>
