@@ -513,7 +513,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]</pre>
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"Admin@123"}'</pre>
   <pre data-os="win">curl.exe -s -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
-  <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。页面怎么点，留到第 11 周周一的 <a href="第二部分-讲义.html">第二部分讲义</a>。地址是 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。</div>
+  <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。页面怎么点，留到第 11 周周一。地址是 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。</div>
   <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 12 周两张出库单同时扣库存时再讲它是什么、解决什么、代码写在哪。</p>
 </section>
 
