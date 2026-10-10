@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第二部分讲义 · 代码分层、Swagger、货品</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6b7a;
+    --line: #d7e0ea;
+    --paper: #f4f7fb;
+    --card: #fff;
+    --blue: #1d6fbf;
+    --ok: #067647;
+    --ok-soft: #e7f6ee;
+    --bad: #b42318;
+    --bad-soft: #fdeceb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 18px/1.65 "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+  header.top { background: #12324f; color: #fff; padding: 36px 8vw 28px; }
+  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 46rem; }
+  h1 { font-size: 34px; line-height: 1.25; margin: 0; }
+  main { width: min(980px, 92vw); margin: 0 auto; padding: 28px 0 80px; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 24px 26px;
+    margin: 18px 0;
+  }
+  h2 { font-size: 26px; margin: 0 0 12px; }
+  h3 { font-size: 20px; margin: 22px 0 8px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre {
+    background: #0f1c2b;
+    color: #e8eef6;
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow: auto;
+    font: 15px/1.55 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .see {
+    background: var(--ok-soft);
+    border-left: 4px solid var(--ok);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0 0;
+  }
+  .see b { color: var(--ok); }
+  .badbox {
+    background: var(--bad-soft);
+    color: var(--bad);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 10px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 650; }
+  figure.shot { margin: 16px 0 8px; }
+  figure.shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .box {
+    border: 2px solid var(--blue);
+    border-radius: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    font-weight: 650;
+    text-align: center;
+  }
+  .arrow { color: var(--muted); }
+  a { color: var(--blue); }
+  ol.steps { padding-left: 1.2em; }
+  ol.steps > li { margin: 14px 0; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>第二部分 · 先看清代码，再做货品</h1>
+  <p>第 11 周周一，2 节课。应用容器已经能登录。前半段复习现有代码和 Swagger，后半段让货品编码重复，再自己改掉。教师按页面做一遍，学生看完自己做。</p>
+</header>
+<main>
+
+<section>
+  <h2>这 2 节课怎么用</h2>
+  <ol class="steps">
+    <li>看一次登录经过哪些文件夹。不改这些文件。</li>
+    <li>在 Swagger 里登录，再查仓库 <code>WH-001</code>。</li>
+    <li>用同一个页面把货品 <code>SKU-001</code> 创建两次，到数据库里看见两行。</li>
+    <li>自己加上查重和唯一索引，第三次创建失败，库里这个编码只剩一行。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一次登录经过哪些层</h2>
+  <p>浏览器发 <code>POST /auth/login</code>。代码按这个顺序走。Controller 里不写 SQL。</p>
+  <div class="flow">
+    <div class="box">AuthController<br>接 JSON</div>
+    <span class="arrow">→</span>
+    <div class="box">AuthService<br>校验并签发 token</div>
+    <span class="arrow">→</span>
+    <div class="box">UserMapper<br>读 tb_user</div>
+    <span class="arrow">→</span>
+    <div class="box">MySQL<br>tb_user</div>
+  </div>
+  <p>打开 <code>src/main/java/com/eurasia/pro_skill/controller/AuthController.java</code>。<code>login</code> 方法里只有 <code>authService.login</code>，然后把结果装成 <code>LoginResponse</code>。</p>
+  <p>仓库、库区、库位是同一套切法。对着这张表在项目里找文件。</p>
+  <table>
+    <tr><th>包</th><th>这一层做什么</th><th>登录时看哪个文件</th></tr>
+    <tr><td><code>controller</code></td><td>接 HTTP，校验入参</td><td><code>AuthController</code></td></tr>
+    <tr><td><code>controller/request</code></td><td>请求体</td><td><code>LoginRequest</code></td></tr>
+    <tr><td><code>controller/response</code></td><td>返回给页面的字段</td><td><code>LoginResponse</code></td></tr>
+    <tr><td><code>application</code></td><td>业务</td><td><code>AuthService</code></td></tr>
+    <tr><td><code>domain</code></td><td>业务对象，不带数据库注解</td><td><code>User</code>、<code>AuthToken</code></td></tr>
+    <tr><td><code>entity</code></td><td>和表的一行对应</td><td><code>UserEntity</code></td></tr>
+    <tr><td><code>mapper</code></td><td>SQL</td><td><code>UserMapper</code></td></tr>
+    <tr><td><code>converter</code></td><td>domain 和 entity 互转</td><td><code>UserConverter</code></td></tr>
+  </table>
+  <div class="see"><b>你应该看到</b> Controller 不出现 <code>SELECT</code>。SQL 在 Mapper。后面加货品也是这几层：<code>SkuController</code>、<code>SkuService</code>、<code>Sku</code>、<code>SkuEntity</code>、<code>SkuMapper</code>、<code>SkuConverter</code>。</div>
+</section>
+
+<section>
+  <h2>用 Swagger 把登录走一遍</h2>
+  <p>浏览器打开 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。分组来自代码里的 <code>@Tag</code>。现在能看到鉴权、用户、仓库、库区、库位，以及这周新加的货品。</p>
+
+  <h3>1. 登录</h3>
+  <p>找到「鉴权」，点开 <code>POST /auth/login</code>。这一行没有锁。</p>
+  <figure class="shot">
+    <img src="figures/20-swagger-groups.png" alt="Swagger 首页，先点开 POST /auth/login">
+    <figcaption>右上角 Authorize 先别点。先点开 POST /auth/login。</figcaption>
+  </figure>
+  <p>点 Try it out。请求体是下面这两行时，直接点 Execute。</p>
+  <pre>{
+  "username": "admin",
+  "password": "Admin@123"
+}</pre>
+  <figure class="shot">
+    <img src="figures/21-swagger-execute.png" alt="登录请求体和 Execute">
+    <figcaption>账号 admin，密码 Admin@123，然后点 Execute。</figcaption>
+  </figure>
+  <div class="see"><b>你应该看到</b> Code 是 200。响应里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。把 token 整段复制下来，不要带引号。</div>
+  <figure class="shot">
+    <img src="figures/22-swagger-login-ok.png" alt="登录返回 200">
+    <figcaption>200 的响应体里有 token、admin、ADMIN。</figcaption>
+  </figure>
+
+  <h3>2. 把 token 填进 Authorize</h3>
+  <p>点右上角 Authorize。框里只贴 token，不要自己加 <code>Bearer </code>。点 Authorize，再点 Close。锁从打开变成锁上。</p>
+  <p>这一步的意思：除了登录和注册，别的接口都要带这个 token。Swagger 会在后面的请求里自动加上。</p>
+
+  <h3>3. 查仓库</h3>
+  <p>找到「FR-01 仓库管理」，点开 <code>GET /warehouses/list</code>。Try it out，<code>current</code> 填 1，<code>pageSize</code> 填 10，其余空着，Execute。</p>
+  <div class="see"><b>你应该看到</b> 还没授权时是 401。授权之后是 200，<code>records</code> 里有编码 <code>WH-001</code>。货品接口同样要先授权。</div>
+</section>
+
+<section>
+  <h2>货品编码为什么不能重复</h2>
+  <p>货品只记三样：编码、名称、单位。不做规格，不做批次。</p>
+  <div class="badbox">两条货品可以都叫 <code>SKU-001</code> 时，后面入库、出库无法知道加的是哪一条、扣的是哪一条。编码必须只能有一行。</div>
+  <p>项目里先留着这个错，有两处。</p>
+  <ol class="steps">
+    <li><code>src/main/resources/db/migration/V7__create_sku_table.sql</code>。表是 <code>sku</code>，字段是 <code>id</code>、<code>code</code>、<code>name</code>、<code>unit</code>、<code>created_at</code>。<code>code</code> 写的是 <code>KEY idx_code (code)</code>，这是普通索引，只方便查找，不阻止重复。</li>
+    <li><code>src/main/java/com/eurasia/pro_skill/application/SkuService.java</code> 的 <code>create</code>。它直接 insert，插入前不查这个编码是否已经有了。</li>
+  </ol>
+  <p>接口是 <code>POST /skus</code> 和 <code>GET /skus</code>。创建时 Controller 把请求体转成 <code>Sku</code>，交给 <code>SkuService</code>。Service 再转成 <code>SkuEntity</code>，由 <code>SkuMapper</code> 插入。和登录是同一套分层。</p>
+</section>
+
+<section>
+  <h2>自己把重复做出来</h2>
+  <p>Swagger 里找到「货品」，点开 <code>POST /skus</code>。Try it out，请求体写成：</p>
+  <pre>{
+  "code": "SKU-001",
+  "name": "轴承",
+  "unit": "个"
+}</pre>
+  <p>点 Execute。看到 200 和返回里的 <code>id</code> 之后，不要改请求体，再点一次 Execute。</p>
+  <div class="see"><b>你应该看到</b> 两次都是 200。两个 <code>id</code> 不同，<code>code</code> 都是 <code>SKU-001</code>。</div>
+  <p>再点开 <code>GET /skus</code>，Try it out，Execute。</p>
+  <div class="see"><b>你应该看到</b> 一个数组里有两件货品，编码相同，<code>id</code> 不同。</div>
+  <p>打开 <a href="http://localhost:8081">http://localhost:8081</a>。系统选 MySQL，服务器填 <code>mysql</code>，用户 <code>root</code>，密码 <code>root</code>，数据库 <code>pro_skill</code>。左侧点 <code>sku</code> 旁边的「选择」。</p>
+  <div class="see"><b>你应该看到</b> 两行 <code>SKU-001</code>，<code>id</code> 不同。页面能创建成功，是因为代码和表都允许重复，不是 Swagger 点错了。</div>
+  <figure class="shot">
+    <img src="figures/23-sku-duplicate.png" alt="Adminer 的 sku 表里有两行 SKU-001">
+    <figcaption>服务器填 mysql 之后，sku 表里同一个编码有两行。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>自己改掉</h2>
+  <p>不要改已经执行过的 <code>V7__create_sku_table.sql</code>。Flyway 不会把改过的旧文件再执行一遍。新加一个文件。</p>
+
+  <h3>1. Mapper 增加按编码查询</h3>
+  <p>在 <code>SkuMapper</code> 里加上：</p>
+  <pre>@Select("SELECT * FROM sku WHERE code = #{code} LIMIT 1")
+SkuEntity getByCode(String code);</pre>
+  <p>这一步的意思：业务要知道这个编码是否已经有一行。SQL 仍然只写在 Mapper 里。</p>
+
+  <h3>2. 插入前拒绝重复</h3>
+  <p>在 <code>SkuService.create</code> 里，<code>insert</code> 之前加上。文件顶部要能 import <code>com.eurasia.pro_skill.common.BusinessException</code>。</p>
+  <pre>SkuEntity existing = skuMapper.getByCode(input.getCode());
+if (existing != null) {
+    throw new BusinessException(
+            "SKU_CODE_DUPLICATED",
+            "SKU_CODE_DUPLICATED：货品编码已存在：" + input.getCode());
+}</pre>
+  <p>这一步的意思：应用先拦住第二次创建。只加这段还不够，有人直接往表里插仍然可以重复，所以还要唯一索引。</p>
+
+  <h3>3. 新迁移把编码改成唯一</h3>
+  <p>新建 <code>src/main/resources/db/migration/V8__sku_code_unique.sql</code>，内容是：</p>
+  <pre>ALTER TABLE sku DROP INDEX idx_code;
+ALTER TABLE sku ADD UNIQUE KEY uk_code (code);</pre>
+  <p>这一步的意思：数据库不再接受第二个相同编码。旧的普通索引要先删掉，否则两个索引叠在一起，学生不容易看清约束是哪一个。</p>
+
+  <h3>4. 先清掉已经重复的行</h3>
+  <p>表里已经有两行 <code>SKU-001</code> 时，这条迁移会失败，应用起不来。在 Adminer 的 <code>sku</code> 表里删掉其中一行，只留一条 <code>SKU-001</code>。看 <code>id</code>，删较大的那个即可。</p>
+
+  <h3>5. 重新构建应用容器</h3>
+  <p>源码是在做镜像时编译的。只保存文件，正在跑的容器不会变。</p>
+  <pre>docker compose -f docker-compose.dev.yml up -d --build app</pre>
+  <p>这一步的意思：<code>--build</code> 按 Dockerfile 重新打包 jar，启动时 Flyway 执行 V8。等 <code>pro-skill-app</code> 变成 healthy。</p>
+  <div class="see"><b>你应该看到</b> 容器是 healthy。如果日志里是迁移失败，回到第 4 步，确认重复行已经删掉，再执行一次这条命令。</div>
+
+  <h3>6. 再创建一次同一个编码</h3>
+  <p>Swagger 可能要重新登录、重新 Authorize。再对 <code>POST /skus</code> 提交一次 <code>SKU-001</code>。</p>
+  <div class="see"><b>你应该看到</b> 响应是 400，message 里有 <code>SKU_CODE_DUPLICATED</code>。Adminer 的 <code>sku</code> 表里，<code>SKU-001</code> 仍然只有一行。换一个新编码，例如 <code>SKU-002</code>，仍然可以创建成功。</div>
+</section>
+
+</main>
+</body>
+</html>
