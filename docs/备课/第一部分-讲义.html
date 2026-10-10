@@ -193,7 +193,7 @@
 <body class="mac">
 <header class="top">
   <h1>第一部分讲义：Docker 是什么，怎样把项目跑起来</h1>
-  <p>顺序是：先讲 Git，用 GitHub Desktop 克隆到本地并看懂本地仓库，再把项目跑起来，最后讲 fetch、pull、push、merge、rebase。绿字是要对照的结果。先选你的系统，后面的菜单和命令会跟着变。</p>
+  <p>顺序是：先讲 Git，用 GitHub Desktop 克隆到本地并看懂本地仓库，再把项目跑起来。最后做随堂测验：在自己的仓库新建分支、提交、推送，并在网页上合并。绿字是要对照的结果。先选你的系统，后面的菜单和命令会跟着变。</p>
   <div class="os" role="tablist">
     <button type="button" id="btn-mac" class="on" onclick="setOs('mac')">macOS</button>
     <button type="button" id="btn-win" onclick="setOs('win')">Windows</button>
@@ -203,7 +203,7 @@
     <a href="#git-install">安装 GitHub Desktop</a>
     <a href="#git-clone">克隆到本地</a>
     <a href="#idea">再讲 Docker，把项目跑起来</a>
-    <a href="#git-ops">fetch、pull、push、merge、rebase</a>
+    <a href="#git-ops">随堂测验：网页上合并</a>
   </nav>
 </header>
 <main>
@@ -213,17 +213,17 @@
   <p class="lead">这一节先不安装。Git 是管「代码的历史」的。GitHub Desktop 是它的窗口，不是另一种 Git。</p>
   <h3>它要解决的问题</h3>
   <p>项目文件会改很多遍。没有历史时，只能靠复制文件夹：<code>项目-最终</code>、<code>项目-最终2</code>、<code>项目-真的最终</code>。两个人同时改同一个文件，后来的人会把前面的人盖掉。看不出谁在什么时候改了哪一行。</p>
-  <p>Git 把每一次完成的修改记成一条提交。提交堆在一条分支上。远程仓库是放在网上的那一份，本地仓库是你电脑里的那一份。两边不会自动变成一样，要靠后面的 fetch、pull、push。</p>
+  <p>Git 把每一次完成的修改记成一条提交。提交堆在一条分支上。远程仓库是放在网上的那一份，本地仓库是你电脑里的那一份。两边不会自动变成一样。Commit 先记在本地，Push 送到网上，网页上的合并再写进主分支，Pull 把这个结果拿回来。</p>
   <h3>Git 是什么</h3>
   <p>Git 只记录文件的变化，不负责把 Java 跑起来。你在本地改文件、做提交，历史先存在自己电脑上。网上的仓库叫远程，这份课堂仓库的远程在 Gitee，不在 GitHub。GitHub Desktop 这个软件可以管理任何 Git 地址，所以用它来克隆 Gitee，不要求先注册 GitHub。</p>
   <h3>用在什么场景</h3>
   <ul>
     <li>把教师的项目下载到自己电脑，而且以后还能更新。</li>
-    <li>自己做了修改，留下提交，需要时再发到自己的远程仓库。</li>
-    <li>小组里两个人改了不同的分支，要把两边的修改合到一起。</li>
+    <li>自己做了修改，留在一条新分支上，再推到自己的远程仓库。</li>
+    <li>在网页上申请把这条分支并进主分支，自己点合并。</li>
   </ul>
   <h3>这门课为什么先讲它</h3>
-  <p>作业一要求有个人 Gitee。项目要先到本地，才能往下装 Docker、把系统跑起来。所以顺序是：先拿到本地仓库，再跑项目，最后把五个同步动作用窗口点清楚。</p>
+  <p>作业一要求有个人 Gitee。项目要先到本地，才能往下装 Docker、把系统跑起来。所以顺序是：先拿到课堂仓库，再跑项目，最后在自己的仓库上做一次网页合并。</p>
   <div class="cards">
     <div class="card"><strong>仓库</strong>一个项目的全部历史。本地一份，远程一份。</div>
     <div class="card"><strong>提交</strong>一次记下来的修改，有说明。History 里的一行就是一条提交。</div>
@@ -274,21 +274,13 @@
   </figure>
   <figure class="shot">
     <img src="figures/06-fetch-branch.png" alt="Current Branch 和 Fetch origin">
-    <figcaption>第 3 步。点 Current Branch 换成「第一部分」。点 Fetch origin 只是查看远程有没有新提交，不会改你的文件。</figcaption>
+    <figcaption>克隆完成后点 Current Branch，换成「第一部分」。窗口上的 Fetch origin 这次不用点。</figcaption>
   </figure>
   <figure class="shot">
     <img src="figures/03-branch-list.png" alt="分支列表里的 New Branch 和第一部分">
-    <figcaption>第 4 步。跑项目前，勾选「第一部分」。要做练习提交时，点 New Branch，名字用 practice-学号。</figcaption>
+    <figcaption>克隆完成后，点 Current Branch，勾选「第一部分」。跑项目时停在这一条。随堂测验不要在这个仓库里建分支。</figcaption>
   </figure>
-  <figure class="shot">
-    <img src="figures/07-commit.png" alt="Summary 和 Commit 按钮">
-    <figcaption>第 5 步。在练习分支上，Summary 写「记下我的名字」，再点 Commit。这一步只留在本地。</figcaption>
-  </figure>
-  <h3>在练习分支上做一次本地提交</h3>
-  <p>不要在「第一部分」上交作业式的修改。点 Current Branch，New Branch，名字用 <code>practice-你的学号</code>，基于「第一部分」，创建。</p>
-  <p>在仓库文件夹里新建一个文本文件 <code>我的练习.txt</code>，里面写你的名字。回到 GitHub Desktop，左侧 Changes 里会出现这个文件。勾上它，Summary 写成「记下我的名字」，点 Commit。</p>
-  <div class="see"><b>你应该看到</b> Changes 变空。点 History，最上面一条是你刚写的说明。到这一步还没有 Push。网上的仓库没有你这个文件。这就是「先记在本地」。</div>
-  <p>跑项目之前，Current Branch 再选回「第一部分」。练习分支留着，后面讲 merge 和 rebase 用。</p>
+  <p>跑项目时 Current Branch 停在「第一部分」。新建分支、提交、推送和在网页上合并，是这堂课最后的随堂测验，用你自己的 Gitee 仓库做，不要在这个课堂仓库里做。</p>
 </section>
 
 <section id="idea">
@@ -391,6 +383,11 @@
   <pre data-os="mac">docker version</pre>
   <pre data-os="win">docker version</pre>
   <div class="see"><b>你应该看到</b> 两段字：<code>Client</code> 和 <code>Server</code>。这台 Mac 上 Server 那一段写着 <code>Docker Desktop 4.94.0</code>。你的版本号可以不同。只有 Client、没有 Server，就是 Docker Desktop 还没准备好，回到上一步等它启动完。</div>
+  <p><code>docker version</code> 的意思：问这台电脑，Docker 程序在不在，引擎有没有跑起来。Client 是你敲命令的这一端，Server 是真正跑容器的那一端。缺 Server 就先把 Docker Desktop 打开。</p>
+  <figure class="shot">
+    <img src="figures/11-terminal-ps.png" alt="终端里的 docker version 和 docker compose ps">
+    <figcaption>这台 Mac 的终端。上面红圈是 Server 已经在。下面红圈是 ps 打出来的两行：adminer 的端口是 8081，mysql 的状态是 healthy，端口是 3306。</figcaption>
+  </figure>
 </section>
 
 <section id="day1">
@@ -417,9 +414,21 @@
 
   <h3>3. 启动这两个容器</h3>
   <pre data-os="both">docker compose -f docker-compose.dev.yml up -d mysql adminer</pre>
+  <ul>
+    <li><code>docker compose</code>：按一份清单，把好几个容器一起管起来。</li>
+    <li><code>-f docker-compose.dev.yml</code>：用仓库里的这一份清单，不自己猜文件名。</li>
+    <li><code>up</code>：没有的容器就创建，然后启动。</li>
+    <li><code>-d</code>：放到后台跑。命令结束后容器还在，终端可以继续敲下一条。</li>
+    <li><code>mysql adminer</code>：清单里还有应用，这里只启动这两个。第一次课先不要带上 app。</li>
+  </ul>
   <p>第一次会下载镜像。屏幕停在 Downloading 或 Pulling 时不要关窗口。这台电脑上镜像本来就有，所以很快结束。你们第一次要等它下完。</p>
   <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
-  <div class="see"><b>你应该看到</b> 两行：<code>pro-skill-mysql</code> 的状态里有 healthy，<code>pro-skill-adminer</code> 的状态是 Up，端口是 <code>0.0.0.0:8081-&gt;8080</code>。如果 MySQL 还是 health: starting，等十几秒再执行一次 ps。列表里如果已经有 <code>pro-skill-app</code>，先执行 <code>docker compose -f docker-compose.dev.yml stop app</code>。第一次课不用它。</div>
+  <p><code>ps</code> 的意思：列出这一份清单里的容器现在怎么样。<code>healthy</code> 是健康检查通过了。<code>0.0.0.0:8081-&gt;8080</code> 的意思：你电脑的 8081 端口，转进容器里面的 8080。</p>
+  <div class="see"><b>你应该看到</b> 两行：<code>pro-skill-mysql</code> 的状态里有 healthy，<code>pro-skill-adminer</code> 的状态是 Up。如果 MySQL 还是 health: starting，等十几秒再执行一次 ps。列表里如果已经有 <code>pro-skill-app</code>，先执行 <code>docker compose -f docker-compose.dev.yml stop app</code>。第一次课不用它。<code>stop</code> 是停下，不删除数据。</div>
+  <figure class="shot">
+    <img src="figures/10-docker-desktop.png" alt="Docker Desktop 的 Containers 页面">
+    <figcaption>打开 Docker Desktop，点左边 Containers。mysql:8 那一行端口是 3306:3306。adminer:4 那一行端口是 8081:8080。底下 Engine running 表示引擎在跑。</figcaption>
+  </figure>
 
   <h3>4. 打开网页，先填错</h3>
   <p>浏览器打开 <a href="http://localhost:8081">http://localhost:8081</a>。页面是中文时，格子名是：系统、服务器、用户名、密码、数据库。服务器一栏可能已经写着 <code>mysql</code>，那是文件里的默认值。先把它改成 <code>localhost</code>。</p>
@@ -432,11 +441,19 @@
   </div>
   <p>点「登录」。</p>
   <div class="badbox">No such file or directory</div>
+  <figure class="shot">
+    <img src="figures/12-adminer-fail.png" alt="Adminer 服务器填 localhost 后的红字">
+    <figcaption>这是浏览器里实际点登录之后的画面。服务器一栏是 localhost，上面的红字是 No such file or directory。地址栏仍是 localhost:8081，那个不用改。</figcaption>
+  </figure>
   <p>这行红字是这台电脑上实际点出来的。MySQL 容器当时仍是 healthy。失败只出在服务器这一格：Adminer 在自己的容器里，<code>localhost</code> 指的是它自己。</p>
 
   <h3>5. 改成服务名</h3>
   <p>服务器改成 <code>mysql</code>，其他四格不变，再登录。</p>
   <div class="see"><b>你应该看到</b> 标题是「数据库: pro_skill」。表有这五张：<code>flyway_schema_history</code>、<code>tb_user</code>（大约 4 行）、<code>warehouse</code>（大约 3 行）、<code>warehouse_location</code>（大约 3 行）、<code>warehouse_zone</code>（大约 2 行）。</div>
+  <figure class="shot">
+    <img src="figures/13-adminer-ok.png" alt="Adminer 里看到 pro_skill 的表">
+    <figcaption>服务器改成 mysql 之后。点表名 tb_user。如果先进去的是结构，再点上面的「选择数据」，第一行用户名是 admin。</figcaption>
+  </figure>
   <p>点 <code>tb_user</code>。如果先进去的是表结构，再点上面的「选择数据」。</p>
   <div class="see"><b>你应该看到</b> 第一行用户名 <code>admin</code>，显示名称是系统管理员，角色是 ADMIN。另外还有 <code>wh_manager</code>、<code>operator</code>、<code>business</code>。</div>
   <p>再把服务器改回 <code>localhost</code>，又出现那行红字。改回 <code>mysql</code>，又能看见表。</p>
@@ -455,119 +472,126 @@ docker compose -f docker-compose.dev.yml start</pre>
   <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
 
   <h3>7. 读 app 这一段</h3>
-  <p><code>build: .</code> 表示用当前目录的 Dockerfile，把我们的程序打成镜像。<code>container_name</code> 是 <code>pro-skill-app</code>。端口是 <code>8080:8080</code>。环境变量 <code>APP_LESSON_DATASOURCE_HOST</code> 是程序去连数据库时用的主机名。没另外设置时，这个值是 <code>mysql</code>。</p>
-  <p>另一个文件 <code>docker-compose.localhost.yml</code> 会把这个值改成 <code>localhost</code>。这和第一次课把服务器填错是同一件事。</p>
+  <p><code>build: .</code> 表示用当前目录的 Dockerfile，把我们的程序打成镜像。<code>container_name</code> 是 <code>pro-skill-app</code>。端口是 <code>8080:8080</code>。环境变量 <code>APP_LESSON_DATASOURCE_HOST</code> 是程序去连数据库时用的主机名。没另外设置时，这个值是 <code>mysql</code>，和周一 Adminer 改对的服务器名一样。</p>
+  <p>仓库里还有 <code>docker-compose.localhost.yml</code>，会把这个值改回 <code>localhost</code>。那是周一已经复现过的错，这节课不用它。第 15 周排错时再叠上去。</p>
 
-  <h3>8. 用错误的主机名启动应用</h3>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml -f docker-compose.localhost.yml up -d --build --force-recreate app</pre>
-  <p>第一次会构建镜像。这台 Mac 上这一步大约五分钟，屏幕长时间停在 Downloading 是正常的。等到命令自己结束，再看状态和日志。</p>
-  <pre data-os="mac">docker compose -f docker-compose.dev.yml ps
-docker logs --tail 30 pro-skill-app
-docker inspect pro-skill-app --format '{{range .Config.Env}}{{println .}}{{end}}' | grep APP_LESSON</pre>
-  <pre data-os="win">docker compose -f docker-compose.dev.yml ps
-docker logs --tail 30 pro-skill-app
-docker inspect pro-skill-app --format '{{range .Config.Env}}{{println .}}{{end}}' | findstr APP_LESSON</pre>
-  <div class="see"><b>你应该看到</b> <code>pro-skill-mysql</code> 仍是 healthy。<code>pro-skill-app</code> 的状态是 Restarting，不是 healthy。日志里有 <code>Communications link failure</code>，最后是 <code>Connection refused</code>。环境变量是：</div>
-  <pre data-os="both">APP_LESSON_DATASOURCE_HOST=localhost
-APP_LESSON_TRACE_ID=off</pre>
+  <h3>Dockerfile：镜像是怎么做出来的</h3>
+  <p>Compose 的 app 段里没有 <code>./mvnw spring-boot:run</code>。容器每次启动，只执行 Dockerfile 最后一行：<code>java -jar app.jar</code>。编译发生在做镜像的时候，不发生在每次启动的时候。</p>
+  <p>打开项目根目录的 <code>Dockerfile</code>。它分成两段，中间用第二个 <code>FROM</code> 切开。</p>
+  <pre data-os="both">FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /src
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+COPY src src
+RUN chmod +x mvnw && ./mvnw -B -DskipTests package
 
-  <h3>9. 改成服务名</h3>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml up -d --force-recreate app</pre>
-  <p>这一条不用 <code>--build</code>。等十几秒，直到 ps 里应用是 healthy。这台电脑上大约十秒。</p>
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+COPY --from=build /src/target/pro-skill-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]</pre>
+  <ul>
+    <li>第一段 <code>AS build</code> 用带编译器的 JDK。它把源码拷进镜像，在镜像里面执行 <code>./mvnw package</code>，得到 jar。学生电脑上不用先装 Maven，也不用自己跑这条命令。</li>
+    <li>第二段换成更小的 JRE，只把打好的 jar 拷过来，命名为 <code>app.jar</code>。编译器用过就丢掉，运行时的镜像里没有源码，也没有 Maven。</li>
+    <li><code>ENTRYPOINT</code> 是容器每次启动时执行的命令。所以 Compose 里看不到 <code>mvnw</code>，也看不到 <code>java</code>。它们写在这里。</li>
+    <li><code>--build</code> 才会重做镜像。源码没改时，后面的 <code>up</code> 不用再带 <code>--build</code>。</li>
+  </ul>
+
+  <h3>8. 启动应用</h3>
+  <pre data-os="both">docker compose -f docker-compose.dev.yml up -d --build app</pre>
+  <ul>
+    <li><code>--build</code>：按 Dockerfile 把我们的程序打成镜像。第一次大约要几分钟。</li>
+    <li>最后的 <code>app</code>：只动应用这一个，MySQL 和 Adminer 继续跑。</li>
+  </ul>
+  <p>第一次会构建镜像。这台 Mac 上这一步大约五分钟，屏幕长时间停在 Downloading 是正常的。等到命令自己结束，再看状态。等十几秒，直到 ps 里应用是 healthy。这台电脑上构建结束后大约十秒。</p>
+  <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
+  <p><code>curl</code> 是从这台电脑发一次网页请求。<code>-s</code> 是少打印进度，只看结果。Windows 要写成 <code>curl.exe</code>，因为 PowerShell 里单独的 curl 是另一个命令。</p>
   <pre data-os="mac">curl -s http://localhost:8080/actuator/health</pre>
   <pre data-os="win">curl.exe -s http://localhost:8080/actuator/health</pre>
-  <div class="see"><b>你应该看到</b> 一段 JSON，里面有 <code>"status":"UP"</code>。这台电脑上完整内容是 <code>{"groups":["liveness","readiness"],"status":"UP"}</code>。这里的 localhost:8080 是你的浏览器。上一步环境变量里的 localhost 是容器内部。改掉的是容器内部那个。</div>
+  <div class="see"><b>你应该看到</b> 一段 JSON，里面有 <code>"status":"UP"</code>。这台电脑上完整内容是 <code>{"groups":["liveness","readiness"],"status":"UP"}</code>。这里的 localhost:8080 是你的浏览器，走的是端口映射。应用在容器里面连数据库用的是服务名 <code>mysql</code>，和周一 Adminer 填对的那个名字一样。</div>
   <pre data-os="mac">curl -s -X POST http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"Admin@123"}'</pre>
   <pre data-os="win">curl.exe -s -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
-  <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。也可以打开 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>，用同一个账号登录。</div>
-
-  <h3>10. 看没有编号的日志</h3>
-  <p>现在 <code>APP_LESSON_TRACE_ID</code> 是 off。日志每一行有一对中括号，用来放这次请求的编号。关闭时中括号是空的。</p>
-  <pre data-os="mac">curl -s -D - -X POST http://localhost:8080/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"Admin@123"}'</pre>
-  <pre data-os="win">curl.exe -s -D - -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
-  <div class="see"><b>你应该看到</b> 响应头里没有 <code>X-Trace-Id</code>。再执行 <code>docker logs --tail 40 pro-skill-app</code>，登录那几行的中括号是空的，写成 <code>[]</code>。两个同学同时登录时，分不出哪一行属于谁。</div>
-
-  <h3>11. 打开编号</h3>
-  <pre data-os="mac">APP_LESSON_TRACE_ID=on docker compose -f docker-compose.dev.yml up -d --force-recreate app</pre>
-  <pre data-os="win">$env:APP_LESSON_TRACE_ID="on"; docker compose -f docker-compose.dev.yml up -d --force-recreate app</pre>
-  <p>等应用再次变成 healthy。然后带上一个指定的编号。</p>
-  <pre data-os="mac">curl -s -D - -X POST http://localhost:8080/auth/login \
-  -H 'Content-Type: application/json' \
-  -H 'X-Trace-Id: lesson-001' \
-  -d '{"username":"admin","password":"Admin@123"}'</pre>
-  <pre data-os="win">curl.exe -s -D - -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -H "X-Trace-Id: lesson-001" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
-  <div class="see"><b>你应该看到</b> 响应头有一行 <code>X-Trace-Id: lesson-001</code>。日志里同一次登录的行都带这个编号，例如：</div>
-  <pre data-os="both">[lesson-001] INFO  c.e.p.observability.TraceIdFilter - request POST /auth/login</pre>
-  <p>后面查用户的 SQL 也在同一个中括号里。两个终端都不带这个头、再同时登录，会各自得到一个不同的编号。</p>
-
-  <h3>12. 关掉，再打开</h3>
-  <pre data-os="mac">APP_LESSON_TRACE_ID=off docker compose -f docker-compose.dev.yml up -d --force-recreate app</pre>
-  <pre data-os="win">$env:APP_LESSON_TRACE_ID="off"; docker compose -f docker-compose.dev.yml up -d --force-recreate app</pre>
-  <div class="see"><b>你应该看到</b> 再登录一次，响应头里没有 <code>X-Trace-Id</code>。然后把第 11 步的打开命令再执行一次，用 <code>lesson-001</code> 登录，编号又回到响应头和日志里。</div>
+  <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。页面怎么点，留到第 11 周周一的 <a href="第二部分-讲义.html">第二部分讲义</a>。地址是 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。</div>
+  <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 12 周两张出库单同时扣库存时再讲它是什么、解决什么、代码写在哪。</p>
 </section>
 
 <section id="git-ops">
-  <h2>五个动作：fetch、pull、push、merge、rebase</h2>
-  <p class="lead">项目已经能在本地跑起来之后，再讲这五个。按钮在仓库窗口上方。Mac 的 Branch 菜单在屏幕最上方，Windows 的 Branch 菜单在窗口顶上，字是一样的。</p>
-  <div class="compare">
-    <article>
-      <strong>fetch</strong>
-      <p>问远程：你有没有新提交？只把消息拿下来，不改你正在看的文件。</p>
-    </article>
-    <article>
-      <strong>pull</strong>
-      <p>在 fetch 之后，把远程那些新提交合进你当前的分支。你的文件会变。</p>
-    </article>
-    <article>
-      <strong>push</strong>
-      <p>把你本地有、远程还没有的提交送上去。没有新提交时，这个按钮不会出现。</p>
-    </article>
-  </div>
+  <h2>随堂测验：新建分支，网页上合并</h2>
+  <p class="lead">教师先按下面做完一遍，学生看，先不要跟着点。看完后，每人用自己的 Gitee 账号再做一遍。课堂仓库 <code>warehouse-backend</code> 只能克隆，不能推送，这次不要用它。</p>
+  <p>做完的样子：你自己的仓库里有一条新分支，上面有一个写着你名字的文件。网页上有一条已经合并的 Pull Request。目标分支里能打开这个文件。</p>
+
+  <h3>1. 在网页上新建一个属于你的仓库</h3>
+  <p>浏览器打开 <a href="https://gitee.com">gitee.com</a>，登录。右上角「+」，点「新建仓库」。</p>
+  <ul>
+    <li>仓库名称写 <code>lesson-practice</code>。路径会跟着变成这个名字。</li>
+    <li>公开或私有都可以。私有只有你自己能看见。</li>
+    <li>勾选「使用 Readme 文件初始化这个仓库」。这样创建完就有一条已有的分支，后面才有合并目标。</li>
+    <li>点「创建」。</li>
+  </ul>
+  <p>这一步的意思：网上先有一份仓库。Push 和 Pull Request 都是对着这份仓库做的。勾选 Readme，是为了先有一条主分支。仓库页左上角写着 <code>master</code> 就是 <code>master</code>，写着 <code>main</code> 就是 <code>main</code>。记下这个名字。</p>
+  <p>点「克隆/下载」，复制 HTTPS 地址。样子是 <code>https://gitee.com/你的个性地址/lesson-practice.git</code>。个性地址在网址里，不是页面上的昵称。</p>
+
+  <h3>2. 生成私人令牌</h3>
+  <p>推送时 Gitee 不收网页登录密码。头像，设置，安全设置，私人令牌，生成新令牌。描述写「课堂测验」，勾选 <code>projects</code>。生成后立刻复制，这个页面关掉就再也看不到。</p>
+  <p>这一步的意思：令牌是给 GitHub Desktop 用的推送凭证。用户名填个性地址，密码框粘贴令牌。</p>
+
+  <h3>3. 克隆你自己的仓库</h3>
+  <p>GitHub Desktop 里，菜单 File，Clone Repository，点 URL。粘贴刚才的 HTTPS 地址。Local Path 选一个新文件夹，不要选已经克隆的 <code>warehouse-backend</code>。点 Clone。</p>
+  <p>这一步的意思：把网上那份抄到电脑。课堂仓库继续用来跑项目。这个新仓库只用来交测验。</p>
+  <div class="see"><b>你应该看到</b> Current Branch 是 <code>master</code> 或 <code>main</code>，和网页左上角一致。History 里有一条初始化 Readme 的提交。</div>
+
+  <h3>4. 从当前分支拉出一条新分支</h3>
+  <p>点 Current Branch，点 New Branch。名字写 <code>practice-你的学号</code>。基于当前这条主分支创建。</p>
+  <p>这一步的意思：新分支是一条独立的修改线。文件先改在这条线上，主分支先不动。合并发生在后面的网页上，不要点 Branch 菜单里的 Merge。</p>
   <figure class="shot">
-    <img src="figures/06-fetch-branch.png" alt="Fetch origin 按钮">
-    <figcaption>Fetch origin 在窗口上方。点它只查看。按钮变成 Pull origin 时，再点一次才会把远程的新提交拿进本地。</figcaption>
+    <img src="figures/03-branch-list.png" alt="分支列表里的 New Branch">
+    <figcaption>点 Current Branch，再点 New Branch。图里的「第一部分」是课堂仓库的分支，测验仓库里没有它。测验只新建 practice-学号。</figcaption>
   </figure>
+
+  <h3>5. 改一个文件，提交到本地</h3>
+  <p>在这个新仓库的文件夹里新建 <code>我的练习.txt</code>，里面写你的名字。回到 GitHub Desktop，左侧 Changes 里出现这个文件。勾上它。Summary 写「记下我的名字」。点 Commit。</p>
+  <p>这一步的意思：Commit 只写进你电脑上的这条分支。网页上还没有这个文件。</p>
   <figure class="shot">
-    <img src="figures/04-branch-menu.png" alt="Branch 菜单里的 Merge 和 Rebase">
-    <figcaption>菜单 Branch。合并点 Merge into Current Branch。变基点 Rebase Current Branch。Mac 的这个菜单位于屏幕最上方，Windows 位于窗口顶上。</figcaption>
+    <img src="figures/07-commit.png" alt="Summary 和 Commit 按钮">
+    <figcaption>Summary 写「记下我的名字」，再点 Commit。点完先不要关窗口。</figcaption>
   </figure>
-  <figure class="shot">
-    <img src="figures/05-merge-dialog.png" alt="Merge into 第一部分 对话框">
-    <figcaption>这是点了合并之后实际弹出的窗口。先选要并进来的分支。图里选 main 时，它写着已经是最新，这时不要点 Create a merge commit。两条练习分支改了不同文件时，这个按钮才会真正合并。</figcaption>
-  </figure>
-  <h3>fetch 和 pull</h3>
-  <p>Current Branch 停在「第一部分」。点 Fetch origin。</p>
-  <div class="see"><b>你应该看到</b> 远程没有更新时，按钮还是 Fetch origin。如果教师刚推过新提交，按钮会变成 Pull origin，旁边有向下的箭头。这时再点 Pull origin，History 里会出现你原来没有的提交，文件夹里的文件跟着变。Pull origin with rebase 是另一种拉法：把你的本地提交接到远程最新提交后面，而不是先做一个合并提交。当前分支上你还没有自己的提交时，两种拉法的结果一样。</div>
-  <h3>push</h3>
-  <p>切回 <code>practice-你的学号</code>。如果 History 里有还没送出的提交，上方会出现 Push origin。课堂这个 Gitee 仓库是教师的，你们没有写入权限，点下去会被拒绝。这是正常的。</p>
-  <div class="see"><b>你应该看到</b> 失败提示，而不是把「第一部分」改掉。Push 要练成功，用作业一你自己的 Gitee 仓库：File → Clone Repository → URL，克隆你自己的空仓库，在练习分支上 Commit，再点 Push origin。成功之后，用浏览器打开你的 Gitee 仓库，能看到刚才那个文件。</div>
-  <h3>merge</h3>
-  <p>merge 是把另一条分支上的提交并进你当前这条分支，两条线都留着，必要时多出一个合并提交。</p>
-  <p>在本地做，不要推送。Current Branch 放在「第一部分」。New Branch，名字 <code>practice-line-a</code>。新建文件 <code>a.txt</code>，内容写 A，Commit。再从「第一部分」拉出 <code>practice-line-b</code>，新建 <code>b.txt</code>，内容写 B，Commit。现在停在 line-b。打开菜单 Branch，点 Merge into Current Branch，选 practice-line-a。窗口下方如果写的是可以合并，再点 Create a merge commit。如果写着 already up to date，说明两条分支没有不同的修改，先不要点。</p>
-  <div class="see"><b>你应该看到</b> History 里两条线汇到一起。文件夹里同时有 <code>a.txt</code> 和 <code>b.txt</code>。如果 GitHub Desktop 在 Merge 按钮上方写出有冲突，先不要点，说明两个分支改了同一处，这节课先换成两个不同的文件再做一次。</div>
-  <h3>rebase</h3>
-  <p>rebase 是把你当前分支上的提交挪到另一条分支的最新位置后面，历史变成一条直线。它会改写当前分支上那些提交。别人正在用的分支不要 rebase。做完之后如果要推送，按钮会变成 Force push origin，课堂仓库上不要点。</p>
-  <p>Current Branch 停在 <code>practice-line-b</code>。菜单 Branch，点 Rebase Current Branch。选「第一部分」，点 Rebase，再点 Begin Rebase。</p>
-  <div class="see"><b>你应该看到</b> History 里你的提交接到「第一部分」最新提交的后面，不再分叉。文件还在。到此停止，不要点 Force push origin。</div>
-  <p>五个词可以收成三句。fetch 只看远程有没有新东西。pull 把远程的新东西拿进本地，push 把本地的新东西送到远程。merge 保留分叉并汇合，rebase 把分叉拉直。日常更新课堂代码用 Fetch origin，需要时再 Pull origin。自己的作业仓库才 Push origin。</p>
+  <div class="see"><b>你应该看到</b> Changes 变空。History 最上面一条是「记下我的名字」。上方还没有出现这个文件的网页链接。</div>
+
+  <h3>6. 把这条分支推上去</h3>
+  <p>上方按钮写着 Publish branch 或 Push origin 时，点它。第一次会问账号。用户名填 Gitee 个性地址，密码框粘贴私人令牌，不是网页登录密码。</p>
+  <p>这一步的意思：Push 把本地有、网上还没有的提交送到你的仓库。Publish branch 是这条分支第一次上线，网上会因此多出 <code>practice-你的学号</code>。不要点 Force push。</p>
+  <div class="see"><b>你应该看到</b> 按钮不再要求推送。用浏览器打开你的仓库，分支列表里有 <code>practice-你的学号</code>。点进去能看到 <code>我的练习.txt</code>。主分支上还没有这个文件。</div>
+
+  <h3>7. 在网页上创建 Pull Request</h3>
+  <p>仓库页点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>practice-你的学号</code>，目标分支选第 1 步记下的 <code>master</code> 或 <code>main</code>。标题写「记下我的名字」。点「创建」。</p>
+  <p>这一步的意思：Pull Request 是一张合并申请，请仓库把源分支上的提交并进目标分支。创建它不会自动改主分支。你是这个仓库的管理员，所以申请人和合并的人可以是你自己。</p>
+  <div class="see"><b>你应该看到</b> 一个打开状态的 Pull Request。里面能看到 <code>我的练习.txt</code> 是新增文件。主分支此时仍然没有这个文件。</div>
+
+  <h3>8. 在网页上合并</h3>
+  <p>就在这个 Pull Request 页面，点「合并」，再按页面上的确认。不要回到 GitHub Desktop 里找 Merge。</p>
+  <p>这一步的意思：合并是网页把那条分支上的提交接进主分支。点完之后，主分支和练习分支都有这个文件。</p>
+  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。打开主分支，能看到 <code>我的练习.txt</code>，里面是你的名字。把这个页面留着，给教师看。</div>
+
+  <h3>9. 把合并结果拿回本地</h3>
+  <p>回到 GitHub Desktop。Current Branch 选主分支（<code>master</code> 或 <code>main</code>）。上方如果变成 Pull origin，点它。</p>
+  <p>这一步的意思：网页上的合并发生在网上。Pull 是把网上主分支的新提交拿进你电脑。不点的话，本地主分支里仍然没有 <code>我的练习.txt</code>。</p>
+  <div class="see"><b>你应该看到</b> 本地主分支的文件夹里出现 <code>我的练习.txt</code>。History 里能看到刚才那次网页合并。</div>
 </section>
 
 <section>
   <h2>这堂课做完，手里有什么</h2>
   <ul>
     <li>GitHub Desktop 里能打开克隆下来的仓库，Current Branch 可以换成「第一部分」</li>
-    <li>能说清 fetch 只查看、pull 拿进来、push 送出去，merge 汇合，rebase 拉直</li>
+    <li>在自己的 Gitee 仓库里新建分支、提交、推送，并在网页上创建 Pull Request、点合并。主分支上能打开写着自己名字的文件</li>
     <li><code>docker version</code> 有 Client 和 Server</li>
     <li>Adminer 用服务器名 <code>mysql</code> 能看见 <code>tb_user</code> 里的 admin</li>
     <li>应用健康检查是 <code>"status":"UP"</code>，账号 <code>admin</code> / <code>Admin@123</code> 能登录</li>
+    <li>能指出 Dockerfile 第一段在镜像里编译，第二段只用 <code>java -jar app.jar</code> 启动</li>
     <li>知道容器里面的 <code>localhost</code> 不是旁边那个容器</li>
-    <li>知道 <code>APP_LESSON_TRACE_ID=on</code> 时，一次请求的日志带同一个 <code>X-Trace-Id</code></li>
   </ul>
-  <p class="note">「你应该看到」里的红字、表、健康检查、登录结果和 <code>lesson-001</code> 日志，是 2026-10-09 在 macOS、Docker Desktop 4.94 上按这个顺序跑出来的。Windows 的安装点击来自 Docker 官方安装页。装好之后，除了讲义里单独写出的 PowerShell 命令，其余命令相同。</p>
+  <p class="note">「你应该看到」里的红字、表、健康检查和登录结果，是 2026-10-09 在 macOS、Docker Desktop 4.94 上按这个顺序跑出来的。Windows 的安装点击来自 Docker 官方安装页。装好之后，除了讲义里单独写出的 PowerShell 命令，其余命令相同。</p>
 </section>
 </main>
 <script>

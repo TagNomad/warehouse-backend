@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第二部分讲义 · 代码分层和 Swagger</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6b7a;
+    --line: #d7e0ea;
+    --paper: #f4f7fb;
+    --card: #fff;
+    --blue: #1d6fbf;
+    --ok: #067647;
+    --ok-soft: #e7f6ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 18px/1.65 "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+  header.top { background: #12324f; color: #fff; padding: 36px 8vw 28px; }
+  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 46rem; }
+  h1 { font-size: 34px; line-height: 1.25; margin: 0; }
+  main { width: min(980px, 92vw); margin: 0 auto; padding: 28px 0 80px; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 24px 26px;
+    margin: 18px 0;
+  }
+  h2 { font-size: 26px; margin: 0 0 12px; }
+  h3 { font-size: 20px; margin: 22px 0 8px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre {
+    background: #0f1c2b;
+    color: #e8eef6;
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow: auto;
+    font: 15px/1.55 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .see {
+    background: var(--ok-soft);
+    border-left: 4px solid var(--ok);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0 0;
+  }
+  .see b { color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 10px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 650; }
+  figure.shot { margin: 16px 0 8px; }
+  figure.shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .box {
+    border: 2px solid var(--blue);
+    border-radius: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    font-weight: 650;
+    text-align: center;
+  }
+  .arrow { color: var(--muted); }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>第二部分 · 先看清代码，再用 Swagger</h1>
+  <p>第 11 周周一。应用容器已经是 healthy。这节前半段复习现有代码和接口页面，后半段才开始货品。Dockerfile 在第 10 周周三已经讲过，这里不再讲。</p>
+</header>
+<main>
+
+<section>
+  <h2>这 2 节课怎么用</h2>
+  <p>前大约 50 分钟对着下面两节走：一次登录经过哪些文件夹，然后在 Swagger 里自己登录、再查仓库。后大约 40 分钟才讲货品编码可以重复的那个漏洞。货品的复现和修改仍按教案里的第二部分后半段做。</p>
+</section>
+
+<section>
+  <h2>一次登录经过哪些层</h2>
+  <p>浏览器发 <code>POST /auth/login</code>。代码按这个顺序走，不要在 Controller 里写 SQL。</p>
+  <div class="flow">
+    <div class="box">AuthController<br>接 JSON</div>
+    <span class="arrow">→</span>
+    <div class="box">AuthService<br>校验并签发 token</div>
+    <span class="arrow">→</span>
+    <div class="box">UserMapper<br>读 tb_user</div>
+    <span class="arrow">→</span>
+    <div class="box">MySQL<br>tb_user</div>
+  </div>
+  <p>Controller 只接收 <code>LoginRequest</code>，把结果装成 <code>LoginResponse</code>。业务放在 <code>application</code> 包的 Service 里。表上的一行是 <code>entity</code>，业务里用的对象是 <code>domain</code>，两者用 <code>converter</code> 转。SQL 只出现在 <code>mapper</code>。</p>
+  <p>仓库、库区、库位是同一套切法。打开 <code>src/main/java/com/eurasia/pro_skill</code>，对着这张表找文件。</p>
+  <table>
+    <tr><th>包</th><th>这一层做什么</th><th>登录时看哪个文件</th></tr>
+    <tr><td><code>controller</code></td><td>接 HTTP，校验入参</td><td><code>AuthController</code></td></tr>
+    <tr><td><code>controller/request</code></td><td>请求体</td><td><code>LoginRequest</code></td></tr>
+    <tr><td><code>controller/response</code></td><td>返回给页面的字段</td><td><code>LoginResponse</code></td></tr>
+    <tr><td><code>application</code></td><td>业务</td><td><code>AuthService</code></td></tr>
+    <tr><td><code>domain</code></td><td>业务对象</td><td><code>User</code>、<code>AuthToken</code></td></tr>
+    <tr><td><code>entity</code></td><td>和表的一行对应</td><td><code>UserEntity</code></td></tr>
+    <tr><td><code>mapper</code></td><td>SQL</td><td><code>UserMapper</code></td></tr>
+    <tr><td><code>converter</code></td><td>domain 和 entity 互转</td><td><code>UserConverter</code></td></tr>
+  </table>
+  <div class="see"><b>你应该看到</b> <code>AuthController</code> 的 <code>login</code> 方法里只有对 <code>authService.login</code> 的调用，没有 SQL。SQL 在 Mapper 那一层。后面加货品时，也是先加表和 Entity，再加 Mapper、Service、Controller，而不是把插入语句写进 Controller。</div>
+</section>
+
+<section>
+  <h2>用 Swagger 把这条链路走一遍</h2>
+  <p>浏览器打开 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。这是接口页面，分组来自代码里的 <code>@Tag</code>。现在能看到鉴权、用户管理、仓库、库区、库位。货品还没有，这周后半段才会出现。</p>
+
+  <h3>1. 登录</h3>
+  <p>找到「鉴权」，点开 <code>POST /auth/login</code>。这一行没有锁，不用先点 Authorize。</p>
+  <figure class="shot">
+    <img src="figures/20-swagger-groups.png" alt="Swagger 首页，Authorize 在右上角，先点开 POST /auth/login">
+    <figcaption>右上角 Authorize 先别点。先点开 POST /auth/login。</figcaption>
+  </figure>
+  <p>点 Try it out。请求体里已经是下面这两行时，直接点 Execute。不是的话改成这样再点。</p>
+  <pre>{
+  "username": "admin",
+  "password": "Admin@123"
+}</pre>
+  <figure class="shot">
+    <img src="figures/21-swagger-execute.png" alt="登录请求体和 Execute 按钮">
+    <figcaption>账号 admin，密码 Admin@123，然后点 Execute。</figcaption>
+  </figure>
+  <div class="see"><b>你应该看到</b> Code 是 200。Response body 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。把 token 整段复制下来，不要带引号。</div>
+  <figure class="shot">
+    <img src="figures/22-swagger-login-ok.png" alt="登录返回 200 和 token">
+    <figcaption>200 的响应体里有 token、admin、ADMIN。</figcaption>
+  </figure>
+
+  <h3>2. 把 token 填进 Authorize</h3>
+  <p>回到页面右上角，点 Authorize。框里只贴 token，不要自己加 <code>Bearer </code>。点 Authorize，再点 Close。锁从打开变成锁上。</p>
+
+  <h3>3. 查仓库</h3>
+  <p>找到「FR-01 仓库管理」，点开 <code>GET /warehouses/list</code>。这一行有锁。Try it out，<code>current</code> 填 1，<code>pageSize</code> 填 10，其余空着，Execute。</p>
+  <div class="see"><b>你应该看到</b> 还没点 Authorize 时，这一步是 401。授权之后是 200，<code>records</code> 里能找到编码 <code>WH-001</code>。这就是上学期已经放进库里的那条仓库。用户、库区、库位同样要先授权。登录和注册不用。</div>
+</section>
+
+<section>
+  <h2>看完再开始货品</h2>
+  <p>货品也走同一套分层，也会出现在这个 Swagger 页面上。接下来先不把编码做成唯一：同一个 <code>SKU-001</code> 可以建两次，库里会出现两行。学生自己在 Adminer 的 <code>sku</code> 表里看见重复，再加唯一索引，让第二次创建失败。操作按教案第二部分的「具体设计」做。</p>
+</section>
+
+</main>
+</body>
+</html>
