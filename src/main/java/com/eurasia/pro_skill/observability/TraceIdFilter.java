@@ -39,22 +39,22 @@ public class TraceIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        if (!enabled) {
+        if (!enabled) { // app.lesson.trace-id=off：不写号，日志括号是空的
             filterChain.doFilter(request, response);
             return;
         }
 
-        String traceId = request.getHeader(HEADER);
+        String traceId = request.getHeader(HEADER); // 调用方可以自己带 X-Trace-Id
         if (traceId == null || traceId.isBlank()) {
-            traceId = UUID.randomUUID().toString();
+            traceId = UUID.randomUUID().toString(); // 没带就生成一个，这一次请求专用
         }
-        MDC.put(MDC_KEY, traceId);
-        response.setHeader(HEADER, traceId);
+        MDC.put(MDC_KEY, traceId); // 放进 MDC。日志格式里的 %X{traceId} 就是取这个键
+        response.setHeader(HEADER, traceId); // 同一个号写回响应头，页面上也能看到
         try {
             log.info("request {} {}", request.getMethod(), request.getRequestURI());
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(request, response); // 后面的 Controller、Service 打的日志都带着这个号
         } finally {
-            MDC.remove(MDC_KEY);
+            MDC.remove(MDC_KEY); // 请求结束清掉，避免串到下一个请求
         }
     }
 }

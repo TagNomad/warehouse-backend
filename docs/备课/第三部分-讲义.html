@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第三部分讲义 · 每个格子有多少</title>
+<title>第三部分讲义 · 出库与并发</title>
 <style>
   :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d7e0ea; --paper:#f4f7fb; --card:#fff; --blue:#1d6fbf; --ok:#067647; --ok-soft:#e7f6ee; }
   * { box-sizing:border-box; }
   body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
   header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
-  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:46rem; }
+  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:48rem; }
   h1 { font-size:34px; line-height:1.25; margin:0; }
   main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
   section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
@@ -29,180 +29,73 @@
 </head>
 <body>
 <header class="top">
-  <h1>第三部分 · 每个格子有多少</h1>
-  <p>第 11 周周三上午。库位和货品都有了。三个接口按下面的图自己对照着写：新建草稿、给草稿加一行、完成。完成时数量记到「货品 + 库位」那一行，并和单据状态同一次提交。</p>
+  <h1>第三部分 · 出库与并发</h1>
+  <p>第 12 周和第 13 周。第二部分已经按货品和库位记下数量。这里做出库、已完成的单还能不能改、两个人同时减同一行，以及入库流水会不会在单据回滚之后还留着。</p>
 </header>
 <main>
 
 <section>
-  <h2>要回答的两句话</h2>
-  <p>上学期的格子还在：<code>A-01-01</code>、<code>A-01-02</code>。第二部分的货还在：<code>SKU-001</code> 轴承。</p>
-  <p>入库是把多少货放进哪个格子。做完之后要能回答：<code>A-01-01</code> 上的轴承有多少，<code>A-01-02</code> 上的轴承有多少。单据要从草稿变成已完成。</p>
+  <h2>出库三个接口</h2>
   <div class="flow">
-    <div class="box">入库单<br>DRAFT</div>
+    <div class="box">OutboundController</div>
     <span class="arrow">→</span>
-    <div class="box">一行<br>货品 + 库位 + 数量</div>
+    <div class="box">OutboundService</div>
     <span class="arrow">→</span>
-    <div class="box">完成<br>数量记下来，状态变成 COMPLETED</div>
+    <div class="box">Mapper</div>
+    <span class="arrow">→</span>
+    <div class="box">outbound_order / inventory</div>
   </div>
-</section>
-
-<section>
-  <h2>三个接口，数据经过哪里</h2>
-  <p>和用户、货品一样，Controller 不写 SQL。页面上的字段传到 Service，Service 再交给 Mapper。编码在进表之前换成主键。</p>
-  <div class="flow">
-    <div class="box">InboundController<br>接路径和字段</div>
-    <span class="arrow">→</span>
-    <div class="box">InboundService<br>决定写哪张表</div>
-    <span class="arrow">→</span>
-    <div class="box">Mapper<br>SQL</div>
-    <span class="arrow">→</span>
-    <div class="box">MySQL<br>inbound_order / line / inventory</div>
-  </div>
-</section>
-
-<section>
-  <h2>1. 新建草稿</h2>
-  <p><code>POST /inbound-orders</code> 没有请求体。Controller 不传字段，Service 自己生成单号和状态。</p>
-  <figure class="shot">
-    <img src="figures/70-controller-create.png" alt="新建草稿不传字段">
-    <figcaption>create 没有参数。返回值就是 Service 交回来的入库单，直接变成 JSON。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/71-service-create.png" alt="先插入再改单号">
-    <figcaption>单号先写 PENDING，是因为主键还没有。insert 之后 entity.getId() 才有值，再改成 IN-主键。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/72-mapper-insert-order.png" alt="插入入库单并把主键写回">
-    <figcaption>#{orderNo} 取的是 entity 的 orderNo。列清单里没有 id。useGeneratedKeys 把自增主键写进 entity.id。方法返回的 int 是写下了几行，成功是 1，不是主键。</figcaption>
-  </figure>
-  <div class="see"><b>对一下</b> 调用之后，<code>inbound_order</code> 多一行。status 是 DRAFT，order_no 是 IN- 加上这行的 id。</div>
-</section>
-
-<section>
-  <h2>2. 给草稿加一行</h2>
-  <p><code>POST /inbound-orders/1/lines</code>。路径上的 1 是入库单主键。请求体是三个字段：</p>
+  <p><code>POST /outbound-orders</code> 没有请求体。单号先占位 PENDING，插入拿到主键后改成 <code>OUT-主键</code>。</p>
+  <p><code>POST /outbound-orders/1/lines</code> 传来货品编码、库位编码、数量。行上写的是两个主键。</p>
   <pre>{
   "skuCode": "SKU-001",
   "locationCode": "A-01-01",
-  "quantity": 10
+  "quantity": 15
 }</pre>
   <figure class="shot">
-    <img src="figures/73-line-request.png" alt="加一行的三个字段">
-    <figcaption>页面传来的是编码和数量。skuCode 不是 sku 表的 id，locationCode 不是库位表的 id。</figcaption>
+    <img src="figures/96-outbound-add-line.png" alt="出库行写下主键">
+    <figcaption>编码先查成主键，再插入 outbound_order_line。</figcaption>
+  </figure>
+  <p><code>POST /outbound-orders/1/complete</code> 只传主键。数量用行上已经记下的 quantity，从 inventory 里减去。</p>
+  <figure class="shot">
+    <img src="figures/93-outbound-complete-controller.png" alt="完成只传主键">
+    <figcaption>Controller 不读库存，不写 SQL。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/74-controller-add-line.png" alt="Controller 把三个字段交给 Service">
-    <figcaption>和 UserController 一样，不在这里 new 一个对象再传进去。路径上的 id 和 JSON 里的三个值分开传。</figcaption>
+    <img src="figures/94-outbound-subtract.png" alt="剩余不够也继续减">
+    <figcaption>先读剩余，再相减。outbound-check 是 off，结果小于 0 也会写回去。更新按库存行的 id。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/75-service-add-line.png" alt="编码查成主键再插入行">
-    <figcaption>getByCode 把 SKU-001 换成货品主键，把 A-01-01 换成库位主键。行上写的是这两个主键和数量。</figcaption>
+    <img src="figures/95-update-by-id.png" alt="更新条件只有 id">
+    <figcaption>#{quantity} 是减完的数。条件里没有 version。返回值是改了几行。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/76-mapper-insert-line.png" alt="入库行插入四个值">
-    <figcaption>#{orderId}、#{skuId}、#{locationId}、#{quantity} 取的是这一行实体上的同名属性。返回的 int 仍是写下了几行。</figcaption>
-  </figure>
-  <div class="see"><b>对一下</b> <code>inbound_order_line</code> 多一行。order_id 是这张单，sku_id 和 location_id 是查出来的主键，quantity 是 10。单据 status 还是 DRAFT。</div>
-</section>
-
-<section>
-  <h2>3. 完成</h2>
-  <p><code>POST /inbound-orders/1/complete</code> 没有请求体。数量用的是行上已经记下的 quantity，不再由页面传一次。</p>
-  <figure class="shot">
-    <img src="figures/77-controller-complete.png" alt="完成只把主键交给 Service">
-    <figcaption>Controller 只传 id。它不知道库存表，也不改状态。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/78-service-complete.png" alt="加库存和改状态写在一起">
-    <figcaption>类上有 @Transactional。循环里的 addInventory 和后面的 updateStatus 在同一个事务里，一步失败就一起撤回。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/79-add-inventory.png" alt="按货品和库位记账">
-    <figcaption>这个格子还没有这一货就插入一行，quantity 等于这次的数量，version 写成 0。已经有了就把数量加上，version 加一。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/80-inventory-sql.png" alt="inventory 的查询插入和更新">
-    <figcaption>查、插、改都用 sku_id 加 location_id。#{delta} 是这次要加的数量。更新语句还不拿 version 当条件。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/56-inventory-table.png" alt="inventory 表按货品和库位唯一">
-    <figcaption>V11：唯一键是 sku_id 加 location_id。同一种货进两个格子，是两行。</figcaption>
+    <img src="figures/98-outbound-negative.png" alt="库存变成负数">
+    <figcaption>A-01-01 上的 SKU-001 出 15 之后，quantity 是 -5。完成接口返回的 status 是 COMPLETED。</figcaption>
   </figure>
 </section>
 
 <section>
-  <h2>第三部分里那一版的结果</h2>
-  <p>数量如果加在 <code>sku.on_hand</code> 这一个总数上，并且这一步单独提交，改状态之前再中断，就答不出每个格子有多少，单据也还是草稿。</p>
-  <figure class="shot">
-    <img src="figures/53-inbound-interrupted.png" alt="完成入库返回中断">
-    <figcaption>那一版完成接口返回 400，message 是 INBOUND_STATUS_INTERRUPTED。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/54-sku-on-hand.png" alt="sku.on_hand 变成 18">
-    <figcaption>SKU-001 的 on_hand 是 18。看不出 10 在 A-01-01、8 在 A-01-02。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/55-inbound-draft.png" alt="入库单仍是草稿">
-    <figcaption>两张入库单的 status 仍是 DRAFT。</figcaption>
-  </figure>
+  <h2>已完成的单还能改数量</h2>
+  <p><code>PATCH /outbound-orders/{id}/lines/{lineId}</code> 只传新的数量。order-state 是 <code>open</code> 时，不看单据是不是草稿。库存已经按原数量减过，行上的数量可以再改成别的数。</p>
+  <pre>{ "quantity": 5 }</pre>
+  <div class="see"><b>对一下</b> 完成出库 1 之后库存少了 1。再把行改成 5，inventory 不变，单据行变成 5。</div>
 </section>
 
 <section>
-  <h2>按上面写完之后</h2>
-  <p>同一张货 <code>SKU-001</code>，10 进 <code>A-01-01</code>，8 进 <code>A-01-02</code>。两次完成都返回已完成。问某个格子，读 <code>inventory.quantity</code> 那一行。</p>
-  <figure class="shot">
-    <img src="figures/59-complete-ok.png" alt="完成入库返回 COMPLETED">
-    <figcaption>完成接口返回 200，status 是 COMPLETED。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/60-inventory-rows.png" alt="inventory 两行分别是 10 和 8">
-    <figcaption>inventory 两行：A-01-01 是 10，A-01-02 是 8。问某个格子，直接读这一行的 quantity。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/61-inbound-completed.png" alt="两张入库单已完成">
-    <figcaption>两张入库单的 status 都是 COMPLETED。数量和状态一起定下来。</figcaption>
-  </figure>
+  <h2>两个人同时减同一行</h2>
+  <p>把数量设成 1。两张出库单各出 1，几乎同时完成。两边都读到 1。<code>optimistic-lock</code> 是 <code>off</code>，更新语句是 <code>where id = ?</code>，不带读到的 version。两次更新都可以成功，数量变成 -1，或者变成 0 但两张单都完成。</p>
+  <p>日志里能看到两句「读到数量 1」。这一部分先确认两次都读到了旧数量。</p>
 </section>
 
 <section>
-  <h2>重温：把这个分支合并进第三部分</h2>
-  <p>第一部分做过一次：自己的仓库里新建分支、推上去、在网页上创建 Pull Request、在网页上点合并。这次用课堂仓库重温，分支已经定好。</p>
-  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第三部分改良版</code>，上面是这份讲义和入库代码。目标分支是 <code>第三部分</code>。教师先按下面做完，学生看。全班只合并这一次，不要每人再推一个同名分支。</p>
-
-  <h3>1. 切到改良版</h3>
-  <p>GitHub Desktop 里点 Fetch origin，再点 Current Branch，选「第三部分改良版」。列表里没有，就说明网上还没有这条分支。</p>
-  <p>这一步的意思：接下来要送出去的是改良版，不是第三部分本身。</p>
-
-  <h3>2. 推上去</h3>
-  <p>上方如果是 Publish branch 或 Push origin，点它。账号和第一部分一样：用户名是 Gitee 个性地址，密码框粘贴私人令牌。没有写入权限时，这一步会被拒绝，接着看教师的屏幕即可。</p>
-  <p>这一步的意思：Pull Request 只能合并网上已经有的分支。Push 是把改良版送到 Gitee。</p>
-
-  <h3>3. 在网页上创建 Pull Request</h3>
-  <p>浏览器打开该仓库，点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>第三部分改良版</code>，目标分支选 <code>第三部分</code>。标题写「合入第三部分改良版」。点「创建」。</p>
-  <p>这一步的意思：这是一张合并申请，请把改良版上多出来的提交并进第三部分。创建之后，第三部分还没有变。页面上能看到将要并进去的文件。</p>
-
-  <h3>4. 在网页上合并</h3>
-  <p>就在这个 Pull Request 页面点「合并」，再确认。不要回 GitHub Desktop 点 Merge。</p>
-  <p>这一步的意思：网页把改良版的提交接进第三部分。点完以后，第三部分里才有这次的改动。</p>
-  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。源分支和目标分支写的是第三部分改良版 → 第三部分。</div>
-
-  <h3>5. 把合并结果拿回来</h3>
-  <p>GitHub Desktop 里 Current Branch 换成「第三部分」。上方变成 Pull origin 时点它。</p>
-  <p>这一步的意思：合并发生在网上。Pull 把第三部分的新提交拿进你正在看的这份本地仓库。不点的话，你电脑上的第三部分还是合并前的样子。</p>
-  <div class="see"><b>你应该看到</b> History 里出现刚才网页上的那次合并。当前分支是第三部分，里面已经有改良版的内容。</div>
+  <h2>流水和入库单不在同一次提交</h2>
+  <p>完成入库时会写 <code>stock_flow</code>。<code>flow-after-commit</code> 是 <code>off</code>，流水用另一个 Bean 的 <code>REQUIRES_NEW</code> 先提交。把 <code>app.lesson.inbound-fail-before-status</code> 设成 <code>true</code> 再完成一张入库单：主事务在改状态前失败，单据不是 COMPLETED，<code>stock_flow</code> 里已经有这个单号。</p>
 </section>
 
 <section>
-  <h2>作业里要写同类接口时</h2>
-  <p>把下面这段发给 DeepSeek 或 Kimi。生成后按上一节的顺序检查：库位有没有进到某一行，数量有没有和单据状态分两次提交。</p>
-  <pre>这是 Spring Boot 项目，包名 com.eurasia.pro_skill。
-请按 UserController 的方式写入库：Controller 把字段传给 Service，不要用 builder。
-入库单 inbound_order：单号、状态 DRAFT/COMPLETED、创建时间。
-入库行 inbound_order_line：货品、库位、数量。
-完成时把数量记到「货品 + 库位」各自的一行，并在同一个事务里把状态改成 COMPLETED。
-库存表 inventory：sku_id、location_id、quantity、version，唯一键是货品加库位。
-生成后说明：一次完成请求里，数量和状态分别在哪一层写下去。</pre>
+  <h2>这一部分改完之后</h2>
+  <p>剩余不足会拒绝、已完成的单不能改行、更新带上 version、流水和入库状态同一次提交，都在「第三部分改良版」。这一部分结束时只把改良版合并进第三部分这一次。</p>
 </section>
 
 </main>

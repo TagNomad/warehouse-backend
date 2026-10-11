@@ -59,6 +59,11 @@ db:
 app:
   lesson:
     trace-id: off
+    outbound-check: off
+    optimistic-lock: off
+    order-state: open
+    flow-after-commit: off
+    inbound-fail-before-status: false
     datasource-host: localhost
   jwt:
     # 256-bit Base64 编码的 HMAC-SHA256 签名密钥（生产环境请通过环境变量覆盖）
