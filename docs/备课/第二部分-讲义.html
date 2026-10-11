@@ -178,10 +178,10 @@
   <p><code>Sku</code> 是业务里的那一件货，没有表注解。<code>SkuEntity</code> 和 <code>sku</code> 表的列对齐。<code>SkuConverter</code> 在插入成功后，把带 <code>id</code> 的那一行变回 <code>Sku</code>。</p>
 
   <h3>4. Service</h3>
-  <p><code>SkuService.create</code> 自己 new 一行，把三个字段放进去，创建时间用当前时间，然后插入。</p>
+  <p><code>SkuService.create</code> 先按编码查。查不到，才 new 一行，把三个字段和当前时间放进去，然后插入。</p>
   <figure class="shot">
-    <img src="figures/33-sku-no-check.png" alt="SkuService 直接 insert">
-    <figcaption>Service 把字段放进实体后直接 insert。图中红框是插入那一行。</figcaption>
+    <img src="figures/41-sku-reject.png" alt="SkuService 先查编码，查到就拒绝">
+    <figcaption>绿框是查重。新编码查不到，不会抛异常，才会执行到后面的 insert。</figcaption>
   </figure>
 
   <h3>5. Mapper 和表</h3>
@@ -253,26 +253,24 @@
 </section>
 
 <section>
-  <h2>改掉</h2>
-  <p>让 DeepSeek 或 Kimi 按你刚看到的两处差异改，也可以自己改。改完用同一次创建再走一遍数据流：相同编码应在 Service 停住，到不了 INSERT。</p>
-  <h3>1. Mapper 增加按编码查询</h3>
-  <pre>@Select("SELECT * FROM sku WHERE code = #{code} LIMIT 1")
-SkuEntity getByCode(String code);</pre>
-  <h3>2. 插入前拒绝</h3>
-  <p>在 <code>SkuService.create</code> 的 <code>insert</code> 之前。需要 <code>com.eurasia.pro_skill.common.BusinessException</code>。</p>
-  <pre>SkuEntity existing = skuMapper.getByCode(input.getCode());
-if (existing != null) {
-    throw new BusinessException(
-            "SKU_CODE_DUPLICATED",
-            "SKU_CODE_DUPLICATED：货品编码已存在：" + input.getCode());
-}</pre>
-  <p>只改这里，直接往表里插仍然可以有第二行。表上也要约束。</p>
-  <h3>3. 新迁移</h3>
-  <p><code>V7</code> 已经执行过，改它不会再生效。新建 <code>V8__sku_code_unique.sql</code>：</p>
-  <pre>ALTER TABLE sku ADD UNIQUE KEY uk_code (code);</pre>
-  <p>表里若已有两行 <code>SKU-001</code>，先在 Adminer 删掉 <code>id</code> 较大的那行，只留一条。然后重新构建：</p>
-  <pre>docker compose -f docker-compose.dev.yml up -d --build app</pre>
-  <div class="see"><b>你应该看到</b> 容器 healthy 之后，再创建 <code>SKU-001</code> 得到 400，message 里有 <code>SKU_CODE_DUPLICATED</code>。表里这个编码仍是一行。<code>SKU-003</code> 若还没建过，可以创建成功。</div>
+  <h2>改掉之后</h2>
+  <p>相同编码在 Service 停住，到不了 INSERT。表上再加一道唯一约束，直接写库也进不了第二行。</p>
+  <figure class="shot">
+    <img src="figures/40-get-by-code.png" alt="按编码查询的 SQL">
+    <figcaption>#{code} 是这次请求传来的编码。查不到就是 null。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/41-sku-reject.png" alt="查到已有编码就拒绝">
+    <figcaption>existing 不是 null 时抛出 SKU_CODE_DUPLICATED，下面的 insert 不会执行。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/42-v8-unique.png" alt="V8 给 code 加唯一约束">
+    <figcaption>V8 在已经执行过的 V7 之后，给 code 加上 UNIQUE KEY uk_code。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/43-duplicate-400.png" alt="再次创建 SKU-001 返回 400">
+    <figcaption>再提交一次 SKU-001，响应是 400，message 里是 SKU_CODE_DUPLICATED。表里这个编码仍是原来那一行。</figcaption>
+  </figure>
 </section>
 
 <section>

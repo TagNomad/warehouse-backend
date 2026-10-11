@@ -36,17 +36,23 @@ class SkuControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("创建后能查到，相同编码可以再创建一次")
-    void createAndListAllowsSameCodeTwice() throws Exception {
+    @DisplayName("创建后能查到，相同编码再次创建被拒绝")
+    void duplicateCodeIsRejected() throws Exception {
         String body = """
                 {"code":"SKU-001","name":"轴承","unit":"个"}
                 """;
         create(body);
-        create(body);
+
+        mockMvc.perform(post("/skus")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("SKU_CODE_DUPLICATED")));
 
         mockMvc.perform(get("/skus").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.code == 'SKU-001')]", hasSize(2)));
+                .andExpect(jsonPath("$[?(@.code == 'SKU-001')]", hasSize(1)));
     }
 
     private void create(String body) throws Exception {

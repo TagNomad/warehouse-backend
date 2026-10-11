@@ -1,5 +1,6 @@
 package com.eurasia.pro_skill.application;
 
+import com.eurasia.pro_skill.common.BusinessException;
 import com.eurasia.pro_skill.converter.SkuConverter;
 import com.eurasia.pro_skill.domain.Sku;
 import com.eurasia.pro_skill.entity.SkuEntity;
@@ -21,7 +22,14 @@ public class SkuService {
     private final SkuConverter skuConverter; // 表的一行转回 Sku
 
     public Sku create(String code, String name, String unit) { // 三个参数来自 Controller，此时还没有 id
-        SkuEntity entity = new SkuEntity(); // 准备要写入表的那一行
+        SkuEntity existing = skuMapper.getByCode(code); // 先按编码查表里有没有这一行
+        if (existing != null) { // 查到了，说明这个编码已经占用
+            // 停在这里，不再 insert。页面收到 400，message 里有 SKU_CODE_DUPLICATED
+            throw new BusinessException(
+                    "SKU_CODE_DUPLICATED",
+                    "SKU_CODE_DUPLICATED：货品编码已存在：" + code);
+        }
+        SkuEntity entity = new SkuEntity(); // 编码还没有，准备要写入表的那一行
         entity.setCode(code); // 编码放进这一行
         entity.setName(name); // 名称放进这一行
         entity.setUnit(unit); // 单位放进这一行

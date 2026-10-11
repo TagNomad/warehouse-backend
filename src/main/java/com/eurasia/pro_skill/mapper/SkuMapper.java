@@ -13,6 +13,14 @@ import java.util.List;
 public interface SkuMapper {
 
     /**
+     * 按编码查已有的一行。
+     * #{code} 是调用时传入的编码字符串，不是写死的 SKU-001。
+     * 查不到返回 null。LIMIT 1 表示只要一行。
+     */
+    @Select("SELECT * FROM sku WHERE code = #{code} LIMIT 1")
+    SkuEntity getByCode(String code);
+
+    /**
      * 插入一行货品。
      * <p>
      * INSERT 括号里只写了 code、name、unit、created_at，没有 id。

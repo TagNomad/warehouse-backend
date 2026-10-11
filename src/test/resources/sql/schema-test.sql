@@ -66,3 +66,5 @@ CREATE TABLE IF NOT EXISTS sku (
     unit       VARCHAR(20)  NOT NULL,
     created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_sku_code ON sku (code);
