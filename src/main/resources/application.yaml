@@ -50,6 +50,12 @@ logging:
 
 # ===== 课堂开关 =====
 # trace-id：off 不写入请求号；on 写入 MDC 和响应头 X-Trace-Id。
+# outbound-check：off 剩余不够也照减；on 不够就返回 INSUFFICIENT_STOCK。
+# optimistic-lock：off 更新只按 id；on 带上读到的 version，对不上返回 STOCK_CONFLICT。
+# order-state：open 已完成的单还能改行；enforced 不是草稿就返回 ORDER_NOT_EDITABLE。
+# flow-after-commit：off 入库流水另开事务先提交；on 和入库状态同一次提交。
+# inbound-fail-before-status：true 时入库在改状态前失败，演示事务边界用。
+# outbound-read-pause-ms：出库读到数量后停多少毫秒。演示两次请求同时读到旧数时设成 3000。
 # datasource-host：本机进程用 localhost；容器里必须是 Compose 服务名 mysql。
 db:
   name: pro_skill
@@ -64,6 +70,7 @@ app:
     order-state: open
     flow-after-commit: off
     inbound-fail-before-status: false
+    outbound-read-pause-ms: 0
     datasource-host: localhost
   jwt:
     # 256-bit Base64 编码的 HMAC-SHA256 签名密钥（生产环境请通过环境变量覆盖）
