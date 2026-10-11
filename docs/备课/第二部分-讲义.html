@@ -201,7 +201,7 @@
   </div>
   <figure class="shot">
     <img src="figures/207-switch-yaml.png" alt="第二部分的开关值">
-    <figcaption>第 53–54 行是这一部分两个开关的说明。第 64 行 <code>sku-code-check: off</code>：创建货品不查编码。第 65 行 <code>inbound-stock: sku</code>：入库数量加在货品的 <code>on_hand</code> 上。两个都是漏洞那一侧。</figcaption>
+    <figcaption>第 55–56 行是这一部分两个开关的说明。第 66 行 <code>sku-code-check: off</code>：创建货品不查编码。第 67 行 <code>inbound-stock: sku</code>：入库数量加在货品的 <code>on_hand</code> 上。两个都是漏洞那一侧。</figcaption>
   </figure>
   <figure class="shot">
     <img src="figures/209-switch-class.png" alt="LessonSwitches">
@@ -221,7 +221,7 @@
   <h3>改良版上的值</h3>
   <figure class="shot">
     <img src="figures/208-switch-yaml-improved.png" alt="改良版的开关值">
-    <figcaption>改良版的 <code>application.yaml</code>，第 64–65 行是修好那一侧的值：<code>on</code> 和 <code>location</code>。其它行和第二部分相同。</figcaption>
+    <figcaption>改良版的 <code>application.yaml</code>，第 66–67 行是修好那一侧的值：<code>on</code> 和 <code>location</code>。其它行和第二部分相同。</figcaption>
   </figure>
   <figure class="shot">
     <img src="figures/211-improved-diff.png" alt="改良版的差别">
@@ -472,7 +472,7 @@ TRUNCATE TABLE inventory;</pre>
     <li>就在这个 Pull Request 页面点「合并」，再确认。网页把改良版的提交接进第二部分。</li>
     <li>GitHub Desktop 里 Current Branch 换成「第二部分」，上方变成 Pull origin 时点它。合并发生在网上，Pull 把它拿到自己电脑上。</li>
   </ol>
-  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。本地第二部分的 <code>application.yaml</code> 第 64–65 行变成 <code>on</code>、<code>location</code>。执行 <code>docker compose -f docker-compose.dev.yml up -d --build app</code> 让应用容器带着新值重建，按实验顺序再跑一遍，结果和这份讲义里的改良版一致。</div>
+  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。本地第二部分的 <code>application.yaml</code> 第 66–67 行变成 <code>on</code>、<code>location</code>。执行 <code>docker compose -f docker-compose.dev.yml up -d --build app</code> 让应用容器带着新值重建，按实验顺序再跑一遍，结果和这份讲义里的改良版一致。</div>
 </section>
 
 <section id="ai">

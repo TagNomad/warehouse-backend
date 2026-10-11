@@ -27,6 +27,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+    # 在分支之间切换时，库里可能已有更高版本。打开后，没执行过的低版本脚本也会补上
+    out-of-order: true
 
 # ===== 服务端口 =====
 server:
