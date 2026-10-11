@@ -275,6 +275,34 @@ if (existing != null) {
   <div class="see"><b>你应该看到</b> 容器 healthy 之后，再创建 <code>SKU-001</code> 得到 400，message 里有 <code>SKU_CODE_DUPLICATED</code>。表里这个编码仍是一行。<code>SKU-003</code> 若还没建过，可以创建成功。</div>
 </section>
 
+<section>
+  <h2>重温：把这个分支合并进第二部分</h2>
+  <p>第一部分做过一次：自己的仓库里新建分支、推上去、在网页上创建 Pull Request、在网页上点合并。这次用课堂仓库重温，分支已经定好。</p>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第二部分改良版</code>，上面是这份讲义和货品代码。目标分支是 <code>第二部分</code>。教师先按下面做完，学生看。全班只合并这一次，不要每人再推一个同名分支。</p>
+
+  <h3>1. 切到改良版</h3>
+  <p>GitHub Desktop 里点 Fetch origin，再点 Current Branch，选「第二部分改良版」。列表里没有，就说明网上还没有这条分支。</p>
+  <p>这一步的意思：接下来要送出去的是改良版，不是第二部分本身。</p>
+
+  <h3>2. 推上去</h3>
+  <p>上方如果是 Publish branch 或 Push origin，点它。账号和第一部分一样：用户名是 Gitee 个性地址，密码框粘贴私人令牌。没有写入权限时，这一步会被拒绝，接着看教师的屏幕即可。</p>
+  <p>这一步的意思：Pull Request 只能合并网上已经有的分支。Push 是把改良版送到 Gitee。</p>
+
+  <h3>3. 在网页上创建 Pull Request</h3>
+  <p>浏览器打开该仓库，点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>第二部分改良版</code>，目标分支选 <code>第二部分</code>。标题写「合入第二部分改良版」。点「创建」。</p>
+  <p>这一步的意思：这是一张合并申请，请把改良版上多出来的提交并进第二部分。创建之后，第二部分还没有变。页面上能看到将要并进去的文件。</p>
+
+  <h3>4. 在网页上合并</h3>
+  <p>就在这个 Pull Request 页面点「合并」，再确认。不要回 GitHub Desktop 点 Merge。</p>
+  <p>这一步的意思：网页把改良版的提交接进第二部分。点完以后，第二部分里才有这次的改动。</p>
+  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。源分支和目标分支写的是第二部分改良版 → 第二部分。</div>
+
+  <h3>5. 把合并结果拿回来</h3>
+  <p>GitHub Desktop 里 Current Branch 换成「第二部分」。上方变成 Pull origin 时点它。</p>
+  <p>这一步的意思：合并发生在网上。Pull 把第二部分的新提交拿进你正在看的这份本地仓库。不点的话，你电脑上的第二部分还是合并前的样子。</p>
+  <div class="see"><b>你应该看到</b> History 里出现刚才网页上的那次合并。当前分支是第二部分，里面已经有改良版的内容。</div>
+</section>
+
 </main>
 </body>
 </html>
