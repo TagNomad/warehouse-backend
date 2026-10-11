@@ -411,6 +411,10 @@
     <tr><td><code>ADMINER_DEFAULT_SERVER: mysql</code></td><td>默认要连的主机名，是服务名 mysql</td></tr>
     <tr><td><code>volumes</code></td><td>表存在数据卷里，容器停了数据还在</td></tr>
   </table>
+  <figure class="shot">
+    <img src="figures/14-compose-mysql-adminer.png" alt="docker-compose.dev.yml 的 mysql 和 adminer">
+    <figcaption>文件里的这两段。第 15 行镜像 <code>mysql:8</code>，第 16 行容器名。第 19–20 行密码 <code>root</code>、自动建库 <code>pro_skill</code>。第 22 行端口 3306。第 24 行数据卷，表存在这里。第 25–30 行健康检查，ps 里的 healthy 就是它通过了。第 33 行镜像 <code>adminer:4</code>，第 37 行浏览器开 8081，第 39 行登录页默认的服务器是 <code>mysql</code>。第 40–42 行等 MySQL 健康以后才启动 Adminer。</figcaption>
+  </figure>
 
   <h3>3. 启动这两个容器</h3>
   <pre data-os="both">docker compose -f docker-compose.dev.yml up -d mysql adminer</pre>
@@ -473,27 +477,23 @@ docker compose -f docker-compose.dev.yml start</pre>
 
   <h3>7. 读 app 这一段</h3>
   <p><code>build: .</code> 表示用当前目录的 Dockerfile，把我们的程序打成镜像。<code>container_name</code> 是 <code>pro-skill-app</code>。端口是 <code>8080:8080</code>。环境变量 <code>APP_LESSON_DATASOURCE_HOST</code> 是程序去连数据库时用的主机名。没另外设置时，这个值是 <code>mysql</code>，和周一 Adminer 改对的服务器名一样。</p>
+  <figure class="shot">
+    <img src="figures/15-compose-app.png" alt="docker-compose.dev.yml 的 app">
+    <figcaption>第 45 行 <code>build: .</code>：用仓库根目录的 Dockerfile 做镜像。第 47 行容器名 <code>pro-skill-app</code>。第 50 行数据库主机，没另外设置时是 <code>mysql</code>。第 51 行是后面课程用的开关，这节保持 <code>off</code>。第 55 行端口 8080。第 57–58 行等 MySQL 健康再启动。第 59–64 行健康检查，ps 里应用变成 healthy 就是它通过了。</figcaption>
+  </figure>
   <p>仓库里还有 <code>docker-compose.localhost.yml</code>，会把这个值改回 <code>localhost</code>。那是周一已经复现过的错，这节课不用它。第 15 周排错时再叠上去。</p>
 
   <h3>Dockerfile：镜像是怎么做出来的</h3>
   <p>Compose 的 app 段里没有 <code>./mvnw spring-boot:run</code>。容器每次启动，只执行 Dockerfile 最后一行：<code>java -jar app.jar</code>。编译发生在做镜像的时候，不发生在每次启动的时候。</p>
   <p>打开项目根目录的 <code>Dockerfile</code>。它分成两段，中间用第二个 <code>FROM</code> 切开。</p>
-  <pre data-os="both">FROM eclipse-temurin:21-jdk-jammy AS build
-WORKDIR /src
-COPY .mvn .mvn
-COPY mvnw pom.xml ./
-COPY src src
-RUN chmod +x mvnw && ./mvnw -B -DskipTests package
-
-FROM eclipse-temurin:21-jre-jammy
-WORKDIR /app
-COPY --from=build /src/target/pro-skill-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]</pre>
+  <figure class="shot">
+    <img src="figures/16-dockerfile.png" alt="Dockerfile">
+    <figcaption>第 1–6 行是第一段：带编译器的 JDK，把源码拷进来，第 6 行在镜像里打出 jar。第 8–12 行是第二段：第 8 行换成更小的 JRE，第 10 行只从第一段拷 jar 过来，第 12 行是容器每次启动执行的命令。</figcaption>
+  </figure>
   <ul>
-    <li>第一段 <code>AS build</code> 用带编译器的 JDK。它把源码拷进镜像，在镜像里面执行 <code>./mvnw package</code>，得到 jar。学生电脑上不用先装 Maven，也不用自己跑这条命令。</li>
-    <li>第二段换成更小的 JRE，只把打好的 jar 拷过来，命名为 <code>app.jar</code>。编译器用过就丢掉，运行时的镜像里没有源码，也没有 Maven。</li>
-    <li><code>ENTRYPOINT</code> 是容器每次启动时执行的命令。所以 Compose 里看不到 <code>mvnw</code>，也看不到 <code>java</code>。它们写在这里。</li>
+    <li>第一段（第 1–6 行）<code>AS build</code> 用带编译器的 JDK。它把源码拷进镜像，在镜像里面执行 <code>./mvnw package</code>，得到 jar。学生电脑上不用先装 Maven，也不用自己跑这条命令。</li>
+    <li>第二段（第 8–12 行）换成更小的 JRE，只把打好的 jar 拷过来，命名为 <code>app.jar</code>。编译器用过就丢掉，运行时的镜像里没有源码，也没有 Maven。</li>
+    <li>第 12 行 <code>ENTRYPOINT</code> 是容器每次启动时执行的命令。所以 Compose 里看不到 <code>mvnw</code>，也看不到 <code>java</code>。它们写在这里。</li>
     <li><code>--build</code> 才会重做镜像。源码没改时，后面的 <code>up</code> 不用再带 <code>--build</code>。</li>
   </ul>
 
@@ -514,7 +514,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]</pre>
   -d '{"username":"admin","password":"Admin@123"}'</pre>
   <pre data-os="win">curl.exe -s -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
   <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。页面怎么点，留到第 11 周周一。地址是 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。</div>
-  <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 12 周两张出库单同时扣库存时再讲它是什么、解决什么、代码写在哪。</p>
+  <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 15 周周三（第六部分）排错时再讲它是什么、解决什么、代码写在哪。</p>
 </section>
 
 <section id="git-ops">
