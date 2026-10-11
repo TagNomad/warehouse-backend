@@ -9,7 +9,7 @@
   * { box-sizing:border-box; }
   body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
   header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
-  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:48rem; }
+  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:52rem; }
   h1 { font-size:34px; line-height:1.25; margin:0; }
   main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
   section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
@@ -18,20 +18,25 @@
   .see { background:var(--ok-soft); border-left:4px solid var(--ok); padding:10px 14px; border-radius:8px; margin:10px 0 0; }
   .see b { color:var(--ok); }
   figure.shot { margin:16px 0 8px; }
-  figure.shot img { width:100%; border-radius:12px; border:1px solid var(--line); }
+  figure.shot img { width:100%; border-radius:12px; border:1px solid var(--line); background:#fff; }
   figure.shot figcaption { font-size:15px; color:var(--muted); margin-top:6px; }
   .flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
   .box { border:2px solid var(--blue); border-radius:12px; padding:8px 12px; background:#fff; font-weight:650; text-align:center; }
   .arrow { color:var(--muted); }
   pre { background:#0f1c2b; color:#e8eef6; border-radius:12px; padding:14px 16px; overflow:auto; font:15px/1.55 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; }
+  th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px 10px; vertical-align:top; }
+  th { color:var(--muted); font-weight:650; }
+  
 </style>
 </head>
 <body>
 <header class="top">
   <h1>第四部分 · Redis 缓存</h1>
-  <p>第 14 周整周，再接第 15 周周一全天。缓存、按格子加锁、同一张单不要扣两次、入库完成之后的消息，都在这一部分。主机名用服务名 <code>redis</code>。</p>
+  <p>第 14 周整周，再接第 15 周周一全天。缓存、按格子加锁、同一张单不要扣两次、入库完成之后的消息，都在这一部分。主机名用服务名 redis。「第四部分」和「第四部分改良版」用的是这一份讲义。改良版改的是代码，改了五处：出库后删缓存；进检查之前按格子加锁；同一单号只扣一次；事务提交成功才发消息；同一个单号只消费一次。</p>
 </header>
 <main>
+
 <section>
   <h2>查询先走缓存</h2>
   <div class="flow">
@@ -46,22 +51,56 @@
   <p><code>cache-evict</code> 是 <code>off</code>。先查询一次，缓存写入 10。再出库 3。库里已经是 7，再查询仍返回 10。</p>
   <div class="see"><b>对一下</b> 接口是 10，Adminer 里 <code>inventory.quantity</code> 是 7。</div>
 </section>
+
+<section>
+  <h2>改良版改了这一块：出库后删掉缓存</h2>
+  <p>改良版上 <code>cache-evict</code> 是 <code>on</code>。库存更新成功后删除 <code>inv:货品:库位</code>。再查询未命中，回到 inventory 读到 7，并把 7 写回缓存。</p>
+</section>
+
 <section>
   <h2>锁加在判断之后</h2>
   <p><code>stock-lock</code> 是 <code>after-check</code>。完成出库时先读剩余，判断够了才 <code>SETNX lock:inv:货品:库位</code>。两个请求可以都先读到 1。</p>
   <figure class="shot"><img src="figures/102-submit-twice.png" alt="同一单可以再扣"><figcaption>submit-once 是 off。第二次完成不看这张单是否已经扣过。</figcaption></figure>
   <p>同一张单连点两次：<code>submit-once</code> 是 <code>off</code>，第二次仍会再减库存。10 出 1 再完成一次，剩下 8。</p>
 </section>
+
+<section>
+  <h2>改良版改了这一块：先加锁，同一单号只扣一次</h2>
+  <p>改良版上 <code>stock-lock</code> 是 <code>sku-location</code>。进检查之前就 <code>SETNX lock:inv:货品:库位</code>。后到的请求拿不到锁，不会再读一次旧数量。第三部分带上 version 的更新还在。</p>
+  <p><code>submit-once</code> 是 <code>on</code>。完成前 <code>SET outbound:done:单号 NX</code>。同一单号第二次拿不到这个键，不再扣减。10 出 1 再点一次，数量仍是 9。</p>
+</section>
+
 <section>
   <h2>消息在事务结束前就发出去</h2>
   <figure class="shot"><img src="figures/103-publish-now.png" alt="事务结束前就发消息"><figcaption>publish-after-commit 是 off，列表里已经有这条，主事务仍可能回滚。</figcaption></figure>
   <p>入库完成往列表 <code>wms:inbound:completed</code> 追加 <code>单号|货品|库位|数量</code>。<code>publish-after-commit</code> 是 <code>off</code>，主事务还可能回滚，消息已经在列表里。<code>consume-once</code> 是 <code>off</code>，同一条再读一次，<code>stock_flow</code> 会多一行相同单号。</p>
 </section>
+
 <section>
-  <h2>改掉之后</h2>
-  <p>这一支 <code>cache-evict</code> 是 <code>on</code>，出库 3 之后再查询是 7。<code>stock-lock</code> 是 <code>sku-location</code>，进检查之前就按格子加锁。<code>submit-once</code> 是 <code>on</code>，同一单号第二次不再扣，10 出 1 再点一次仍是 9。<code>publish-after-commit</code> 和 <code>consume-once</code> 都是 <code>on</code>，回滚时列表里没有这条，同一个单号只记一笔流水。</p>
-  <p>把「第四部分改良版」合并进「第四部分」只做一次。</p>
+  <h2>改良版改了这一块：提交成功才发，同一个单号只记一笔</h2>
+  <p>改良版上 <code>publish-after-commit</code> 是 <code>on</code>。事务 <code>afterCommit</code> 才往列表追加。主事务回滚时，列表里没有这条。</p>
+  <p><code>consume-once</code> 是 <code>on</code>。处理前 <code>SET inbound:consumed:单号 NX</code>。同一个单号第二次拿不到键，<code>stock_flow</code> 只留一行。</p>
 </section>
+
+<section>
+  <h2>改良版改了哪几块</h2>
+  <p>讲义到这里是同一份。「第四部分改良版」上不同的是这些开关。</p>
+  <table>
+    <tr><th>这一部分现在的代码</th><th>改良版上的代码</th></tr>
+    <tr><td><code>cache-evict</code> 是 off。出库之后查询仍返回缓存里的 10。</td><td>on。更新成功后删除键，再查询返回 7。</td></tr>
+    <tr><td><code>stock-lock</code> 是 after-check。两个请求可以都先读到够。</td><td>sku-location。进检查之前就按货品 + 库位加锁。</td></tr>
+    <tr><td><code>submit-once</code> 是 off。同一张单第二次仍再扣，10 出 1 再完成剩下 8。</td><td>on。同一单号第二次不再扣，剩下 9。</td></tr>
+    <tr><td><code>publish-after-commit</code> 是 off。事务还没结束，消息已经在列表里。</td><td>on。提交成功才发。回滚时列表里没有这条。</td></tr>
+    <tr><td><code>consume-once</code> 是 off。同一条再读一次，流水多一行。</td><td>on。同一个单号只记一笔。</td></tr>
+  </table>
+  <p>查询接口、出库完成、入库完成，两个分支走的是同一套入口。课堂上把改良版合并进第四部分，带过去的是上面这些开关。</p>
+</section>
+
+<section>
+  <h2>重温：把改良版合并进第四部分</h2>
+  <p>源分支是 <code>第四部分改良版</code>，目标分支是 <code>第四部分</code>。讲义和这一份相同。操作和第二部分讲义最后一节相同。全班只合并这一次。</p>
+</section>
+
 </main>
 </body>
 </html>

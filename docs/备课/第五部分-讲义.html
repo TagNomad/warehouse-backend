@@ -5,31 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>第五部分讲义 · 文件</title>
 <style>
-  body { margin:0; color:#1c2430; background:#f4f7fb; font:18px/1.65 "PingFang SC","Microsoft YaHei",sans-serif; }
+  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d7e0ea; --paper:#f4f7fb; --card:#fff; --blue:#1d6fbf; --ok:#067647; --ok-soft:#e7f6ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
   header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
-  h1 { margin:0; font-size:34px; }
+  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:52rem; }
+  h1 { font-size:34px; line-height:1.25; margin:0; }
   main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
-  section { background:#fff; border:1px solid #d7e0ea; border-radius:16px; padding:22px 24px; margin:18px 0; }
-  code { font-family:ui-monospace,Menlo,monospace; }
-  .see { background:#e7f6ee; border-left:4px solid #067647; padding:10px 14px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
+  h2 { font-size:26px; margin:0 0 12px; }
+  code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.92em; }
+  .see { background:var(--ok-soft); border-left:4px solid var(--ok); padding:10px 14px; border-radius:8px; margin:10px 0 0; }
+  .see b { color:var(--ok); }
+  figure.shot { margin:16px 0 8px; }
+  figure.shot img { width:100%; border-radius:12px; border:1px solid var(--line); background:#fff; }
+  figure.shot figcaption { font-size:15px; color:var(--muted); margin-top:6px; }
+  .flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+  .box { border:2px solid var(--blue); border-radius:12px; padding:8px 12px; background:#fff; font-weight:650; text-align:center; }
+  .arrow { color:var(--muted); }
+  pre { background:#0f1c2b; color:#e8eef6; border-radius:12px; padding:14px 16px; overflow:auto; font:15px/1.55 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; }
+  th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px 10px; vertical-align:top; }
+  th { color:var(--muted); font-weight:650; }
+  
 </style>
 </head>
 <body>
 <header class="top">
   <h1>第五部分 · 文件</h1>
-  <p>第 15 周周二全天。入库单可以带一个附件。这一部分先把文件写在运行应用的那台机器上。</p>
+  <p>第 15 周周二全天。入库单可以带一个附件。这一部分先把文件写在运行应用的那台机器上。「第五部分」和「第五部分改良版」用的是这一份讲义。改良版改的是代码：附件放进 MinIO，表里写对象 key，不再写这台机器的绝对路径。</p>
 </header>
 <main>
+
 <section>
   <h2>上传走哪几层</h2>
   <p><code>POST /inbound-orders/{id}/attachments</code>，表单字段名是 <code>file</code>。Controller 把文件名和字节交给 <code>AttachmentService.save</code>。Service 按入库单号建目录，把绝对路径写进 <code>inbound_attachment.file_path</code>。</p>
   <p><code>GET /inbound-orders/{orderId}/attachments/{attachmentId}</code> 按这一列去读文件。删掉那个路径上的文件，再下载就是 400，message 里是 <code>FILE_NOT_FOUND</code>。库里的路径还在。</p>
   <div class="see"><b>对一下</b> Adminer 里 <code>file_path</code> 以这台机器的目录开头，不是 <code>inbound/单号/文件名</code>。</div>
 </section>
+
 <section>
-  <h2>这一部分改完之后</h2>
-  <p>改存 MinIO 的对象 key <code>inbound/{orderNo}/{filename}</code>，在「第五部分改良版」。桶名是 <code>wms</code>。合并只做一次。</p>
+  <h2>改良版改了这一块：附件放进 MinIO</h2>
+  <p>改良版上 <code>file-store</code> 是 <code>minio</code>。上传写入桶 <code>wms</code>，对象 key 是 <code>inbound/{orderNo}/{filename}</code>。<code>inbound_attachment.file_path</code> 存的是这个 key。下载按 key 去桶里取。换机器或进容器，同一个 key 还能下载。</p>
+  <div class="see"><b>对一下</b> 表里的 file_path 是 <code>inbound/单号/文件名</code>，不再以本机目录开头。</div>
 </section>
+
+<section>
+  <h2>改良版改了哪一块</h2>
+  <table>
+    <tr><th>这一部分现在的代码</th><th>改良版上的代码</th></tr>
+    <tr><td><code>file-store</code> 是 local。文件写在应用本机，<code>file_path</code> 是绝对路径。文件一删，下载就是 <code>FILE_NOT_FOUND</code>。</td><td>minio。文件在桶 <code>wms</code>，<code>file_path</code> 是 <code>inbound/{orderNo}/{filename}</code>。</td></tr>
+  </table>
+  <p>上传和下载的路径没变。Controller 仍把文件名和字节交给 Service。课堂上把改良版合并进第五部分，带过去的是这一块存储。</p>
+</section>
+
+<section>
+  <h2>重温：把改良版合并进第五部分</h2>
+  <p>源分支是 <code>第五部分改良版</code>，目标分支是 <code>第五部分</code>。讲义和这一份相同。操作和第二部分讲义最后一节相同。全班只合并这一次。</p>
+</section>
+
 </main>
 </body>
 </html>
