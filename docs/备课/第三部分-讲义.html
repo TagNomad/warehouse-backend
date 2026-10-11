@@ -30,7 +30,7 @@
 <body>
 <header class="top">
   <h1>第三部分 · 每个格子有多少</h1>
-  <p>第 11 周周三上午。库位和货品都有了。这节看一次入库完成后，数量记在哪，单据状态有没有一起变成完成。</p>
+  <p>第 11 周周三上午。库位和货品都有了。三个接口按下面的图自己对照着写：新建草稿、给草稿加一行、完成。完成时数量加在货品的总数上，这一步单独提交，改状态之前中断。</p>
 </header>
 <main>
 
@@ -48,20 +48,86 @@
 </section>
 
 <section>
-  <h2>一次完成，数据经过哪里</h2>
-  <p>一行请求是货品编码、库位编码、数量。Controller 把这三个值交给 Service，不写 SQL。行写进 <code>inbound_order_line</code>，库位主键留在这一行上。</p>
-  <p>点完成时，每一行的数量加到货品的 <code>on_hand</code>。这一步单独提交。随后在把状态改成 <code>COMPLETED</code> 之前中断。</p>
+  <h2>三个接口，数据经过哪里</h2>
+  <p>和用户、货品一样，Controller 不写 SQL。页面上的字段传到 Service，Service 再交给 Mapper。编码在进表之前换成主键。</p>
+  <div class="flow">
+    <div class="box">InboundController<br>接路径和字段</div>
+    <span class="arrow">→</span>
+    <div class="box">InboundService<br>决定写哪张表</div>
+    <span class="arrow">→</span>
+    <div class="box">Mapper<br>SQL</div>
+    <span class="arrow">→</span>
+    <div class="box">MySQL<br>inbound_order / line / sku.on_hand</div>
+  </div>
+</section>
+
+<section>
+  <h2>1. 新建草稿</h2>
+  <p><code>POST /inbound-orders</code> 没有请求体。Controller 不传字段，Service 自己生成单号和状态。</p>
+  <figure class="shot">
+    <img src="figures/70-controller-create.png" alt="新建草稿不传字段">
+    <figcaption>create 没有参数。返回值就是 Service 交回来的入库单，直接变成 JSON。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/71-service-create.png" alt="先插入再改单号">
+    <figcaption>单号先写 PENDING，是因为主键还没有。insert 之后 entity.getId() 才有值，再改成 IN-主键。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/72-mapper-insert-order.png" alt="插入入库单并把主键写回">
+    <figcaption>#{orderNo} 取的是 entity 的 orderNo。列清单里没有 id。useGeneratedKeys 把自增主键写进 entity.id。方法返回的 int 是写下了几行，成功是 1，不是主键。</figcaption>
+  </figure>
+  <div class="see"><b>对一下</b> 调用之后，<code>inbound_order</code> 多一行。status 是 DRAFT，order_no 是 IN- 加上这行的 id。</div>
+</section>
+
+<section>
+  <h2>2. 给草稿加一行</h2>
+  <p><code>POST /inbound-orders/1/lines</code>。路径上的 1 是入库单主键。请求体是三个字段：</p>
+  <pre>{
+  "skuCode": "SKU-001",
+  "locationCode": "A-01-01",
+  "quantity": 10
+}</pre>
+  <figure class="shot">
+    <img src="figures/73-line-request.png" alt="加一行的三个字段">
+    <figcaption>页面传来的是编码和数量。skuCode 不是 sku 表的 id，locationCode 不是库位表的 id。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/74-controller-add-line.png" alt="Controller 把三个字段交给 Service">
+    <figcaption>和 UserController 一样，不在这里 new 一个对象再传进去。路径上的 id 和 JSON 里的三个值分开传。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/75-service-add-line.png" alt="编码查成主键再插入行">
+    <figcaption>getByCode 把 SKU-001 换成货品主键，把 A-01-01 换成库位主键。行上写的是这两个主键和数量。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/76-mapper-insert-line.png" alt="入库行插入四个值">
+    <figcaption>#{orderId}、#{skuId}、#{locationId}、#{quantity} 取的是这一行实体上的同名属性。返回的 int 仍是写下了几行。</figcaption>
+  </figure>
+  <div class="see"><b>对一下</b> <code>inbound_order_line</code> 多一行。order_id 是这张单，sku_id 和 location_id 是查出来的主键，quantity 是 10。单据 status 还是 DRAFT。</div>
+</section>
+
+<section>
+  <h2>3. 完成</h2>
+  <p><code>POST /inbound-orders/1/complete</code> 没有请求体。数量用的是行上已经记下的 quantity。这一版没有把数量记到库位上，而是加进 <code>sku.on_hand</code>。</p>
+  <figure class="shot">
+    <img src="figures/77-controller-complete.png" alt="完成只把主键交给 Service">
+    <figcaption>Controller 只传 id。它不知道数量记在哪，也不改状态。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/82-complete-interrupt.png" alt="加完数量后在改状态前中断">
+    <figcaption>循环里只把货品主键和数量交给 onHandWriter，库位主键没有传下去。抛出之后，updateStatus 不会执行。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/81-on-hand-writer.png" alt="加数量的方法自己提交">
+    <figcaption>REQUIRES_NEW 写在另一个 Bean 上。这个方法结束就提交，后面的中断撤不掉 on_hand。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/83-add-on-hand-sql.png" alt="数量加在 sku.on_hand">
+    <figcaption>#{delta} 是这次的数量，#{id} 是货品主键。条件里没有库位。返回的 int 是改了几行，不是加完后的数量。</figcaption>
+  </figure>
   <figure class="shot">
     <img src="figures/50-on-hand-column.png" alt="sku 表新增 on_hand">
-    <figcaption>数量加在 sku.on_hand，一张货品只有这一列。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/51-on-hand-writer.png" alt="加数量的方法自己提交">
-    <figcaption>REQUIRES_NEW：加数量的事务先提交。后面的中断撤不掉这一列。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/52-complete-interrupt.png" alt="完成方法在改状态前中断">
-    <figcaption>数量已经按行加进 on_hand。抛出之后，status 仍然是 DRAFT。</figcaption>
+    <figcaption>V9 给 sku 加了一列 on_hand。一张货品只有这一个总数。</figcaption>
   </figure>
 </section>
 
