@@ -64,8 +64,8 @@ class RedisLessonIntegrationTest {
     }
 
     @Test
-    @DisplayName("出库后缓存还是旧数量")
-    void cacheKeepsOldQuantity() throws Exception {
+    @DisplayName("出库后查询到的是新数量")
+    void cacheShowsNewQuantity() throws Exception {
         Long skuId = jdbcTemplate.queryForObject("SELECT id FROM sku WHERE code='SKU-R'", Long.class);
         Long locationId = jdbcTemplate.queryForObject("SELECT id FROM warehouse_location WHERE code='R-01-01'", Long.class);
         mockMvc.perform(get("/inventories").header("Authorization", "Bearer " + token)
@@ -85,15 +85,15 @@ class RedisLessonIntegrationTest {
 
         mockMvc.perform(get("/inventories").header("Authorization", "Bearer " + token)
                         .param("skuId", skuId.toString()).param("locationId", locationId.toString()))
-                .andExpect(jsonPath("$.quantity").value(10));
+                .andExpect(jsonPath("$.quantity").value(7));
         Integer inDb = jdbcTemplate.queryForObject(
                 "SELECT quantity FROM inventory WHERE sku_id=? AND location_id=?", Integer.class, skuId, locationId);
         assertEquals(7, inDb);
     }
 
     @Test
-    @DisplayName("同一张出库单完成两次会扣两次")
-    void completeTwiceDeductsTwice() throws Exception {
+    @DisplayName("同一张出库单完成两次只扣一次")
+    void completeTwiceDeductsOnce() throws Exception {
         String outboundId = idOf(post("/outbound-orders").header("Authorization", "Bearer " + token));
         mockMvc.perform(post("/outbound-orders/" + outboundId + "/lines")
                         .header("Authorization", "Bearer " + token)
@@ -106,17 +106,17 @@ class RedisLessonIntegrationTest {
                         .header("Authorization", "Bearer " + token)).andExpect(status().isOk());
         Integer left = jdbcTemplate.queryForObject(
                 "SELECT quantity FROM inventory WHERE sku_id=(SELECT id FROM sku WHERE code='SKU-R')", Integer.class);
-        assertEquals(8, left);
+        assertEquals(9, left);
     }
 
     @Test
-    @DisplayName("同一条入库消息消费两次会写出两笔流水")
-    void consumeTwiceWritesTwoFlows() {
+    @DisplayName("同一条入库消息消费两次只记一笔")
+    void consumeTwiceWritesOneFlow() {
         redis.addStream(InboundStreamConsumer.STREAM, "IN-9|1|1|4");
         consumer.consume();
         consumer.consume();
         Integer rows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM stock_flow WHERE biz_no='IN-9'", Integer.class);
-        assertEquals(2, rows);
+        assertEquals(1, rows);
     }
 
     private String idOf(org.springframework.test.web.servlet.RequestBuilder request) throws Exception {

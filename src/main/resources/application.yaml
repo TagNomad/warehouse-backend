@@ -64,11 +64,11 @@ app:
     order-state: enforced
     flow-after-commit: on
     inbound-fail-before-status: false
-    cache-evict: off
-    stock-lock: after-check
-    submit-once: off
-    publish-after-commit: off
-    consume-once: off
+    cache-evict: on
+    stock-lock: sku-location
+    submit-once: on
+    publish-after-commit: on
+    consume-once: on
     file-store: local
     inventory-query: full
     metrics: off

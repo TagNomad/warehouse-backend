@@ -58,8 +58,9 @@
   <p>入库完成往列表 <code>wms:inbound:completed</code> 追加 <code>单号|货品|库位|数量</code>。<code>publish-after-commit</code> 是 <code>off</code>，主事务还可能回滚，消息已经在列表里。<code>consume-once</code> 是 <code>off</code>，同一条再读一次，<code>stock_flow</code> 会多一行相同单号。</p>
 </section>
 <section>
-  <h2>这一部分改完之后</h2>
-  <p>删缓存、进检查之前加锁、同一单号只扣一次、提交成功才发消息、同一个单号只消费一次，都在「第四部分改良版」。这一部分结束时只合并这一次。</p>
+  <h2>改掉之后</h2>
+  <p>这一支 <code>cache-evict</code> 是 <code>on</code>，出库 3 之后再查询是 7。<code>stock-lock</code> 是 <code>sku-location</code>，进检查之前就按格子加锁。<code>submit-once</code> 是 <code>on</code>，同一单号第二次不再扣，10 出 1 再点一次仍是 9。<code>publish-after-commit</code> 和 <code>consume-once</code> 都是 <code>on</code>，回滚时列表里没有这条，同一个单号只记一笔流水。</p>
+  <p>把「第四部分改良版」合并进「第四部分」只做一次。</p>
 </section>
 </main>
 </body>
