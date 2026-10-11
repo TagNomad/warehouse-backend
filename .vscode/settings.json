@@ -1,0 +1,5 @@
+{
+  "java.autobuild.enabled": false,
+  "java.jdt.ls.vmargs": "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dsun.zip.disableMemoryMapping=true -Xmx6G -Xms512m -Xlog:disable",
+  "java.compile.nullAnalysis.mode": "automatic"
+}
