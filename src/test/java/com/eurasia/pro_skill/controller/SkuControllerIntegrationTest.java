@@ -36,8 +36,8 @@ class SkuControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("相同编码可以创建两次")
-    void duplicateCodeIsStoredTwice() throws Exception {
+    @DisplayName("创建后能查到，相同编码可以再创建一次")
+    void createAndListAllowsSameCodeTwice() throws Exception {
         String body = """
                 {"code":"SKU-001","name":"轴承","unit":"个"}
                 """;

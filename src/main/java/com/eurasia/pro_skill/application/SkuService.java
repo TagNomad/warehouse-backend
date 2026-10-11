@@ -11,31 +11,28 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Service
-@RequiredArgsConstructor
-@Transactional
+// 货品业务。创建时把请求里的三个字段补上时间，再交给 Mapper。
+@Service // 注册成 Spring Bean，Controller 才能注入
+@RequiredArgsConstructor // 为下面两个 final 字段生成构造方法
+@Transactional // 这个类里的方法默认开事务，插入失败会回滚
 public class SkuService {
 
-    private final SkuMapper skuMapper;
-    private final SkuConverter skuConverter;
+    private final SkuMapper skuMapper; // 执行 SQL
+    private final SkuConverter skuConverter; // 表的一行转回 Sku
 
-    /**
-     * 课堂缺陷：插入前不查 code。相同编码可以落成两行，入库和出库无法知道指的是哪一条。
-     * 学生修复：插入前按 code 查询，已存在则抛出 BusinessException，错误码 SKU_CODE_DUPLICATED。
-     * 同时还要另写一条 Flyway 迁移，把 code 改成唯一索引。只改这里挡不住直接写库。
-     */
-    public Sku create(Sku input) {
-        SkuEntity entity = new SkuEntity();
-        entity.setCode(input.getCode());
-        entity.setName(input.getName());
-        entity.setUnit(input.getUnit());
-        entity.setCreatedAt(LocalDateTime.now());
-        skuMapper.insert(entity);
-        return skuConverter.toDomain(entity);
+    public Sku create(String code, String name, String unit) { // 三个参数来自 Controller，此时还没有 id
+        SkuEntity entity = new SkuEntity(); // 准备要写入表的那一行
+        entity.setCode(code); // 编码放进这一行
+        entity.setName(name); // 名称放进这一行
+        entity.setUnit(unit); // 单位放进这一行
+        entity.setCreatedAt(LocalDateTime.now()); // 创建时间不来自页面，在这里生成
+        skuMapper.insert(entity); // 插入后，数据库把自增 id 写回 entity.getId()
+        return skuConverter.toDomain(entity); // 带 id 的一行变回 Sku，返回给 Controller
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true) // 只查询，不需要写事务
     public List<Sku> list() {
+        // 每一行实体都转成 Sku，页面拿到的是业务对象列表
         return skuMapper.listAll().stream().map(skuConverter::toDomain).toList();
     }
 }
