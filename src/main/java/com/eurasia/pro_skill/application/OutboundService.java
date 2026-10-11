@@ -35,7 +35,8 @@ public class OutboundService {
     private final SkuMapper skuMapper; // 编码换成货品主键
     private final WarehouseLocationMapper locationMapper; // 编码换成库位主键
     private final InventoryMapper inventoryMapper; // 减这个格子上的数量
-    private final LessonSwitches switches; // outbound-check：off 不看剩余够不够
+    private final LessonSwitches switches; // 课堂开关
+    private final LessonRedis redis; // 缓存、锁、防重复提交
 
     public OutboundOrder create() { // 没有页面字段
         OutboundOrderEntity entity = new OutboundOrderEntity(); // 还没有 id
@@ -68,21 +69,41 @@ public class OutboundService {
     }
 
     public OutboundOrder complete(Long orderId) { // 路径上只有主键
-        OutboundOrderEntity order = requireDraft(orderId);
+        OutboundOrderEntity order = orderMapper.getById(orderId);
+        if (order == null) {
+            throw new BusinessException("OUTBOUND_NOT_FOUND", "出库单不存在：" + orderId);
+        }
+        if (switches.submitOnce()) { // on：同一单号只允许扣一次
+            if (!redis.setIfAbsent("outbound:done:" + order.getOrderNo(), "1")) {
+                return toDomain(order); // 第二次拿不到键，不再扣减
+            }
+            if (!OutboundOrder.DRAFT.equals(order.getStatus())) {
+                throw new BusinessException("OUTBOUND_NOT_DRAFT", "只有草稿可以继续：" + order.getOrderNo());
+            }
+        }
         List<OutboundOrderLineEntity> lines = lineMapper.listByOrderId(order.getId());
         if (lines.isEmpty()) {
             throw new BusinessException("OUTBOUND_LINE_REQUIRED", "出库单还没有行");
         }
         for (OutboundOrderLineEntity line : lines) {
+            String lockKey = "lock:inv:" + line.getSkuId() + ":" + line.getLocationId();
+            boolean lockFirst = "sku-location".equals(switches.stockLock()); // 先加锁再读
+            if (lockFirst && !redis.setIfAbsent(lockKey, order.getOrderNo())) {
+                throw new BusinessException("STOCK_LOCKED", "STOCK_LOCKED：这个格子正在出库");
+            }
             InventoryEntity inventory = inventoryMapper.getBySkuAndLocation(line.getSkuId(), line.getLocationId());
             if (inventory == null) { // 这个格子上还没有这种货
                 throw new BusinessException("INVENTORY_NOT_FOUND", "这个格子上没有库存");
             }
             int current = inventory.getQuantity(); // 读到的剩余
-            log.info("读到数量 {}", current); // 和下面的更新要靠 TraceId 才能圈成同一次请求
+            log.info("读到数量 {}", current);
             int next = current - line.getQuantity(); // 减这一行的数量。剩余不够时这里会变成负数
             if (switches.outboundCheck() && next < 0) { // 开关 off 时这一行不执行，负数也会写进去
                 throw new BusinessException("INSUFFICIENT_STOCK", "INSUFFICIENT_STOCK：库存不足，剩余 " + current);
+            }
+            if (!lockFirst && !redis.setIfAbsent(lockKey, order.getOrderNo())) {
+                // after-check：判断够了才去抢锁。两个请求可以都先读到够
+                throw new BusinessException("STOCK_LOCKED", "STOCK_LOCKED：这个格子正在出库");
             }
             int updated;
             if (switches.optimisticLock()) { // 本周默认 off。打开后，version 对不上就改不到行
@@ -94,6 +115,10 @@ public class OutboundService {
                 updated = inventoryMapper.updateQuantity(inventory.getId(), next); // 只按 id 更新，不带 version
             }
             log.info("把数量改成 {}，影响行数 {}", next, updated);
+            if (switches.cacheEvict()) { // on：库改完就把缓存删掉
+                redis.delete("inv:" + line.getSkuId() + ":" + line.getLocationId());
+            }
+            redis.delete(lockKey); // 释放这把锁
         }
         order.setStatus(OutboundOrder.COMPLETED); // 数量减完，同一事务里改成完成
         orderMapper.updateStatus(order);

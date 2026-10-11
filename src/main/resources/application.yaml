@@ -64,6 +64,15 @@ app:
     order-state: enforced
     flow-after-commit: on
     inbound-fail-before-status: false
+    cache-evict: off
+    stock-lock: after-check
+    submit-once: off
+    publish-after-commit: off
+    consume-once: off
+    file-store: local
+    inventory-query: full
+    metrics: off
+    redis-host: localhost
     datasource-host: localhost
   jwt:
     # 256-bit Base64 编码的 HMAC-SHA256 签名密钥（生产环境请通过环境变量覆盖）

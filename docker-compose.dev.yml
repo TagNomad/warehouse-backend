@@ -41,6 +41,13 @@ services:
       mysql:
         condition: service_healthy
 
+  redis:
+    image: redis:7
+    container_name: pro-skill-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
   app:
     build: .
     image: pro-skill-app
@@ -54,6 +61,12 @@ services:
       APP_LESSON_ORDER_STATE: ${APP_LESSON_ORDER_STATE:-enforced}
       APP_LESSON_FLOW_AFTER_COMMIT: ${APP_LESSON_FLOW_AFTER_COMMIT:-on}
       APP_LESSON_INBOUND_FAIL_BEFORE_STATUS: ${APP_LESSON_INBOUND_FAIL_BEFORE_STATUS:-false}
+      APP_LESSON_REDIS_HOST: ${APP_LESSON_REDIS_HOST:-redis}
+      APP_LESSON_CACHE_EVICT: ${APP_LESSON_CACHE_EVICT:-off}
+      APP_LESSON_STOCK_LOCK: ${APP_LESSON_STOCK_LOCK:-after-check}
+      APP_LESSON_SUBMIT_ONCE: ${APP_LESSON_SUBMIT_ONCE:-off}
+      APP_LESSON_PUBLISH_AFTER_COMMIT: ${APP_LESSON_PUBLISH_AFTER_COMMIT:-off}
+      APP_LESSON_CONSUME_ONCE: ${APP_LESSON_CONSUME_ONCE:-off}
       DB_USERNAME: root
       DB_PASSWORD: root
     ports:
@@ -61,6 +74,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
       interval: 5s

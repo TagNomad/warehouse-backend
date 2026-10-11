@@ -8,6 +8,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.List;
+
 // 按货品和库位读写库存。SQL 只写在这一层。
 @Mapper
 public interface InventoryMapper {
@@ -41,6 +43,14 @@ public interface InventoryMapper {
     // #{id} 是 inventory 这一行的主键。出库前先把整行读出来。
     @Select("SELECT * FROM inventory WHERE id = #{id}")
     InventoryEntity getById(Long id);
+
+    // 不分页。行一多，这次查询就会拖很久。
+    @Select("SELECT * FROM inventory ORDER BY id")
+    List<InventoryEntity> listAll();
+
+    // #{offset} 跳过前面的行，#{size} 是这一页要几行。
+    @Select("SELECT * FROM inventory ORDER BY id LIMIT #{size} OFFSET #{offset}")
+    List<InventoryEntity> listPage(@Param("offset") int offset, @Param("size") int size);
 
     // 直接把数量写成 #{quantity}。条件只有 id，不看 version，也不看剩余够不够。
     // 返回改了几行。找到这一行就是 1。

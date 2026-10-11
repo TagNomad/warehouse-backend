@@ -18,6 +18,8 @@ import com.eurasia.pro_skill.mapper.WarehouseLocationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +38,7 @@ public class InboundService {
     private final StockFlowMapper stockFlowMapper; // 和入库同一次提交时用它写流水
     private final StockFlowWriter stockFlowWriter; // 开关关掉时，流水用另一个事务先提交
     private final LessonSwitches switches;
+    private final LessonRedis redis; // 入库完成后往消息列表追加一条
 
     public InboundOrder create() { // 没有页面字段。单号和状态都在这里生成
         InboundOrderEntity entity = new InboundOrderEntity(); // 准备要插入的那一行，此时还没有 id
@@ -76,6 +79,7 @@ public class InboundService {
         for (InboundOrderLineEntity line : lines) { // 每一行单独记到自己的货品和库位
             addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity());
             writeFlow(order.getOrderNo(), line); // 流水。开关决定它跟不跟下面的状态在同一个事务
+            publishCompleted(order.getOrderNo(), line); // 消息。开关决定是马上发还是提交之后发
         }
         if (switches.inboundFailBeforeStatus()) { // 演示用：主事务在改状态前失败
             throw new BusinessException("INBOUND_MAIN_ROLLED_BACK", "INBOUND_MAIN_ROLLED_BACK：主事务在改状态前回滚");
@@ -111,6 +115,20 @@ public class InboundService {
             return;
         }
         stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity()); // 自己先提交
+    }
+
+    private void publishCompleted(String orderNo, InboundOrderLineEntity line) {
+        String body = orderNo + "|" + line.getSkuId() + "|" + line.getLocationId() + "|" + line.getQuantity();
+        if (switches.publishAfterCommit() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { // 主事务提交成功才发。回滚时这条不会进列表
+                    redis.addStream(InboundStreamConsumer.STREAM, body);
+                }
+            });
+            return;
+        }
+        redis.addStream(InboundStreamConsumer.STREAM, body); // 事务还没结束就发出去
     }
 
     private InboundOrderEntity requireDraft(Long orderId) {

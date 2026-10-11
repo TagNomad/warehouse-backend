@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第四部分讲义 · Redis 缓存</title>
+<style>
+  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d7e0ea; --paper:#f4f7fb; --card:#fff; --blue:#1d6fbf; --ok:#067647; --ok-soft:#e7f6ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
+  header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
+  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:48rem; }
+  h1 { font-size:34px; line-height:1.25; margin:0; }
+  main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
+  h2 { font-size:26px; margin:0 0 12px; }
+  code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.92em; }
+  .see { background:var(--ok-soft); border-left:4px solid var(--ok); padding:10px 14px; border-radius:8px; margin:10px 0 0; }
+  .see b { color:var(--ok); }
+  figure.shot { margin:16px 0 8px; }
+  figure.shot img { width:100%; border-radius:12px; border:1px solid var(--line); }
+  figure.shot figcaption { font-size:15px; color:var(--muted); margin-top:6px; }
+  .flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+  .box { border:2px solid var(--blue); border-radius:12px; padding:8px 12px; background:#fff; font-weight:650; text-align:center; }
+  .arrow { color:var(--muted); }
+  pre { background:#0f1c2b; color:#e8eef6; border-radius:12px; padding:14px 16px; overflow:auto; font:15px/1.55 ui-monospace,Menlo,Consolas,monospace; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>第四部分 · Redis 缓存</h1>
+  <p>第 14 周整周，再接第 15 周周一全天。缓存、按格子加锁、同一张单不要扣两次、入库完成之后的消息，都在这一部分。主机名用服务名 <code>redis</code>。</p>
+</header>
+<main>
+<section>
+  <h2>查询先走缓存</h2>
+  <div class="flow">
+    <div class="box">GET /inventories</div>
+    <span class="arrow">→</span>
+    <div class="box">Redis 键 inv:货品:库位</div>
+    <span class="arrow">→</span>
+    <div class="box">没有再查 inventory</div>
+  </div>
+  <figure class="shot"><img src="figures/100-cache-read.png" alt="查询先读缓存"><figcaption>命中就返回缓存里的数。未命中才查库，并把结果 SET 回去。</figcaption></figure>
+  <figure class="shot"><img src="figures/101-cache-keep.png" alt="出库不删缓存"><figcaption>cache-evict 是 off，出库改了库也不会 DEL 这个键。</figcaption></figure>
+  <p><code>cache-evict</code> 是 <code>off</code>。先查询一次，缓存写入 10。再出库 3。库里已经是 7，再查询仍返回 10。</p>
+  <div class="see"><b>对一下</b> 接口是 10，Adminer 里 <code>inventory.quantity</code> 是 7。</div>
+</section>
+<section>
+  <h2>锁加在判断之后</h2>
+  <p><code>stock-lock</code> 是 <code>after-check</code>。完成出库时先读剩余，判断够了才 <code>SETNX lock:inv:货品:库位</code>。两个请求可以都先读到 1。</p>
+  <figure class="shot"><img src="figures/102-submit-twice.png" alt="同一单可以再扣"><figcaption>submit-once 是 off。第二次完成不看这张单是否已经扣过。</figcaption></figure>
+  <p>同一张单连点两次：<code>submit-once</code> 是 <code>off</code>，第二次仍会再减库存。10 出 1 再完成一次，剩下 8。</p>
+</section>
+<section>
+  <h2>消息在事务结束前就发出去</h2>
+  <figure class="shot"><img src="figures/103-publish-now.png" alt="事务结束前就发消息"><figcaption>publish-after-commit 是 off，列表里已经有这条，主事务仍可能回滚。</figcaption></figure>
+  <p>入库完成往列表 <code>wms:inbound:completed</code> 追加 <code>单号|货品|库位|数量</code>。<code>publish-after-commit</code> 是 <code>off</code>，主事务还可能回滚，消息已经在列表里。<code>consume-once</code> 是 <code>off</code>，同一条再读一次，<code>stock_flow</code> 会多一行相同单号。</p>
+</section>
+<section>
+  <h2>这一部分改完之后</h2>
+  <p>删缓存、进检查之前加锁、同一单号只扣一次、提交成功才发消息、同一个单号只消费一次，都在「第四部分改良版」。这一部分结束时只合并这一次。</p>
+</section>
+</main>
+</body>
+</html>
