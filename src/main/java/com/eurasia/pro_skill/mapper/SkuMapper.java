@@ -4,13 +4,23 @@ import com.eurasia.pro_skill.entity.SkuEntity;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
 // SQL 只写在这一层。#{字段名} 取的是 SkuEntity 上的同名属性。
 @Mapper // 让 MyBatis 为这个接口生成实现
 public interface SkuMapper {
+
+    /**
+     * 按编码查已有的一行。
+     * #{code} 是调用时传入的编码字符串，不是写死的 SKU-001。
+     * 查不到返回 null。LIMIT 1 表示只要一行。
+     */
+    @Select("SELECT * FROM sku WHERE code = #{code} LIMIT 1")
+    SkuEntity getByCode(String code);
 
     /**
      * 插入一行货品。
@@ -32,6 +42,14 @@ public interface SkuMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(SkuEntity entity);
 
+    @Select("SELECT * FROM sku WHERE id = #{id}")
+    SkuEntity getById(Long id);
+
     @Select("SELECT * FROM sku ORDER BY id") // 查出全部货品，按主键从小到大
     List<SkuEntity> listAll(); // GET /skus 使用
+
+    // #{delta} 是这次要加的数量，#{id} 是货品主键。条件里没有库位，两个格子加到同一列。
+    // 返回值是改了几行。找到这张货品就是 1，不是加完之后的数量。
+    @Update("UPDATE sku SET on_hand = on_hand + #{delta} WHERE id = #{id}")
+    int addOnHand(@Param("id") Long id, @Param("delta") int delta);
 }

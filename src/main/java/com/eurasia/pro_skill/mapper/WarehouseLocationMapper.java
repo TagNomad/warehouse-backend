@@ -23,6 +23,10 @@ public interface WarehouseLocationMapper {
     @Select("SELECT * FROM warehouse_location WHERE id=#{id}")
     WarehouseLocationEntity getById(Long id);
 
+    // #{code} 是调用时传入的库位编码，例如 A-01-01。查不到返回 null。LIMIT 1 只要一行。
+    @Select("SELECT * FROM warehouse_location WHERE code=#{code} LIMIT 1")
+    WarehouseLocationEntity getByCode(String code);
+
     @Select("SELECT * FROM warehouse_location WHERE zone_id=#{zoneId} AND code=#{code}")
     WarehouseLocationEntity getByZoneIdAndCode(@Param("zoneId") Long zoneId, @Param("code") String code);
 
