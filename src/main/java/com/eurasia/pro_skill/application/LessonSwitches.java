@@ -19,11 +19,15 @@ public class LessonSwitches {
             @Value("${app.lesson.order-state:open}") String orderState,
             @Value("${app.lesson.flow-after-commit:off}") String flowAfterCommit,
             @Value("${app.lesson.inbound-fail-before-status:false}") String inboundFailBeforeStatus) {
-        this.outboundCheck = "on".equalsIgnoreCase(outboundCheck);
-        this.optimisticLock = "on".equalsIgnoreCase(optimisticLock);
+        this.outboundCheck = enabled(outboundCheck);
+        this.optimisticLock = enabled(optimisticLock);
         this.orderStateEnforced = "enforced".equalsIgnoreCase(orderState);
-        this.flowAfterCommit = "on".equalsIgnoreCase(flowAfterCommit);
-        this.inboundFailBeforeStatus = "true".equalsIgnoreCase(inboundFailBeforeStatus);
+        this.flowAfterCommit = enabled(flowAfterCommit);
+        this.inboundFailBeforeStatus = enabled(inboundFailBeforeStatus);
+    }
+
+    private static boolean enabled(String value) {
+        return "on".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value);
     }
 
     public boolean outboundCheck() {

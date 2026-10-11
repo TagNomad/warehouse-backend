@@ -60,21 +60,19 @@ class OutboundControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("不看剩余时，出 15 会把库存写成负数")
-    void completeAllowsNegativeQuantity() throws Exception {
+    @DisplayName("剩余不足时拒绝，库存保持 10")
+    void completeRejectsWhenNotEnough() throws Exception {
         String id = outboundOf(15);
         mockMvc.perform(post("/outbound-orders/" + id + "/complete")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"));
-
-        Integer quantity = quantityOf();
-        assertEquals(-5, quantity);
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("INSUFFICIENT_STOCK")));
+        assertEquals(10, quantityOf());
     }
 
     @Test
-    @DisplayName("已完成的出库单仍能改行上的数量")
-    void completedOrderLineCanChange() throws Exception {
+    @DisplayName("已完成的出库单不能再改行")
+    void completedOrderLineStays() throws Exception {
         String id = outboundOf(1);
         mockMvc.perform(post("/outbound-orders/" + id + "/complete")
                         .header("Authorization", "Bearer " + token))
@@ -86,13 +84,13 @@ class OutboundControllerIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"quantity\":5}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("ORDER_NOT_EDITABLE")));
 
         Integer lineQuantity = jdbcTemplate.queryForObject(
                 "SELECT quantity FROM outbound_order_line WHERE id=?", Integer.class, lineId);
-        Integer stock = quantityOf();
-        assertEquals(5, lineQuantity);
-        assertEquals(9, stock);
+        assertEquals(1, lineQuantity);
+        assertEquals(9, quantityOf());
     }
 
     private String outboundOf(int quantity) throws Exception {

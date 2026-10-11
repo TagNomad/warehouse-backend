@@ -59,10 +59,10 @@ db:
 app:
   lesson:
     trace-id: off
-    outbound-check: off
-    optimistic-lock: off
-    order-state: open
-    flow-after-commit: off
+    outbound-check: on
+    optimistic-lock: on
+    order-state: enforced
+    flow-after-commit: on
     inbound-fail-before-status: false
     datasource-host: localhost
   jwt:

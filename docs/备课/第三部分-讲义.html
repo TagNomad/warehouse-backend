@@ -94,8 +94,9 @@
 </section>
 
 <section>
-  <h2>这一部分改完之后</h2>
-  <p>剩余不足会拒绝、已完成的单不能改行、更新带上 version、流水和入库状态同一次提交，都在「第三部分改良版」。这一部分结束时只把改良版合并进第三部分这一次。</p>
+  <h2>改掉之后</h2>
+  <p>这一支上 <code>outbound-check</code> 是 <code>on</code>，出 15 返回 400，message 里是 <code>INSUFFICIENT_STOCK</code>，数量仍是 10。<code>order-state</code> 是 <code>enforced</code>，已完成的单再改行返回 <code>ORDER_NOT_EDITABLE</code>。<code>optimistic-lock</code> 是 <code>on</code>，更新带上读到的 version，对不上就返回 <code>STOCK_CONFLICT</code>。<code>flow-after-commit</code> 是 <code>on</code>，流水和改状态在同一个事务里。</p>
+  <p>把「第三部分改良版」合并进「第三部分」只做一次。源分支改良版，目标分支第三部分，在网页上创建并合并。</p>
 </section>
 
 </main>
