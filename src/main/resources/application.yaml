@@ -50,6 +50,8 @@ logging:
 
 # ===== 课堂开关 =====
 # trace-id：off 不写入请求号；on 写入 MDC 和响应头 X-Trace-Id。
+# sku-code-check：off 创建货品直接插入，相同编码也进得去；on 先按编码查，已有就返回 SKU_CODE_DUPLICATED。
+# inbound-stock：sku 入库数量加在 sku.on_hand，不分库位；location 按货品 + 库位记进 inventory。
 # datasource-host：本机进程用 localhost；容器里必须是 Compose 服务名 mysql。
 db:
   name: pro_skill
@@ -59,6 +61,8 @@ db:
 app:
   lesson:
     trace-id: off
+    sku-code-check: off
+    inbound-stock: sku
     datasource-host: localhost
   jwt:
     # 256-bit Base64 编码的 HMAC-SHA256 签名密钥（生产环境请通过环境变量覆盖）
