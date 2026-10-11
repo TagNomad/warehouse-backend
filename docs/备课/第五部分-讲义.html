@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第五部分讲义 · 文件</title>
+<style>
+  body { margin:0; color:#1c2430; background:#f4f7fb; font:18px/1.65 "PingFang SC","Microsoft YaHei",sans-serif; }
+  header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
+  h1 { margin:0; font-size:34px; }
+  main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
+  section { background:#fff; border:1px solid #d7e0ea; border-radius:16px; padding:22px 24px; margin:18px 0; }
+  code { font-family:ui-monospace,Menlo,monospace; }
+  .see { background:#e7f6ee; border-left:4px solid #067647; padding:10px 14px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>第五部分 · 文件</h1>
+  <p>第 15 周周二全天。入库单可以带一个附件。这一部分先把文件写在运行应用的那台机器上。</p>
+</header>
+<main>
+<section>
+  <h2>上传走哪几层</h2>
+  <p><code>POST /inbound-orders/{id}/attachments</code>，表单字段名是 <code>file</code>。Controller 把文件名和字节交给 <code>AttachmentService.save</code>。Service 按入库单号建目录，把绝对路径写进 <code>inbound_attachment.file_path</code>。</p>
+  <p><code>GET /inbound-orders/{orderId}/attachments/{attachmentId}</code> 按这一列去读文件。删掉那个路径上的文件，再下载就是 400，message 里是 <code>FILE_NOT_FOUND</code>。库里的路径还在。</p>
+  <div class="see"><b>对一下</b> Adminer 里 <code>file_path</code> 以这台机器的目录开头，不是 <code>inbound/单号/文件名</code>。</div>
+</section>
+<section>
+  <h2>这一部分改完之后</h2>
+  <p>改存 MinIO 的对象 key <code>inbound/{orderNo}/{filename}</code>，在「第五部分改良版」。桶名是 <code>wms</code>。合并只做一次。</p>
+</section>
+</main>
+</body>
+</html>
