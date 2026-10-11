@@ -2,8 +2,7 @@ spring:
   application:
     name: pro-skill
 
-  # 导入本地开发数据库配置（文件存在则加载，不存在则跳过）
-  # 开发者需在 src/main/resources/ 中创建 application-local.properties 并填写本机 DB 信息，该文件已被 .gitignore 忽略
+  # 本机数据库配置写在 src/main/resources/application-local.properties（已被 .gitignore 忽略），文件存在就加载，不存在就跳过
   config:
     import: optional:classpath:application-local.properties
 
@@ -21,12 +20,13 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
 
-  # Flyway
+  # Flyway。在分支之间切换时，库里可能已有更高版本；out-of-order 打开后，没执行过的低版本脚本也会补上
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+    out-of-order: true
 
 # ===== 服务端口 =====
 server:
