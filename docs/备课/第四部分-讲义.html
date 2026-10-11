@@ -3,102 +3,631 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第四部分讲义 · Redis 缓存</title>
+<title>第四部分讲义 · Redis：缓存、锁、防重、异步消息</title>
 <style>
-  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d7e0ea; --paper:#f4f7fb; --card:#fff; --blue:#1d6fbf; --ok:#067647; --ok-soft:#e7f6ee; }
-  * { box-sizing:border-box; }
-  body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
-  header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
-  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:52rem; }
-  h1 { font-size:34px; line-height:1.25; margin:0; }
-  main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
-  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
-  h2 { font-size:26px; margin:0 0 12px; }
-  code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.92em; }
-  .see { background:var(--ok-soft); border-left:4px solid var(--ok); padding:10px 14px; border-radius:8px; margin:10px 0 0; }
-  .see b { color:var(--ok); }
-  figure.shot { margin:16px 0 8px; }
-  figure.shot img { width:100%; border-radius:12px; border:1px solid var(--line); background:#fff; }
-  figure.shot figcaption { font-size:15px; color:var(--muted); margin-top:6px; }
-  .flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
-  .box { border:2px solid var(--blue); border-radius:12px; padding:8px 12px; background:#fff; font-weight:650; text-align:center; }
-  .arrow { color:var(--muted); }
-  pre { background:#0f1c2b; color:#e8eef6; border-radius:12px; padding:14px 16px; overflow:auto; font:15px/1.55 ui-monospace,Menlo,Consolas,monospace; }
-  table { width:100%; border-collapse:collapse; margin:12px 0; }
-  th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px 10px; vertical-align:top; }
-  th { color:var(--muted); font-weight:650; }
-  
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6b7a;
+    --line: #d7e0ea;
+    --paper: #f4f7fb;
+    --card: #fff;
+    --blue: #1d6fbf;
+    --ok: #067647;
+    --ok-soft: #e7f6ee;
+    --bad: #b42318;
+    --bad-soft: #fdeceb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 18px/1.65 "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+  header.top { background: #12324f; color: #fff; padding: 36px 8vw 28px; }
+  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 52rem; }
+  h1 { font-size: 34px; line-height: 1.25; margin: 0; }
+  main { width: min(980px, 92vw); margin: 0 auto; padding: 28px 0 80px; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 24px 26px;
+    margin: 18px 0;
+  }
+  h2 { font-size: 26px; margin: 0 0 12px; }
+  h3 { font-size: 20px; margin: 24px 0 8px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre {
+    background: #0f1c2b;
+    color: #e8eef6;
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow: auto;
+    font: 15px/1.55 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .see {
+    background: var(--ok-soft);
+    border-left: 4px solid var(--ok);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  .see b { color: var(--ok); }
+  .badbox {
+    background: var(--bad-soft);
+    border-left: 4px solid var(--bad);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  .badbox b { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 16px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 10px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 650; }
+  figure.shot { margin: 16px 0 8px; }
+  figure.shot img { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; display: block; }
+  figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pair figure.shot { margin: 8px 0; }
+  .tag { display: inline-block; font-size: 14px; font-weight: 650; padding: 1px 8px; border-radius: 6px; color: #fff; }
+  .tag.bad { background: var(--bad); }
+  .tag.ok { background: var(--ok); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .box {
+    border: 2px solid var(--blue);
+    border-radius: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    font-weight: 650;
+    text-align: center;
+  }
+  .arrow { color: var(--muted); }
+  a { color: var(--blue); }
+  ol.steps { padding-left: 1.2em; }
+  ol.steps > li { margin: 10px 0; }
+  nav.toc ol { columns: 2; margin: 0; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } nav.toc ol { columns: 1; } }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>第四部分 · Redis 缓存</h1>
-  <p>第 14 周整周，再接第 15 周周一全天。缓存、按格子加锁、同一张单不要扣两次、入库完成之后的消息，都在这一部分。主机名用服务名 redis。「第四部分」和「第四部分改良版」用的是这一份讲义。改良版改的是代码，改了五处：出库后删缓存；进检查之前按格子加锁；同一单号只扣一次；事务提交成功才发消息；同一个单号只消费一次。</p>
+  <h1>第四部分 · Redis：缓存、锁、防重、异步消息</h1>
+  <p>第 14 周和第 15 周周一。第三部分做完了出库，乐观锁保证两次同时出库不会少减。这一部分接上 Redis，做四件事：查库存先读缓存；完成出库前按「货品 + 库位」加锁；加行时用 <code>Idempotency-Key</code> 防重复提交；入库完成后往 Redis Stream 发一条消息，由消费者写一行到货通知。这四处代码各有漏洞：出库后查询还是旧数；锁加了，库存够的单照样失败；同一个请求重发加了两行；入库回滚了，通知照样发出；消息重投，通知写了两行。</p>
+  <p>「第四部分」和「第四部分改良版」用的是这一份讲义。两个分支的 Java 代码相同，漏洞那一侧和修好那一侧都在 Service 里，用 <code>application.yaml</code> 的五个开关选走哪一侧。改良版改的是这五个开关的值，改完以后同一个请求走修好的那几行。每一节都给出两个分支上同一个操作的真实结果。</p>
 </header>
 <main>
 
+<nav class="toc">
 <section>
-  <h2>查询先走缓存</h2>
-  <div class="flow">
-    <div class="box">GET /inventories</div>
-    <span class="arrow">→</span>
-    <div class="box">Redis 键 inv:货品:库位</div>
-    <span class="arrow">→</span>
-    <div class="box">没有再查 inventory</div>
-  </div>
-  <figure class="shot"><img src="figures/100-cache-read.png" alt="查询先读缓存"><figcaption>命中就返回缓存里的数。未命中才查库，并把结果 SET 回去。</figcaption></figure>
-  <figure class="shot"><img src="figures/101-cache-keep.png" alt="出库不删缓存"><figcaption>cache-evict 是 off，出库改了库也不会 DEL 这个键。</figcaption></figure>
-  <p><code>cache-evict</code> 是 <code>off</code>。先查询一次，缓存写入 10。再出库 3。库里已经是 7，再查询仍返回 10。</p>
-  <div class="see"><b>对一下</b> 接口是 10，Adminer 里 <code>inventory.quantity</code> 是 7。</div>
+  <h2>这一份讲义的顺序</h2>
+  <ol>
+    <li><a href="#new">这一部分加了什么</a></li>
+    <li><a href="#redis">把 Redis 跑起来</a></li>
+    <li><a href="#tables">一张新表</a></li>
+    <li><a href="#switch">开关怎样起作用</a></li>
+    <li><a href="#api1">接口一：查一个格子的库存</a></li>
+    <li><a href="#api2">接口二：加一行时带 Idempotency-Key</a></li>
+    <li><a href="#api3">接口三：完成出库前加锁</a></li>
+    <li><a href="#mq">入库完成发消息，消费者写通知</a></li>
+    <li><a href="#order">实验顺序</a></li>
+    <li><a href="#d1">漏洞一：出库后查询还是旧数</a></li>
+    <li><a href="#d2">漏洞二：锁加了，库存够的单照样失败</a></li>
+    <li><a href="#d3">漏洞三：同一个请求重发，加了两行</a></li>
+    <li><a href="#d4">漏洞四：入库回滚了，通知照样发出</a></li>
+    <li><a href="#d5">漏洞五：消息重投，通知写了两行</a></li>
+    <li><a href="#sum">改良版改了哪五块</a></li>
+    <li><a href="#test">用测试把两条路径跑一遍</a></li>
+    <li><a href="#merge">把改良版合并进第四部分</a></li>
+    <li><a href="#ai">作业里要写同类接口时</a></li>
+  </ol>
 </section>
+</nav>
 
-<section>
-  <h2>改良版改了这一块：出库后删掉缓存</h2>
-  <p>改良版上 <code>cache-evict</code> 是 <code>on</code>。库存更新成功后删除 <code>inv:货品:库位</code>。再查询未命中，回到 inventory 读到 7，并把 7 写回缓存。</p>
-</section>
-
-<section>
-  <h2>锁加在判断之后</h2>
-  <p><code>stock-lock</code> 是 <code>after-check</code>。完成出库时先读剩余，判断够了才 <code>SETNX lock:inv:货品:库位</code>。两个请求可以都先读到 1。</p>
-  <figure class="shot"><img src="figures/102-submit-twice.png" alt="同一单可以再扣"><figcaption>submit-once 是 off。第二次完成不看这张单是否已经扣过。</figcaption></figure>
-  <p>同一张单连点两次：<code>submit-once</code> 是 <code>off</code>，第二次仍会再减库存。10 出 1 再完成一次，剩下 8。</p>
-</section>
-
-<section>
-  <h2>改良版改了这一块：先加锁，同一单号只扣一次</h2>
-  <p>改良版上 <code>stock-lock</code> 是 <code>sku-location</code>。进检查之前就 <code>SETNX lock:inv:货品:库位</code>。后到的请求拿不到锁，不会再读一次旧数量。第三部分带上 version 的更新还在。</p>
-  <p><code>submit-once</code> 是 <code>on</code>。完成前 <code>SET outbound:done:单号 NX</code>。同一单号第二次拿不到这个键，不再扣减。10 出 1 再点一次，数量仍是 9。</p>
-</section>
-
-<section>
-  <h2>消息在事务结束前就发出去</h2>
-  <figure class="shot"><img src="figures/103-publish-now.png" alt="事务结束前就发消息"><figcaption>publish-after-commit 是 off，列表里已经有这条，主事务仍可能回滚。</figcaption></figure>
-  <p>入库完成往列表 <code>wms:inbound:completed</code> 追加 <code>单号|货品|库位|数量</code>。<code>publish-after-commit</code> 是 <code>off</code>，主事务还可能回滚，消息已经在列表里。<code>consume-once</code> 是 <code>off</code>，同一条再读一次，<code>stock_flow</code> 会多一行相同单号。</p>
-</section>
-
-<section>
-  <h2>改良版改了这一块：提交成功才发，同一个单号只记一笔</h2>
-  <p>改良版上 <code>publish-after-commit</code> 是 <code>on</code>。事务 <code>afterCommit</code> 才往列表追加。主事务回滚时，列表里没有这条。</p>
-  <p><code>consume-once</code> 是 <code>on</code>。处理前 <code>SET inbound:consumed:单号 NX</code>。同一个单号第二次拿不到键，<code>stock_flow</code> 只留一行。</p>
-</section>
-
-<section>
-  <h2>改良版改了哪几块</h2>
-  <p>讲义到这里是同一份。「第四部分改良版」上不同的是这些开关。</p>
+<section id="new">
+  <h2>1. 这一部分加了什么</h2>
+  <p>数量的来源一直是 MySQL 的 <code>inventory</code> 表。Redis 只做三种辅助：存一份数量让查询更快，存一把锁让同一个格子同一时刻只有一张单在减，存一条消息让入库之后的事情交给另一个线程去做。</p>
   <table>
-    <tr><th>这一部分现在的代码</th><th>改良版上的代码</th></tr>
-    <tr><td><code>cache-evict</code> 是 off。出库之后查询仍返回缓存里的 10。</td><td>on。更新成功后删除键，再查询返回 7。</td></tr>
-    <tr><td><code>stock-lock</code> 是 after-check。两个请求可以都先读到够。</td><td>sku-location。进检查之前就按货品 + 库位加锁。</td></tr>
-    <tr><td><code>submit-once</code> 是 off。同一张单第二次仍再扣，10 出 1 再完成剩下 8。</td><td>on。同一单号第二次不再扣，剩下 9。</td></tr>
-    <tr><td><code>publish-after-commit</code> 是 off。事务还没结束，消息已经在列表里。</td><td>on。提交成功才发。回滚时列表里没有这条。</td></tr>
-    <tr><td><code>consume-once</code> 是 off。同一条再读一次，流水多一行。</td><td>on。同一个单号只记一笔。</td></tr>
+    <tr><th>接口或组件</th><th>做什么</th><th>Redis 里的键</th><th>写到哪张表</th></tr>
+    <tr><td><code>GET /inventories?skuId=&amp;locationId=</code>（新）</td><td>查一个格子上一种货的数量，先读缓存</td><td><code>inv:货品主键:库位主键</code></td><td>只读 <code>inventory</code></td></tr>
+    <tr><td><code>POST /outbound-orders/{id}/lines</code>（多一个请求头）</td><td>带 <code>Idempotency-Key</code>，同一个键只加一行</td><td><code>idem:outbound-line:键</code></td><td><code>outbound_order_line</code></td></tr>
+    <tr><td><code>POST /outbound-orders/{id}/complete</code>（加锁）</td><td>减库存前按格子加锁</td><td><code>lock:inv:货品主键:库位主键</code></td><td><code>inventory</code>、<code>outbound_order</code></td></tr>
+    <tr><td><code>POST /inbound-orders/{id}/complete</code>（发消息）</td><td>每一行发一条入库完成消息</td><td>Stream <code>wms:inbound:completed</code></td><td>同第二部分</td></tr>
+    <tr><td><code>InboundNoticeConsumer</code>（新，定时）</td><td>每秒读一次 Stream，每条消息写一行通知</td><td>消费组 <code>notice</code>，去重键 <code>inbound:consumed:消息编号</code></td><td><code>inbound_notice</code></td></tr>
   </table>
-  <p>查询接口、出库完成、入库完成，两个分支走的是同一套入口。课堂上把改良版合并进第四部分，带过去的是上面这些开关。</p>
+  <p>接口仍按同一条路走，中间多了一站 Redis：</p>
+  <div class="flow">
+    <div class="box">Controller<br><small>取路径、参数、请求头</small></div><span class="arrow">→</span>
+    <div class="box">Service<br><small>查、算、判断</small></div><span class="arrow">→</span>
+    <div class="box">InventoryCache / StockLock<br><small>键怎么拼</small></div><span class="arrow">→</span>
+    <div class="box">LessonRedis<br><small>一条 Redis 命令</small></div><span class="arrow">→</span>
+    <div class="box">Mapper<br><small>一条 SQL</small></div>
+  </div>
+  <p>下面每一处都给出真实代码，图里的行号就是文件里的行号。</p>
 </section>
 
-<section>
-  <h2>重温：把改良版合并进第四部分</h2>
-  <p>源分支是 <code>第四部分改良版</code>，目标分支是 <code>第四部分</code>。讲义和这一份相同。操作和第二部分讲义最后一节相同。全班只合并这一次。</p>
+<section id="redis">
+  <h2>2. 把 Redis 跑起来</h2>
+  <p>Redis 和 MySQL 写在同一份 <code>docker-compose.dev.yml</code> 里。只起 Redis 一个服务：</p>
+  <pre>docker compose -f docker-compose.dev.yml up -d redis
+docker exec -it pro-skill-redis redis-cli ping</pre>
+  <div class="see"><b>你应该看到</b> 第二条命令回 <code>PONG</code>。</div>
+  <figure class="shot">
+    <img src="figures/605-compose-redis.png" alt="Compose 里的 Redis">
+    <figcaption>第 44–49 行是 Redis 服务：镜像 <code>redis:7</code>，容器名 <code>pro-skill-redis</code>，本机 6379 端口对到容器 6379。第 65–71 行是这一部分的开关，容器里跑应用时用环境变量改它们，第 4 节讲。</figcaption>
+  </figure>
+  <p>应用在本机跑时连 <code>localhost:6379</code>，在 Compose 里跑时连服务名 <code>redis:6379</code>。主机名由 <code>app.lesson.redis-host</code> 决定，yaml 里是 <code>localhost</code>，Compose 里由 <code>APP_LESSON_REDIS_HOST: redis</code> 盖过。</p>
+  <p>看 Redis 里有什么，进 redis-cli 敲命令。这一部分会用到的：</p>
+  <table>
+    <tr><th>命令</th><th>看什么</th></tr>
+    <tr><td><code>KEYS *</code></td><td>现在有哪些键（课堂数据少才这样用）</td></tr>
+    <tr><td><code>GET inv:1:1</code></td><td>货品 1 在库位 1 上缓存的数量。没有这个键回 <code>(nil)</code></td></tr>
+    <tr><td><code>GET idem:outbound-line:line-001</code>、<code>PTTL 同一个键</code></td><td>防重键记着哪张单，还剩多少毫秒过期</td></tr>
+    <tr><td><code>XRANGE wms:inbound:completed - +</code></td><td>Stream 里全部消息：编号和四个字段</td></tr>
+    <tr><td><code>XPENDING wms:inbound:completed notice</code></td><td>投给了消费组、还没确认的有几条</td></tr>
+    <tr><td><code>FLUSHALL</code></td><td>清空全部键，重做实验前用</td></tr>
+  </table>
+  <p>Java 这边，Service 不直接拿 Redis 客户端，而是调 <code>LessonRedis</code> 这个接口。接口里一个方法对应一条 Redis 命令：</p>
+  <figure class="shot">
+    <img src="figures/608-redis-iface.png" alt="LessonRedis">
+    <figcaption><code>get</code>、<code>set</code>、<code>delete</code> 是 GET、SET、DEL。<code>setIfAbsent</code> 是 <code>SET key value NX PX 毫秒</code>：键不存在才写，返回 true；已存在不写，返回 false。锁和防重都靠它。<code>deleteIfValue</code> 是值对得上才删。后四个是 Stream 的 XADD、XGROUP CREATE、XREADGROUP、XACK。运行时由 <code>RedisLessonRedis</code> 连真的 Redis；测试时由 <code>MemoryLessonRedis</code> 在内存里模拟，测试不用起 Redis。</figcaption>
+  </figure>
+</section>
+
+<section id="tables">
+  <h2>3. 一张新表</h2>
+  <p>消费者每处理一条入库完成消息，就在 <code>inbound_notice</code> 写一行「到货通知」。真实项目里这一步可能是发短信、推给财务；课堂上写一行表，方便在 Adminer 里数它写了几次。</p>
+  <figure class="shot">
+    <img src="figures/606-v13-1.png" alt="V13_1 到货通知表">
+    <figcaption><code>msg_id</code> 是 Redis 给消息的编号，例如 <code>1791741642633-0</code>，同一条消息重投时编号不变。<code>biz_no</code> 是入库单号。<code>sku_id</code>、<code>location_id</code>、<code>quantity</code> 从消息里原样取出。</figcaption>
+  </figure>
+  <p>这个脚本叫 <code>V13_1</code>，排在第三部分的 <code>V13</code> 之后。在不同部分的分支之间切换过的库，可能已经执行过更高版本的脚本，Flyway 默认会拒绝补执行低版本。所以 yaml 里打开了 <code>out-of-order</code>：</p>
+  <figure class="shot">
+    <img src="figures/607-flyway-ooo.png" alt="Flyway out-of-order">
+    <figcaption>第 31 行打开以后，启动日志里会出现 <code>Migrating schema `pro_skill` to version "13.1 - create inbound notice" [out of order]</code>，表照样建出来。</figcaption>
+  </figure>
+</section>
+
+<section id="switch">
+  <h2>4. 开关怎样起作用</h2>
+  <p>和第三部分一样，一个开关的值走三步进到代码里：</p>
+  <div class="flow">
+    <div class="box">application.yaml<br><small>app.lesson.cache-evict: off</small></div><span class="arrow">→</span>
+    <div class="box">LessonSwitches<br><small>@Value 读成 boolean</small></div><span class="arrow">→</span>
+    <div class="box">Service<br><small>if (switches.cacheEvict())</small></div>
+  </div>
+  <figure class="shot">
+    <img src="figures/601-switch-yaml.png" alt="第四部分的开关值">
+    <figcaption>第 61–67 行是这一部分每个开关的说明。第 77–80 行是第三部分的四个开关，已经是改良版合并过来的值。第 83–87 行是这一部分的五个值，全部是漏洞那一侧。第 82 行的停顿和第 88 行的「确认前失败一次」是演示用的，平时是 0 和 <code>false</code>。第 89 行是消费者多久读一次 Stream。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/603-switch-class.png" alt="LessonSwitches">
+    <figcaption>第 18 行这一类字段存开关的结果。第 35 行这一类 <code>@Value</code> 把 yaml 里的字符串取进来，冒号后面是没写时的默认值。第 50 行：<code>stock-lock</code> 不是开和关，是两种加锁位置，写成 <code>sku-location</code> 时 <code>lockBeforeRead()</code> 才是 true。</figcaption>
+  </figure>
+  <p>改开关有三种办法，改完都要重启应用：改 <code>application.yaml</code>；<code>java -jar</code> 或 IDE 的 Program arguments 里加 <code>--app.lesson.cache-evict=on</code>；Compose 里用 <code>APP_LESSON_CACHE_EVICT=on docker compose -f docker-compose.dev.yml up -d --build --force-recreate app</code>。</p>
+  <h3>改良版上的值</h3>
+  <figure class="shot">
+    <img src="figures/602-switch-yaml-improved.png" alt="改良版的开关值">
+    <figcaption>改良版的 <code>application.yaml</code>，第 83–87 行是修好那一侧的值。其它行和第四部分相同。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/604-improved-diff.png" alt="改良版的差别">
+    <figcaption>两个分支的差别就是这十行：yaml 五行，Compose 五行。红色是第四部分，绿色是改良版。合并改良版带过去的就是这些值。</figcaption>
+  </figure>
+</section>
+
+<section id="api1">
+  <h2>5. 接口一：查一个格子的库存</h2>
+  <p><code>GET /inventories?skuId=1&amp;locationId=1</code>，没有请求体，两个主键写在问号后面。返回 <code>{"skuId":1,"locationId":1,"quantity":10}</code>。</p>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在 / 读自</th></tr>
+    <tr><td><code>skuId</code>、<code>locationId</code></td><td>问号后的参数</td><td><code>@RequestParam</code> → <code>quantity(skuId, locationId)</code> → <code>InventoryCache.key</code> 拼成 <code>inv:1:1</code></td><td>Redis 键 <code>inv:1:1</code></td></tr>
+    <tr><td>缓存的数量</td><td>Redis</td><td><code>GET inv:1:1</code> → <code>Integer.valueOf</code></td><td>命中就直接返回，不查库</td></tr>
+    <tr><td>库里的数量</td><td><code>inventory.quantity</code></td><td>未命中时 <code>getBySkuAndLocation</code> 的 <code>WHERE sku_id = ? AND location_id = ?</code></td><td>读出后 <code>SET inv:1:1 10</code></td></tr>
+    <tr><td>返回的三个字段</td><td>Controller</td><td><code>Map.of("skuId", …, "locationId", …, "quantity", …)</code></td><td>响应 JSON</td></tr>
+  </table>
+  <h3>Controller</h3>
+  <figure class="shot">
+    <img src="figures/611-ctrl-inventory.png" alt="InventoryController.quantity">
+    <figcaption>第 19 行定下路径前缀 <code>/inventories</code>，第 26 行 <code>@GetMapping</code> 不带路径，就是 <code>GET /inventories</code>。第 27 行两个 <code>@RequestParam</code> 取问号后同名的参数。第 29 行原样交给 Service，拿回一个 int。第 30 行拼成三个字段返回。</figcaption>
+  </figure>
+  <h3>Service</h3>
+  <figure class="shot">
+    <img src="figures/612-svc-query.png" alt="InventoryQueryService.quantity">
+    <figcaption>第 20 行先读缓存。第 21–22 行：命中就直接返回，这一次请求不碰数据库。第 24 行未命中才查 <code>inventory</code>。第 25 行这个格子没有这种货就是 0。第 26 行把读到的数写进缓存，下一次直接命中。这就是常说的「旁路缓存」：读的时候没有就补上。</figcaption>
+  </figure>
+  <h3>缓存的键和三个动作</h3>
+  <figure class="shot">
+    <img src="figures/613-cache.png" alt="InventoryCache">
+    <figcaption>第 16 行拼键，一个格子一个键。第 20 行 GET，没有这个键是 null。第 25 行 SET，值是数量的字符串。第 29–36 行是删除：不是马上删，而是登记一个「事务提交之后」要做的事，第 34 行到那时才 DEL。为什么要等提交，漏洞一里讲。</figcaption>
+  </figure>
+  <h3>Mapper</h3>
+  <figure class="shot">
+    <img src="figures/614-mapper-inv.png" alt="InventoryMapper.getBySkuAndLocation">
+    <figcaption>第二部分已有的查询。第 22 行按两个主键找到那一行，<code>#{skuId}</code>、<code>#{locationId}</code> 是第 23 行 <code>@Param</code> 起的名字。</figcaption>
+  </figure>
+  <h3>结果</h3>
+  <figure class="shot">
+    <img src="figures/615-resp-query.png" alt="查询的响应">
+    <figcaption>入库 10 件以后第一次查询，返回 10。这时 Redis 里多了键 <code>inv:1:1</code>，值是 <code>10</code>。</figcaption>
+  </figure>
+</section>
+
+<section id="api2">
+  <h2>6. 接口二：加一行时带 Idempotency-Key</h2>
+  <p>还是第三部分的 <code>POST /outbound-orders/{id}/lines</code>，请求体不变。网络慢时页面可能把同一次「加一行」发两遍，所以前端在每次操作时生成一个键，放在请求头里，重发时带同一个值：</p>
+  <pre>curl -X POST http://localhost:8080/outbound-orders/4/lines \
+  -H "Authorization: Bearer 你的token" -H "Content-Type: application/json" \
+  -H "Idempotency-Key: line-001" \
+  -d '{"skuCode":"SKU-001","locationCode":"A-01-01","quantity":2}'</pre>
+  <p>Postman 里在 Headers 页加一行，Key 写 <code>Idempotency-Key</code>，Value 写 <code>line-001</code>。</p>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td><code>Idempotency-Key</code></td><td>请求头</td><td><code>@RequestHeader</code> → <code>addLine(id, idempotencyKey, …)</code> → 拼成 <code>idem:outbound-line:line-001</code></td><td>Redis 键，值是单号 <code>OUT-4</code>，一天后过期</td></tr>
+    <tr><td><code>id</code>、三个 JSON 字段</td><td>路径和 JSON</td><td>同第三部分</td><td><code>outbound_order_line</code> 的四列</td></tr>
+  </table>
+  <h3>Controller</h3>
+  <figure class="shot">
+    <img src="figures/621-ctrl-addline-key.png" alt="OutboundController.addLine">
+    <figcaption>和第三部分比只多了第 38 行：<code>@RequestHeader(value = "Idempotency-Key", required = false)</code> 取请求头，不带也能调用，这时是 null。第 41 行把它排在主键后面传给 Service。</figcaption>
+  </figure>
+  <h3>Service</h3>
+  <figure class="shot">
+    <img src="figures/622-svc-addline-key.png" alt="OutboundService.addLine">
+    <figcaption>第 68 行：<code>submit-once</code> 打开、并且带了这个头，才走防重。第 69 行拼键。第 71 行 <code>SET 键 OUT-4 NX PX 86400000</code>：第一次写得进去，往下走到第 77–90 行插入；同一个键第二次来写不进去，第 72–73 行打一行日志，把这张单原样返回，不插入。第 75 行登记一件事：这次插入如果失败回滚，就把键删掉。第 77 行以下和第三部分相同。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/623-svc-forget-key.png" alt="forgetKeyOnRollback">
+    <figcaption>第 192 行 <code>afterCompletion</code> 在事务结束时调用，提交和回滚都会来。第 193–194 行：没提交成功，说明这一行其实没加上，删掉键，让用户重发时还能加。不删的话，一次失败以后这个键一天内都加不上。</figcaption>
+  </figure>
+  <h3>Mapper</h3>
+  <p>插入行用的还是第三部分的 <code>OutboundOrderLineMapper.insert</code>，没有改动。</p>
+</section>
+
+<section id="api3">
+  <h2>7. 接口三：完成出库前加锁</h2>
+  <p>还是第三部分的 <code>POST /outbound-orders/{id}/complete</code>，路径上只有主键。第三部分用乐观锁保证了不会少减，代价是同时来的第二张单直接失败，库存够也失败。这一部分用 Redis 给每个格子一把锁：同一个格子同一时刻只有一张单在读和写，后来的等前一张做完再读。</p>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td>锁的键</td><td>出库行的 <code>sku_id</code>、<code>location_id</code></td><td><code>StockLock.key</code> 拼成 <code>lock:inv:1:1</code></td><td>Redis 键</td></tr>
+    <tr><td>锁的值</td><td>单号 + 随机串</td><td><code>acquire</code> 生成，例如 <code>OUT-2:5f3c…</code>，<code>release</code> 时带回来</td><td>Redis 键的值，30 秒后过期</td></tr>
+    <tr><td>剩余、新数量</td><td><code>inventory.quantity</code></td><td>同第三部分：读、判断、<code>updateQuantityIfVersion</code></td><td><code>inventory.quantity</code>、<code>version</code></td></tr>
+  </table>
+  <h3>Service：先拿锁，再开事务</h3>
+  <figure class="shot">
+    <img src="figures/631-svc-complete.png" alt="OutboundService.complete">
+    <figcaption>第 97 行 <code>SUPPORTS</code>：这个方法自己不开事务。第 99–100 行是漏洞那一侧，直接开事务进 <code>deduct</code>，锁在里面判断完才拿。第 102–109 行是修好那一侧：还没开事务，先查出这张单有哪些格子，放进排好序的集合。第 113 行逐个拿锁，别人拿着就等。第 115 行拿到全部锁才用 <code>transactionTemplate</code> 开事务，这一行返回时事务已经提交。第 117 行在 finally 里放锁，这时数据已经提交，下一张单读到的是新数。</figcaption>
+  </figure>
+  <h3>Service：读、判断、写</h3>
+  <figure class="shot">
+    <img src="figures/632-svc-deduct.png" alt="OutboundService.deduct">
+    <figcaption>第 134 行读剩余，第 136 行是演示用的停顿。第 138–140 行剩余不够就停下（第三部分）。第 141–144 行是漏洞那一侧的加锁位置：判断已经做完才拿锁。第 147–152 行带 version 更新（第三部分），第 157–158 行写完马上放锁。第 162–163 行：<code>cache-evict</code> 打开时，登记提交后删掉这个格子的缓存。</figcaption>
+  </figure>
+  <h3>锁本身</h3>
+  <figure class="shot">
+    <img src="figures/633-stock-lock.png" alt="StockLock">
+    <figcaption>第 24 行拼键。第 29 行的值是「单号:随机串」，每次加锁都不同。第 31 行 <code>SET 键 值 NX PX 30000</code>：拿到返回 true；别人拿着返回 false，第 35 行睡 50 毫秒再试。第 32–33 行等了 10 秒还拿不到，返回 <code>STOCK_LOCKED</code>。第 17 行：进程挂了没放锁，30 秒后 Redis 自己删掉这个键。第 42 行放锁时只删值还是自己的那个键。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/634-redis-lock-cmd.png" alt="SET NX PX 和按值删除">
+    <figcaption>第 56 行就是 <code>SET key value NX PX ttl</code>，Redis 回 OK 表示写进去了。第 29 行是一段 Lua 脚本：值对得上才 DEL。GET 和 DEL 在 Redis 里一次执行完，中间插不进别的命令。如果分成两条命令，可能刚 GET 完锁就过期、被别人拿走，接着 DEL 删掉的是别人的锁。</figcaption>
+  </figure>
+</section>
+
+<section id="mq">
+  <h2>8. 入库完成发消息，消费者写通知</h2>
+  <p>入库完成以后要做的事（通知、对账）不该让入库接口等着，所以入库只往 Stream 里放一条消息就返回，另一个线程每秒读一次，读到就写一行 <code>inbound_notice</code>。</p>
+  <div class="flow">
+    <div class="box">InboundService<br><small>XADD 四个字段</small></div><span class="arrow">→</span>
+    <div class="box">Stream<br><small>wms:inbound:completed</small></div><span class="arrow">→</span>
+    <div class="box">InboundNoticeConsumer<br><small>XREADGROUP</small></div><span class="arrow">→</span>
+    <div class="box">InboundNoticeMapper<br><small>INSERT</small></div><span class="arrow">→</span>
+    <div class="box">XACK<br><small>这条处理完了</small></div>
+  </div>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td><code>orderNo</code></td><td><code>inbound_order.order_no</code></td><td><code>publishCompleted</code> 放进消息 → 消费者 <code>fields.get("orderNo")</code></td><td><code>inbound_notice.biz_no</code></td></tr>
+    <tr><td><code>skuId</code>、<code>locationId</code>、<code>quantity</code></td><td>入库行</td><td>转成字符串放进消息 → 消费者转回 Long、Integer</td><td><code>inbound_notice</code> 同名三列</td></tr>
+    <tr><td>消息编号</td><td>Redis 在 XADD 时生成</td><td><code>message.id()</code></td><td><code>inbound_notice.msg_id</code>，以及去重键 <code>inbound:consumed:编号</code></td></tr>
+  </table>
+  <h3>发消息：InboundService</h3>
+  <figure class="shot">
+    <img src="figures/641-svc-inbound.png" alt="InboundService.complete">
+    <figcaption>第 89 行：每一行加完库存、写完流水，调 <code>publishCompleted</code> 发一条消息。第 91–92 行是第三部分的演示开关，打开时在改状态之前失败，整个事务回滚。第 100–101 行：入库也改了数量，<code>cache-evict</code> 打开时同样登记提交后删缓存。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/642-svc-publish.png" alt="publishCompleted">
+    <figcaption>第 132–136 行准备四个字段。第 137–145 行是修好那一侧：先登记，第 140 行的 <code>afterCommit</code> 只在事务提交成功后执行，这时才 XADD。第 147–149 行是漏洞那一侧：马上 XADD，事务还没结束消息就已经在 Stream 里。</figcaption>
+  </figure>
+  <h3>读消息：消费者</h3>
+  <figure class="shot">
+    <img src="figures/643-consumer.png" alt="InboundNoticeConsumer">
+    <figcaption>第 33 行建消费组，组已经有了就跳过。消费组记着两件事：投到了哪一条，哪些投出去了还没确认。第 36 行先读「投给我、还没确认」的，第 39 行再读新的。第 49 行是修好那一侧的去重。第 54–62 行把消息字段写进 <code>inbound_notice</code>。第 68–70 行是演示开关：写完、确认之前失败一次。第 72 行 XACK，这条从待确认里拿掉。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/644-poller.png" alt="InboundNoticePoller">
+    <figcaption>第 18 行 <code>@Scheduled</code> 每次结束后等 <code>notice-poll-ms</code> 毫秒再调一次 <code>poll</code>。它跑在 <code>scheduling-1</code> 线程上，和处理请求的 <code>http-nio-…</code> 线程分开，日志里一眼能分出来。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/645-mapper-notice.png" alt="InboundNoticeMapper">
+    <figcaption>第 13–14 行的六个 <code>#{}</code> 取 entity 上的同名属性，<code>id</code> 由 MySQL 自增，第 15 行写回 <code>entity.id</code>。返回的 int 是 1。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/646-redis-stream-cmd.png" alt="Stream 的四条命令">
+    <figcaption>第 72 行 XADD，返回 Redis 生成的编号。第 79 行 <code>XGROUP CREATE … 0 MKSTREAM</code>：从第一条开始投，Stream 还不存在就建出来。第 90 行读待确认的用 <code>0</code>，第 91 行读新消息用 <code>&gt;</code>。第 103 行 XACK。</figcaption>
+  </figure>
+</section>
+
+<section id="order">
+  <h2>9. 实验顺序</h2>
+  <p>下面的结果都是按这个顺序在两个分支上各跑一遍得到的。想让主键和图上一样，先在 Adminer（<code>http://localhost:8081</code>，库 <code>pro_skill</code>）的「SQL命令」里清空这几张表，再在 redis-cli 里 <code>FLUSHALL</code>：</p>
+  <pre>TRUNCATE TABLE inbound_notice;
+TRUNCATE TABLE stock_flow;
+TRUNCATE TABLE outbound_order_line;
+TRUNCATE TABLE outbound_order;
+TRUNCATE TABLE inbound_order_line;
+TRUNCATE TABLE inbound_order;
+TRUNCATE TABLE inventory;</pre>
+  <p>启动时加两个演示参数，两个分支都一样：</p>
+  <pre>--app.lesson.outbound-read-pause-ms=3000 --app.lesson.consume-fail-before-ack=true</pre>
+  <p>每个请求都要带登录拿到的 token。货品 <code>SKU-001</code> 主键是 1，库位 <code>A-01-01</code> 主键是 1。</p>
+  <table>
+    <tr><th>步</th><th>请求</th><th><span class="tag bad">第四部分</span></th><th><span class="tag ok">改良版</span></th></tr>
+    <tr><td>1</td><td>入库 IN-1：<code>POST /inbound-orders</code>；<code>POST /inbound-orders/1/lines</code> <code>{"skuCode":"SKU-001","locationCode":"A-01-01","quantity":10}</code>；<code>POST /inbound-orders/1/complete</code></td><td>库存 10；<code>inbound_notice</code> 两行</td><td>库存 10；<code>inbound_notice</code> 一行</td></tr>
+    <tr><td>2</td><td><code>GET /inventories?skuId=1&amp;locationId=1</code></td><td colspan="2">两边一样：10，Redis 里有 <code>inv:1:1</code></td></tr>
+    <tr><td>3</td><td>OUT-1 出 3：新建；加一行 quantity 3；完成。然后再查一次第 2 步</td><td>出库 200，再查还是 10</td><td>出库 200，再查是 7</td></tr>
+    <tr><td>4</td><td>OUT-2、OUT-3 各出 1：两张都新建、加行；然后 3 秒内先后发两张的 complete</td><td>OUT-2 200，OUT-3 400 <code>STOCK_CONFLICT</code>，库存 6</td><td>两张都 200，库存 5</td></tr>
+    <tr><td>5</td><td>OUT-4：新建；带 <code>Idempotency-Key: line-001</code> 加一行 quantity 2，同样的请求再发一次</td><td>两次 200，单上两行</td><td>两次 200，单上一行</td></tr>
+    <tr><td>6</td><td>再加 <code>--app.lesson.inbound-fail-before-status=true</code> 重启。入库 IN-2：新建；加一行 quantity 5；完成</td><td>400，IN-2 是草稿，<code>inbound_notice</code> 里有 IN-2</td><td>400，IN-2 是草稿，<code>inbound_notice</code> 里没有 IN-2</td></tr>
+  </table>
+  <p>做完把三个演示参数去掉再启动。</p>
+</section>
+
+<section id="d1">
+  <h2>10. 漏洞一：出库后查询还是旧数</h2>
+  <h3>漏洞是什么</h3>
+  <p>缓存是数据库的一份副本。数据库改了、副本不动，查询命中缓存就一直返回旧数。<code>cache-evict</code> 是 <code>off</code> 时，出库和入库改了 <code>inventory</code> 都不碰缓存。第 5 节 Service 第 21–22 行一命中就返回，旧数会一直留在那里，直到 Redis 重启或者有人手动删键。用户看到还有 10 件，下单出 10 件，完成时才发现只剩 7。</p>
+  <h3>复现：实验顺序第 2、3 步</h3>
+  <figure class="shot">
+    <img src="figures/651-resp-cache-defect.png" alt="两次都是 10">
+    <figcaption><span class="tag bad">第四部分</span> 出库 3 件之前查一次是 10，出库完成以后再查还是 10。</figcaption>
+  </figure>
+  <h3>去 Redis 和库里查</h3>
+  <figure class="shot">
+    <img src="figures/652-redis-cache-defect.png" alt="缓存 10 库里 7">
+    <figcaption><span class="tag bad">第四部分</span> redis-cli 里 <code>GET inv:1:1</code> 是 10。Adminer 里同一个格子是 7，version 是 1，出库确实减了。数据库对，缓存错，查询读的是缓存。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <p>第 7 节 <code>deduct</code> 第 162 行：<code>cache-evict</code> 是 <code>off</code>，第 163 行不执行，事务提交了，<code>inv:1:1</code> 没人删。</p>
+  <h3>改良版怎么改：提交之后删缓存</h3>
+  <p>改良版把 <code>cache-evict</code> 设成 <code>on</code>。出库（<code>deduct</code> 第 163 行）和入库（<code>addInventory</code> 第 101 行）改数量时，都登记一件「提交后删掉这个格子的键」的事（第 5 节 <code>InventoryCache</code> 第 29–36 行）。下一次查询未命中，从库里读新数再写回缓存。</p>
+  <p>为什么删而不是改成新数：两个请求先后改同一个格子，写缓存的顺序可能和提交的顺序相反，缓存里留下的反而是旧的那个。删掉就没有这个问题，谁来查谁从库里读。</p>
+  <p>为什么等提交以后才删：提交之前删，另一个查询这时进来，未命中去读库，读到的是还没提交的旧数 10，又写回缓存。提交以后才删，库里已经是 7。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/653-resp-cache-fixed.png" alt="10 然后 7">
+    <figcaption><span class="tag ok">改良版</span> 出库之前 10，出库之后 7。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/654-redis-cache-fixed.png" alt="键被删后写回 7">
+    <figcaption><span class="tag ok">改良版</span> 出库提交后 <code>GET inv:1:1</code> 是 <code>(nil)</code>，键已经被删。再查询一次，Service 从库里读到 7 写回缓存，<code>GET</code> 是 7。</figcaption>
+  </figure>
+</section>
+
+<section id="d2">
+  <h2>11. 漏洞二：锁加了，库存够的单照样失败</h2>
+  <h3>漏洞是什么</h3>
+  <p>锁要保护的是「读剩余 → 判断够不够 → 写回」这一整段。<code>stock-lock</code> 是 <code>after-check</code> 时，锁在判断之后才拿（第 7 节 <code>deduct</code> 第 141–144 行）。两张单都已经各自读到 7，锁只让它们一前一后写。第二张写的时候带着旧的 version，乐观锁拦下它，返回 <code>STOCK_CONFLICT</code>。剩 7 件出 1 件，库存明明够，用户却被告知冲突。锁在这里什么也没保护。</p>
+  <h3>复现：实验顺序第 4 步</h3>
+  <p>停顿 3000 毫秒是为了让两次请求同时停在「读完、还没写」的地方。OUT-2、OUT-3 都加好行以后，开两个终端各粘一条，3 秒内先后回车：</p>
+  <pre>curl -X POST http://localhost:8080/outbound-orders/2/complete -H "Authorization: Bearer 你的token"
+curl -X POST http://localhost:8080/outbound-orders/3/complete -H "Authorization: Bearer 你的token"</pre>
+  <figure class="shot">
+    <img src="figures/662-resp-lock-defect.png" alt="一张冲突">
+    <figcaption><span class="tag bad">第四部分</span> OUT-2 返回 200，OUT-3 返回 400 <code>STOCK_CONFLICT</code>。</figcaption>
+  </figure>
+  <h3>去日志和库里查</h3>
+  <figure class="shot">
+    <img src="figures/661-log-lock-defect.png" alt="两张都读到 7">
+    <figcaption><span class="tag bad">第四部分</span> exec-1 和 exec-2 先后打出「读到数量 7」，这时谁都还没拿锁。3 秒后 OUT-2 拿锁、放锁、把数量改成 6。OUT-3 再拿锁、放锁，没有「把数量改成」那一行，它的 UPDATE 带着 version 1，改到 0 行。</figcaption>
+  </figure>
+  <pre>SELECT id, sku_id, location_id, quantity, version FROM inventory;
+SELECT id, order_no, status FROM outbound_order;</pre>
+  <figure class="shot">
+    <img src="figures/620-defect-lock-db.png" alt="库存 6，OUT-3 草稿">
+    <figcaption><span class="tag bad">第四部分</span> 库存 6，version 2。OUT-2 完成，OUT-3 还是草稿。账是对的，但本该成功的单失败了。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <p>第 7 节 <code>complete</code> 第 99–100 行直接开事务；<code>deduct</code> 第 134 行先读，第 143 行才拿锁，第 158 行写完马上放锁。</p>
+  <h3>改良版怎么改：读之前拿锁，而且在事务外面拿</h3>
+  <p>改良版把 <code>stock-lock</code> 设成 <code>sku-location</code>，走 <code>complete</code> 第 102–117 行：先拿这张单所有格子的锁，再开事务读数量，事务提交以后才放锁。</p>
+  <p>只把加锁挪到读之前还不够，锁必须拿在事务外面。下面这份日志是锁挪到了 <code>deduct</code> 开头、但仍在事务里面时跑出来的：</p>
+  <figure class="shot">
+    <img src="figures/663-log-lock-intx.png" alt="等到锁也读到 7">
+    <figcaption>OUT-2 拿锁、读到 7、改成 6、放锁。OUT-3 等到锁以后读到的还是 7，最后一样冲突。</figcaption>
+  </figure>
+  <p>原因在 MySQL 的隔离级别。MySQL 默认是「可重复读」：一个事务里第一次查询时，就定下了这个事务能看到的数据，之后别人提交的改动它都看不见。OUT-3 的事务在等锁之前已经开始、已经查过出库单，所以它等到锁以后读 <code>inventory</code>，看到的还是 OUT-2 提交前的 7。锁拿在事务外面，OUT-3 拿到锁时 OUT-2 已经提交，它这时才开事务，第一次查询就能看到 6。这就是第 97 行写 <code>SUPPORTS</code>、第 115 行用 <code>transactionTemplate</code> 自己开事务的原因。</p>
+  <p>另外两处细节：第 106 行用排好序的集合，两张单如果都涉及格子甲和格子乙，都按同一个顺序拿锁，不会一个拿着甲等乙、一个拿着乙等甲。第 117 行放锁用的是加锁时的值，30 秒过期后被别人拿走的锁不会被误删。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/664-log-lock-fixed.png" alt="OUT-3 读到 6">
+    <figcaption><span class="tag ok">改良版</span> OUT-2 拿到锁才读，读到 7，改成 6，放锁。OUT-3 在 OUT-2 放锁之后才拿到锁，读到 6，改成 5。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/665-resp-lock-fixed.png" alt="两张都完成">
+    <figcaption><span class="tag ok">改良版</span> 两个请求都返回 200。OUT-3 多等了 3 秒左右，等的就是 OUT-2 那一段。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/630-fixed-lock-inventory-db.png" alt="库存 5">
+    <figcaption><span class="tag ok">改良版</span> 库存 5，version 3：OUT-1、OUT-2、OUT-3 各减一次。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/631-fixed-lock-order-db.png" alt="三张完成">
+    <figcaption><span class="tag ok">改良版</span> OUT-1 到 OUT-3 都是 <code>COMPLETED</code>，OUT-4 是下一步要用的草稿。</figcaption>
+  </figure>
+  <p>乐观锁还留着。Redis 锁 30 秒过期以后，万一两张单又同时写，version 仍会拦下后一张。Redis 锁让大多数请求排队成功，乐观锁兜底保证不少减。</p>
+</section>
+
+<section id="d3">
+  <h2>12. 漏洞三：同一个请求重发，加了两行</h2>
+  <h3>漏洞是什么</h3>
+  <p>用户点一次「加一行」，网络超时，页面自动重发；或者用户连点了两下。服务器收到两个一模一样的请求，<code>submit-once</code> 是 <code>off</code> 时每次都插入一行。出库单上本来是出 2 件，变成两行共 4 件，完成时就多减 2 件。</p>
+  <h3>复现：实验顺序第 5 步</h3>
+  <p>按第 6 节的 curl 发两次，请求头都是 <code>Idempotency-Key: line-001</code>。</p>
+  <figure class="shot">
+    <img src="figures/671-resp-idem-defect.png" alt="两行">
+    <figcaption><span class="tag bad">第四部分</span> 第一次返回的单上有一行（id 4），第二次返回两行（id 4、5），数量都是 2。</figcaption>
+  </figure>
+  <h3>去库里查</h3>
+  <figure class="shot">
+    <img src="figures/621-defect-idem-db.png" alt="outbound_order_line 两行">
+    <figcaption><span class="tag bad">第四部分</span> Adminer 选 <code>outbound_order_line</code>，搜索 <code>order_id = 4</code>：两行。redis-cli 里没有 <code>idem:</code> 开头的键，请求头根本没被用上。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <p>第 6 节 <code>addLine</code> 第 68 行：<code>submit-once</code> 是 <code>off</code>，整段跳过，直接到第 90 行插入。</p>
+  <h3>改良版怎么改：同一个键只放行一次</h3>
+  <p>改良版把 <code>submit-once</code> 设成 <code>on</code>。第 71 行用 <code>SET NX</code> 占住这个键，只有第一个请求占得到。为什么不先 GET 看有没有、再 SET：两个请求同时 GET，都看到没有，都往下插入。<code>SET NX</code> 是一条命令，Redis 一次只执行一条，只有一个能写进去。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/672-resp-idem-fixed.png" alt="一行">
+    <figcaption><span class="tag ok">改良版</span> 两次都返回 200，单上都只有 id 4 这一行。第二次没有报错，前端照常显示。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/673-idem-fixed-log.png" alt="已经处理过">
+    <figcaption><span class="tag ok">改良版</span> 日志里第二次打出「Idempotency-Key line-001 已经处理过，不再插入」。Redis 里这个键的值是 <code>OUT-4</code>，<code>PTTL</code> 约 86400000 毫秒，也就是一天后过期。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/632-fixed-idem-db.png" alt="一行">
+    <figcaption><span class="tag ok">改良版</span> 同样的搜索，<code>order_id = 4</code> 只有一行。</figcaption>
+  </figure>
+</section>
+
+<section id="d4">
+  <h2>13. 漏洞四：入库回滚了，通知照样发出</h2>
+  <h3>漏洞是什么</h3>
+  <p>和第三部分的流水是同一类问题：Redis 不参与 MySQL 的事务。<code>publish-after-commit</code> 是 <code>off</code> 时，XADD 在事务中间就执行了。后面改状态失败，MySQL 把库存、单据都撤回，Stream 里的消息撤不回来。消费者照样读到，写了一行「IN-2 到货 5 件」，可这 5 件并没有入库。</p>
+  <h3>复现：实验顺序第 6 步</h3>
+  <figure class="shot">
+    <img src="figures/681-resp-inbound-fail.png" alt="入库失败">
+    <figcaption>两个分支返回的都是这个 400。差别在 Stream 和 <code>inbound_notice</code> 里。</figcaption>
+  </figure>
+  <h3>去日志、Redis 和库里查</h3>
+  <figure class="shot">
+    <img src="figures/682-log-publish-defect.png" alt="事务中发出">
+    <figcaption><span class="tag bad">第四部分</span> 请求线程 exec-9 打出「IN-2 事务中发出消息」，紧接着这次请求就失败了。不到 0.2 秒后，scheduling-1 线程打出「写入通知 IN-2」。<code>XRANGE</code> 里有两条消息，第二条是 IN-2、数量 5。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/623-defect-publish-order-db.png" alt="IN-2 草稿">
+    <figcaption><span class="tag bad">第四部分</span> <code>inbound_order</code> 里 IN-2 是 <code>DRAFT</code>，入库没有完成。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/624-defect-publish-notice-db.png" alt="通知里有 IN-2">
+    <figcaption><span class="tag bad">第四部分</span> <code>inbound_notice</code> 里却有 IN-2 这一行。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <p>第 8 节 <code>publishCompleted</code> 第 148 行：开关是 <code>off</code>，马上 XADD。</p>
+  <h3>改良版怎么改：提交之后再发</h3>
+  <p>改良版把 <code>publish-after-commit</code> 设成 <code>on</code>，走第 137–145 行。XADD 放进 <code>afterCommit</code>，事务回滚时 Spring 不会调用它。</p>
+  <p>这样换来一个新的小风险：事务提交了，进程正好在 XADD 之前挂掉，这条消息就丢了。课堂上接受这个风险；要求更高时的做法是在同一个事务里先把消息写进一张表，再由定时任务把表里的消息搬到 Stream。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/683-log-publish-fixed.png" alt="Stream 里只有 IN-1">
+    <figcaption><span class="tag ok">改良版</span> 日志里没有 IN-2 的发送和写入。<code>XRANGE</code> 里只有 IN-1 一条。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/634-fixed-publish-order-db.png" alt="IN-2 草稿">
+    <figcaption><span class="tag ok">改良版</span> IN-2 同样是 <code>DRAFT</code>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/635-fixed-publish-notice-db.png" alt="通知里只有 IN-1">
+    <figcaption><span class="tag ok">改良版</span> <code>inbound_notice</code> 只有 IN-1。单据、库存、通知三处一致。</figcaption>
+  </figure>
+</section>
+
+<section id="d5">
+  <h2>14. 漏洞五：消息重投，通知写了两行</h2>
+  <h3>漏洞是什么</h3>
+  <p>消费者先写通知，再 XACK。两步之间出错（进程被杀、网络断开），这条消息留在消费组的待确认列表里，下一次读待确认时会再来一次。这是 Stream 有意这样设计的：宁可多投一次，也不丢。所以消费者必须能接受同一条消息来两次。<code>consume-once</code> 是 <code>off</code> 时，第二次照样插入，通知多一行；如果这一步是发短信，用户就收到两条。</p>
+  <h3>复现：实验顺序第 1 步</h3>
+  <p><code>consume-fail-before-ack=true</code> 让每条消息第一次写完通知以后、XACK 之前失败一次（第 8 节消费者第 68–70 行），模拟这一类出错。</p>
+  <h3>去日志、Redis 和库里查</h3>
+  <figure class="shot">
+    <img src="figures/684-log-consume-defect.png" alt="写了两次">
+    <figcaption><span class="tag bad">第四部分</span> 同一个编号 <code>1791741642633-0</code>：第一次写入通知，接着 WARN「XACK 之前失败」；1 秒后下一轮 poll 从待确认里再拿到它，又写入一次。第二次成功确认，<code>XPENDING</code> 是 0。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/622-defect-redeliver-db.png" alt="两行通知">
+    <figcaption><span class="tag bad">第四部分</span> <code>inbound_notice</code> 两行，<code>msg_id</code> 相同，<code>created_at</code> 差 1 秒。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <p>第 8 节消费者第 49 行：<code>consume-once</code> 是 <code>off</code>，不查是否处理过，直接到第 62 行插入。</p>
+  <h3>改良版怎么改：按消息编号去重</h3>
+  <p>改良版把 <code>consume-once</code> 设成 <code>on</code>。第 49 行用 <code>SET inbound:consumed:编号 1 NX</code> 占住这条消息：第一次占得到，往下写；重投时占不到，第 50–52 行只 XACK，不再写。第 64 行：如果插入本身失败，删掉这个键，重投时还能再写，不会因为去重把消息吃掉。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/685-log-consume-fixed.png" alt="只确认不再写">
+    <figcaption><span class="tag ok">改良版</span> 第一次写入、WARN，和第四部分一样。重投时打出「已经处理过，只确认不再写」。<code>XPENDING</code> 是 0，Redis 里有去重键 <code>inbound:consumed:1791742118736-0</code>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/633-fixed-redeliver-db.png" alt="一行通知">
+    <figcaption><span class="tag ok">改良版</span> <code>inbound_notice</code> 只有一行。</figcaption>
+  </figure>
+</section>
+
+<section id="sum">
+  <h2>15. 改良版改了哪五块</h2>
+  <p>两个分支的 Java 代码相同。改良版改的是 <code>application.yaml</code> 和 <code>docker-compose.dev.yml</code> 里五个开关的默认值（第 4 节的差别图），改完以后同一个请求走修好的那几行。</p>
+  <table>
+    <tr><th>开关</th><th><span class="tag bad">第四部分</span></th><th><span class="tag ok">改良版</span></th><th>改良版走的代码</th><th>同一操作的结果</th></tr>
+    <tr><td><code>cache-evict</code></td><td><code>off</code></td><td><code>on</code></td><td><code>OutboundService</code> 第 162–163 行、<code>InboundService</code> 第 100–101 行：提交后 DEL</td><td>出库后再查：10 变成 7</td></tr>
+    <tr><td><code>stock-lock</code></td><td><code>after-check</code></td><td><code>sku-location</code></td><td><code>OutboundService</code> 第 102–117 行：事务外先拿锁，提交后放</td><td>同时出库：一张 <code>STOCK_CONFLICT</code> 变成两张都完成</td></tr>
+    <tr><td><code>submit-once</code></td><td><code>off</code></td><td><code>on</code></td><td><code>OutboundService</code> 第 68–76 行：<code>SET NX</code> 占住请求头的值</td><td>同一个键加两次：两行变成一行</td></tr>
+    <tr><td><code>publish-after-commit</code></td><td><code>off</code></td><td><code>on</code></td><td><code>InboundService</code> 第 137–145 行：<code>afterCommit</code> 里 XADD</td><td>入库回滚：有通知变成没有通知</td></tr>
+    <tr><td><code>consume-once</code></td><td><code>off</code></td><td><code>on</code></td><td><code>InboundNoticeConsumer</code> 第 49–53 行：按消息编号 <code>SET NX</code></td><td>消息重投：两行通知变成一行</td></tr>
+  </table>
+  <p>不带请求头的加行、单独一张单的完成出库、正常的入库，两个分支结果相同。</p>
+</section>
+
+<section id="test">
+  <h2>16. 用测试把两条路径跑一遍</h2>
+  <p>两个测试类把开关写死，在哪个分支上跑结果都一样。测试用 <code>MemoryLessonRedis</code> 代替真的 Redis，不用起容器：</p>
+  <table>
+    <tr><th>测试类</th><th>开关</th><th>断言</th></tr>
+    <tr><td><code>RedisDefectPathTest</code></td><td>五个开关都是漏洞那一侧</td><td>出库后缓存还是 10、库里 7；同时出库一张 <code>STOCK_CONFLICT</code>、库存 2；同一个键加出两行；入库回滚后仍有通知；重投写两行</td></tr>
+    <tr><td><code>RedisFixedPathTest</code></td><td>五个开关都是修好那一侧</td><td>出库后查询是 7；同时出库两张都完成、库存 0；回滚后锁已放开；同一个键只有一行；回滚后没有通知；重投只写一行</td></tr>
+  </table>
+  <pre>./mvnw test -Dtest='Redis*PathTest'</pre>
+  <p>测试用的 H2 数据库在可重复读下是按行定快照的，第 11 节「锁在事务里面」那个问题在 H2 上测不出来，只能在 MySQL 上按实验顺序第 4 步看日志确认。这是测试数据库和生产数据库不一致时常见的盲区。</p>
+</section>
+
+<section id="merge">
+  <h2>17. 把改良版合并进第四部分</h2>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第四部分改良版</code>，目标分支是 <code>第四部分</code>。讲义两边是同一份，合并带过去的是第 4 节差别图里的开关值。操作和第二部分最后一节相同，教师做，全班看，只合并这一次。</p>
+  <ol class="steps">
+    <li>GitHub Desktop 里点 Fetch origin，Current Branch 选「第四部分改良版」。</li>
+    <li>上方是 Push origin 时点它，把改良版送到 Gitee。</li>
+    <li>浏览器打开仓库，「Pull Requests」→「新建 Pull Request」，源分支 <code>第四部分改良版</code>，目标分支 <code>第四部分</code>，标题「合入第四部分改良版」，点「创建」。文件列表里能看到 <code>application.yaml</code> 和 <code>docker-compose.dev.yml</code>。</li>
+    <li>在这个 Pull Request 页面点「合并」并确认。</li>
+    <li>GitHub Desktop 切回「第四部分」，点 Pull origin。</li>
+  </ol>
+  <div class="see"><b>你应该看到</b> 第四部分的 <code>application.yaml</code> 第 83–87 行变成 <code>on</code>、<code>sku-location</code>、<code>on</code>、<code>on</code>、<code>on</code>。清空表和 Redis，重启后按实验顺序再跑一遍，结果和这份讲义里的改良版一致。</div>
+</section>
+
+<section id="ai">
+  <h2>18. 作业里要写同类接口时</h2>
+  <p>把下面这段发给 DeepSeek 或 Kimi。生成后按第 5–8 节的顺序检查：缓存是不是提交后删而不是改；锁是不是在事务外面拿、提交后放；放锁是不是按值删；防重和去重是不是用 <code>SET NX</code> 而不是先 GET 再 SET；消息是不是提交后才发。</p>
+  <pre>这是 Spring Boot 项目，包名 com.eurasia.pro_skill，MyBatis 注解写 SQL，Redis 用 Lettuce。
+请按 UserController 的方式写：Controller 把路径变量、请求参数、请求头一个个传给 Service，不要用 builder。
+1. 查库存 GET /inventories?skuId=&amp;locationId=：先 GET inv:货品:库位，没有再查 inventory，查到后 SET。
+   入库、出库改数量时，在事务提交之后 DEL 这个键（TransactionSynchronization.afterCommit）。
+2. 加出库行时读请求头 Idempotency-Key，用 SET idem:键 单号 NX PX 一天，写不进去就原样返回不插入；
+   事务回滚时删掉这个键。
+3. 完成出库：方法本身不开事务。先按行拼 lock:inv:货品:库位，排序后逐个 SET NX PX 30000 拿锁，
+   拿到后用 TransactionTemplate 开事务读、判断、带 version 更新；finally 里用 Lua 脚本按值删锁。
+4. 入库完成后在 afterCommit 里 XADD 到 Stream，字段 orderNo、skuId、locationId、quantity。
+   消费者用 XREADGROUP 先读待确认再读新消息，按消息编号 SET NX 去重，写一行表后 XACK。
+每一行代码加注释：这个值从哪来、写到哪个 Redis 键或哪一列、返回的是什么。
+生成后说明：MySQL 可重复读下，锁为什么不能在事务里面拿。</pre>
 </section>
 
 </main>
