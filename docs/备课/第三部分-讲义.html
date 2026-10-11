@@ -9,12 +9,11 @@
   * { box-sizing:border-box; }
   body { margin:0; color:var(--ink); background:var(--paper); font:18px/1.65 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; }
   header.top { background:#12324f; color:#fff; padding:36px 8vw 28px; }
-  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:48rem; }
+  header.top p { margin:8px 0 0; color:#c9d8e8; max-width:52rem; }
   h1 { font-size:34px; line-height:1.25; margin:0; }
   main { width:min(980px,92vw); margin:0 auto; padding:28px 0 80px; }
   section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px 26px; margin:18px 0; }
   h2 { font-size:26px; margin:0 0 12px; }
-  h3 { font-size:20px; margin:22px 0 8px; }
   code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.92em; }
   .see { background:var(--ok-soft); border-left:4px solid var(--ok); padding:10px 14px; border-radius:8px; margin:10px 0 0; }
   .see b { color:var(--ok); }
@@ -25,12 +24,16 @@
   .box { border:2px solid var(--blue); border-radius:12px; padding:8px 12px; background:#fff; font-weight:650; text-align:center; }
   .arrow { color:var(--muted); }
   pre { background:#0f1c2b; color:#e8eef6; border-radius:12px; padding:14px 16px; overflow:auto; font:15px/1.55 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; }
+  th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px 10px; vertical-align:top; }
+  th { color:var(--muted); font-weight:650; }
+  
 </style>
 </head>
 <body>
 <header class="top">
   <h1>第三部分 · 出库与并发</h1>
-  <p>第 12 周和第 13 周。第二部分已经按货品和库位记下数量。这里做出库、已完成的单还能不能改、两个人同时减同一行，以及入库流水会不会在单据回滚之后还留着。</p>
+  <p>第 12 周和第 13 周。第二部分已经按货品和库位记下数量。这里做出库、已完成的单还能不能改、两个人同时减同一行，以及入库流水会不会在单据回滚之后还留着。「第三部分」和「第三部分改良版」用的是这一份讲义。改良版改的是代码，改了四块：剩余不足就拒绝；已完成的单不能改行；更新带上读到的 version；流水和改状态在同一个事务里。</p>
 </header>
 <main>
 
@@ -76,10 +79,21 @@
 </section>
 
 <section>
+  <h2>改良版改了这一块：剩余不足就拒绝</h2>
+  <p>「第三部分改良版」上 <code>outbound-check</code> 是 <code>on</code>。同一张货、同一个格子，剩余 10 再出 15，完成接口返回 400，message 里是 <code>INSUFFICIENT_STOCK</code>。inventory 的 quantity 仍是 10，单据不会变成已完成。</p>
+  <div class="see"><b>对一下</b> 这一部分现在出 15 得到 -5。改良版上同一次请求停在检查，减库存那条更新不会执行。</div>
+</section>
+
+<section>
   <h2>已完成的单还能改数量</h2>
   <p><code>PATCH /outbound-orders/{id}/lines/{lineId}</code> 只传新的数量。order-state 是 <code>open</code> 时，不看单据是不是草稿。库存已经按原数量减过，行上的数量可以再改成别的数。</p>
   <pre>{ "quantity": 5 }</pre>
   <div class="see"><b>对一下</b> 完成出库 1 之后库存少了 1。再把行改成 5，inventory 不变，单据行变成 5。</div>
+</section>
+
+<section>
+  <h2>改良版改了这一块：已完成的单不能改行</h2>
+  <p>改良版上 <code>order-state</code> 是 <code>enforced</code>。状态不是 <code>DRAFT</code> 就拒绝，错误码 <code>ORDER_NOT_EDITABLE</code>。行上的数量留在完成时的那个数，inventory 不再和单据行各写各的。</p>
 </section>
 
 <section>
@@ -89,13 +103,36 @@
 </section>
 
 <section>
+  <h2>改良版改了这一块：更新带上读到的 version</h2>
+  <p>改良版上 <code>optimistic-lock</code> 是 <code>on</code>。更新写成 <code>set quantity = ?, version = version + 1 where id = ? and version = ?</code>。<code>#{version}</code> 是这次读到的版本。对不上时影响行数是 0，这一次返回 <code>STOCK_CONFLICT</code>。先成功的那一次把数量改成 0，后到的那一次不再把库存减成负数。</p>
+</section>
+
+<section>
   <h2>流水和入库单不在同一次提交</h2>
   <p>完成入库时会写 <code>stock_flow</code>。<code>flow-after-commit</code> 是 <code>off</code>，流水用另一个 Bean 的 <code>REQUIRES_NEW</code> 先提交。把 <code>app.lesson.inbound-fail-before-status</code> 设成 <code>true</code> 再完成一张入库单：主事务在改状态前失败，单据不是 COMPLETED，<code>stock_flow</code> 里已经有这个单号。</p>
 </section>
 
 <section>
-  <h2>这一部分改完之后</h2>
-  <p>剩余不足会拒绝、已完成的单不能改行、更新带上 version、流水和入库状态同一次提交，都在「第三部分改良版」。这一部分结束时只把改良版合并进第三部分这一次。</p>
+  <h2>改良版改了这一块：流水和状态同一次提交</h2>
+  <p>改良版上 <code>flow-after-commit</code> 是 <code>on</code>。流水、加库存、改状态写在同一个事务里。失败开关打开时，单据留在草稿，<code>stock_flow</code> 里也没有这个单号。</p>
+</section>
+
+<section>
+  <h2>改良版改了哪四块</h2>
+  <p>讲义到这里是同一份。「第三部分改良版」上不同的是这四个开关。</p>
+  <table>
+    <tr><th>这一部分现在的代码</th><th>改良版上的代码</th></tr>
+    <tr><td><code>outbound-check</code> 是 off。出 15，数量变成 -5，单据仍是 COMPLETED。</td><td>on。剩余不足返回 <code>INSUFFICIENT_STOCK</code>，数量保持 10。</td></tr>
+    <tr><td><code>order-state</code> 是 open。已完成的单还能改行数量。</td><td>enforced。不是草稿就返回 <code>ORDER_NOT_EDITABLE</code>。</td></tr>
+    <tr><td><code>optimistic-lock</code> 是 off。更新条件只有 id。</td><td>on。条件带上读到的 version，对不上返回 <code>STOCK_CONFLICT</code>。</td></tr>
+    <tr><td><code>flow-after-commit</code> 是 off。流水先单独提交。</td><td>on。流水和改状态在同一个事务里，失败时两边都不留。</td></tr>
+  </table>
+  <p>新建出库单、加一行，两个分支是同一套。课堂上把改良版合并进第三部分，带过去的是上面这四块。</p>
+</section>
+
+<section>
+  <h2>重温：把改良版合并进第三部分</h2>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第三部分改良版</code>，上面是改过的出库和入库流水代码。目标分支是 <code>第三部分</code>。讲义和这一份相同。操作和第二部分讲义最后一节相同：Fetch，切到改良版，Push，网页上创建 Pull Request，网页上合并，再把第三部分 Pull 回来。全班只合并这一次。</p>
 </section>
 
 </main>
