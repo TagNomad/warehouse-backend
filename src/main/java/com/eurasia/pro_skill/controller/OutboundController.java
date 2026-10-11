@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,9 +33,13 @@ public class OutboundController {
 
     @Operation(summary = "给草稿加一行")
     @PostMapping("/{id}/lines") // {id} 是出库单主键
-    public OutboundOrder addLine(@PathVariable Long id, @Valid @RequestBody OutboundLineRequest request) {
-        // id 来自路径。三个字段来自 JSON，原样传下去
-        return outboundService.addLine(id, request.getSkuCode(), request.getLocationCode(), request.getQuantity());
+    public OutboundOrder addLine(@PathVariable Long id,
+                                 // 请求头 Idempotency-Key，可以不带。同一次操作重发时，前端带同一个值
+                                 @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                 @Valid @RequestBody OutboundLineRequest request) {
+        // id 来自路径，idempotencyKey 来自请求头，三个字段来自 JSON，原样传下去
+        return outboundService.addLine(id, idempotencyKey,
+                request.getSkuCode(), request.getLocationCode(), request.getQuantity());
     }
 
     @Operation(summary = "完成出库")

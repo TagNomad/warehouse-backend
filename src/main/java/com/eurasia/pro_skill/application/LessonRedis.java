@@ -1,19 +1,30 @@
 package com.eurasia.pro_skill.application;
 
 import java.util.List;
+import java.util.Map;
 
-// 课堂用的 Redis。测试里是内存实现，运行时连 Redis。
+// 这一课用到的 Redis 命令。运行时连 Redis（RedisLessonRedis），测试里放在内存（MemoryLessonRedis）。
 public interface LessonRedis {
 
-    String get(String key); // 没有这个键时返回 null
+    String get(String key); // GET。没有这个键时返回 null
 
-    void set(String key, String value); // 覆盖写成这个值
+    void set(String key, String value); // SET。覆盖写成这个值
 
-    boolean setIfAbsent(String key, String value); // 键已存在就返回 false，不覆盖
+    boolean setIfAbsent(String key, String value, long ttlMs); // SET key value NX PX ttl。键已存在就返回 false
 
-    void delete(String key); // 删掉这个键
+    void delete(String key); // DEL
 
-    void addStream(String stream, String body); // 往列表尾部追加一条消息
+    boolean deleteIfValue(String key, String value); // 值还是 value 才 DEL。锁只能由加锁的那一次释放
 
-    List<String> readStream(String stream); // 按写入顺序读出全部消息
+    String addStream(String stream, Map<String, String> fields); // XADD stream * k v ...，返回消息编号
+
+    void createGroup(String stream, String group); // XGROUP CREATE stream group 0 MKSTREAM。已有就跳过
+
+    // XREADGROUP。pending 为 true 读自己领过、还没确认的（id 0）；为 false 读新消息（id >）
+    List<LessonMessage> readGroup(String stream, String group, String consumer, boolean pending);
+
+    void ack(String stream, String group, String id); // XACK。确认以后这条不会再投给这个组
+
+    record LessonMessage(String id, Map<String, String> fields) { // 一条消息：编号和字段
+    }
 }
