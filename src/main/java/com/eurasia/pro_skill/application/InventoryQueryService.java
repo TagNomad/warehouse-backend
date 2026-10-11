@@ -12,19 +12,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InventoryQueryService {
 
-    private final InventoryMapper inventoryMapper;
-    private final LessonRedis redis;
+    private final InventoryMapper inventoryMapper; // 读 inventory 表
+    private final InventoryCache inventoryCache; // 读写 Redis 里的 inv:货品:库位
     private final LessonSwitches switches;
 
-    public int quantity(Long skuId, Long locationId) {
-        String key = "inv:" + skuId + ":" + locationId; // 一个格子一个键
-        String cached = redis.get(key); // 命中就直接把缓存里的数字交回去
-        if (cached != null) {
-            return Integer.parseInt(cached);
+    public int quantity(Long skuId, Long locationId) { // 两个主键来自 GET /inventories?skuId=&locationId=
+        Integer cached = inventoryCache.get(skuId, locationId); // GET inv:货品:库位
+        if (cached != null) { // 命中：不查库，直接把缓存里的数交回去。缓存没删，这里就一直是旧数
+            return cached;
         }
-        InventoryEntity row = inventoryMapper.getBySkuAndLocation(skuId, locationId); // 未命中才查库
-        int quantity = row == null ? 0 : row.getQuantity();
-        redis.set(key, Integer.toString(quantity)); // 查到的数写进缓存
+        InventoryEntity row = inventoryMapper.getBySkuAndLocation(skuId, locationId); // 未命中才查 inventory
+        int quantity = row == null ? 0 : row.getQuantity(); // 这个格子没有这种货就是 0
+        inventoryCache.put(skuId, locationId, quantity); // SET inv:货品:库位 数量，下一次直接命中
         return quantity;
     }
 

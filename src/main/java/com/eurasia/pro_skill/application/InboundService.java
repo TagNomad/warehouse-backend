@@ -16,19 +16,25 @@ import com.eurasia.pro_skill.mapper.StockFlowMapper;
 import com.eurasia.pro_skill.mapper.SkuMapper;
 import com.eurasia.pro_skill.mapper.WarehouseLocationMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 // 入库业务。Controller 把字段传进来，这里决定写哪张表。
 @Service // 注册成 Bean，Controller 才能注入
 @RequiredArgsConstructor // 为下面的 final 字段生成构造方法
 @Transactional // 这个类里的方法默认开一个事务。complete 里加库存和改状态一起提交，失败就一起撤回
 public class InboundService {
+
+    private static final Logger log = LoggerFactory.getLogger(InboundService.class);
 
     private final InboundOrderMapper orderMapper; // 写 inbound_order
     private final InboundOrderLineMapper lineMapper; // 写 inbound_order_line
@@ -38,7 +44,8 @@ public class InboundService {
     private final StockFlowMapper stockFlowMapper; // 和入库同一次提交时用它写流水
     private final StockFlowWriter stockFlowWriter; // 开关关掉时，流水用另一个事务先提交
     private final LessonSwitches switches;
-    private final LessonRedis redis; // 入库完成后往消息列表追加一条
+    private final LessonRedis redis; // 入库完成后往 Stream 追加一条消息
+    private final InventoryCache inventoryCache; // 加了数量以后删缓存
 
     public InboundOrder create() { // 没有页面字段。单号和状态都在这里生成
         InboundOrderEntity entity = new InboundOrderEntity(); // 准备要插入的那一行，此时还没有 id
@@ -90,6 +97,9 @@ public class InboundService {
     }
 
     private void addInventory(Long skuId, Long locationId, int quantity) {
+        if (switches.cacheEvict()) { // cache-evict 是 on：这个格子的数量要变了，提交后删缓存
+            inventoryCache.evictAfterCommit(skuId, locationId);
+        }
         InventoryEntity existing = inventoryMapper.getBySkuAndLocation(skuId, locationId); // 这个格子有没有这一货
         if (existing == null) { // 第一次放到这个格子，插入新的一行
             InventoryEntity row = new InventoryEntity();
@@ -105,30 +115,38 @@ public class InboundService {
 
     private void writeFlow(String orderNo, InboundOrderLineEntity line) {
         if (switches.flowAfterCommit()) { // on：流水和改状态在 InboundService 这一个事务里
-            StockFlowEntity row = new StockFlowEntity();
-            row.setBizNo(orderNo);
-            row.setSkuId(line.getSkuId());
-            row.setLocationId(line.getLocationId());
-            row.setQuantity(line.getQuantity());
-            row.setCreatedAt(java.time.LocalDateTime.now());
-            stockFlowMapper.insert(row); // 主事务回滚时，这一行一起没了
+            StockFlowEntity row = new StockFlowEntity(); // 准备 stock_flow 的一行
+            row.setBizNo(orderNo); // 写进 biz_no：入库单号，例如 IN-3
+            row.setSkuId(line.getSkuId()); // 写进 sku_id：来自入库行
+            row.setLocationId(line.getLocationId()); // 写进 location_id：来自入库行
+            row.setQuantity(line.getQuantity()); // 写进 quantity：这一行入库的数量
+            row.setCreatedAt(java.time.LocalDateTime.now()); // 写进 created_at
+            stockFlowMapper.insert(row); // 还没提交。主事务回滚时，这一行一起没了
             return;
         }
-        stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity()); // 自己先提交
+        // off：交给另一个 Bean，用 REQUIRES_NEW 另开事务。这一行马上提交，主事务回滚也撤不掉
+        stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity());
     }
 
     private void publishCompleted(String orderNo, InboundOrderLineEntity line) {
-        String body = orderNo + "|" + line.getSkuId() + "|" + line.getLocationId() + "|" + line.getQuantity();
-        if (switches.publishAfterCommit() && TransactionSynchronizationManager.isSynchronizationActive()) {
+        Map<String, String> fields = new LinkedHashMap<>(); // 消息里的字段，消费者按名字取
+        fields.put("orderNo", orderNo); // 入库单号，例如 IN-3
+        fields.put("skuId", line.getSkuId().toString()); // 来自入库行的货品主键
+        fields.put("locationId", line.getLocationId().toString()); // 来自入库行的库位主键
+        fields.put("quantity", Integer.toString(line.getQuantity())); // 这一行入库的数量
+        if (switches.publishAfterCommit()) { // publish-after-commit 是 on：先登记，提交成功才发
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
-                public void afterCommit() { // 主事务提交成功才发。回滚时这条不会进列表
-                    redis.addStream(InboundStreamConsumer.STREAM, body);
+                public void afterCommit() { // 回滚时不会执行，Stream 里不会出现这张单
+                    String id = redis.addStream(InboundNoticeConsumer.STREAM, fields);
+                    log.info("{} 提交后发出消息 {}", orderNo, id);
                 }
             });
             return;
         }
-        redis.addStream(InboundStreamConsumer.STREAM, body); // 事务还没结束就发出去
+        // off：XADD 马上执行。下面改状态时失败回滚，这条消息已经在 Stream 里，撤不回来
+        String id = redis.addStream(InboundNoticeConsumer.STREAM, fields);
+        log.info("{} 事务中发出消息 {}", orderNo, id);
     }
 
     private InboundOrderEntity requireDraft(Long orderId) {
