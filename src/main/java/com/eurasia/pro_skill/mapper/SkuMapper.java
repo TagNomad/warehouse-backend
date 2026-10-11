@@ -4,9 +4,7 @@ import com.eurasia.pro_skill.entity.SkuEntity;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -47,9 +45,4 @@ public interface SkuMapper {
 
     @Select("SELECT * FROM sku ORDER BY id") // 查出全部货品，按主键从小到大
     List<SkuEntity> listAll(); // GET /skus 使用
-
-    // #{delta} 是这次要加的数量，#{id} 是货品主键。条件里没有库位，两个格子加到同一列。
-    // 返回值是改了几行。找到这张货品就是 1，不是加完之后的数量。
-    @Update("UPDATE sku SET on_hand = on_hand + #{delta} WHERE id = #{id}")
-    int addOnHand(@Param("id") Long id, @Param("delta") int delta);
 }

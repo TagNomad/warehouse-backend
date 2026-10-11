@@ -30,7 +30,7 @@
 <body>
 <header class="top">
   <h1>第三部分 · 每个格子有多少</h1>
-  <p>第 11 周周三上午。库位和货品都有了。三个接口按下面的图自己对照着写：新建草稿、给草稿加一行、完成。完成时数量加在货品的总数上，这一步单独提交，改状态之前中断。</p>
+  <p>第 11 周周三上午。库位和货品都有了。三个接口按下面的图自己对照着写：新建草稿、给草稿加一行、完成。完成时数量记到「货品 + 库位」那一行，并和单据状态同一次提交。</p>
 </header>
 <main>
 
@@ -57,7 +57,7 @@
     <span class="arrow">→</span>
     <div class="box">Mapper<br>SQL</div>
     <span class="arrow">→</span>
-    <div class="box">MySQL<br>inbound_order / line / sku.on_hand</div>
+    <div class="box">MySQL<br>inbound_order / line / inventory</div>
   </div>
 </section>
 
@@ -108,45 +108,89 @@
 
 <section>
   <h2>3. 完成</h2>
-  <p><code>POST /inbound-orders/1/complete</code> 没有请求体。数量用的是行上已经记下的 quantity。这一版没有把数量记到库位上，而是加进 <code>sku.on_hand</code>。</p>
+  <p><code>POST /inbound-orders/1/complete</code> 没有请求体。数量用的是行上已经记下的 quantity，不再由页面传一次。</p>
   <figure class="shot">
     <img src="figures/77-controller-complete.png" alt="完成只把主键交给 Service">
-    <figcaption>Controller 只传 id。它不知道数量记在哪，也不改状态。</figcaption>
+    <figcaption>Controller 只传 id。它不知道库存表，也不改状态。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/82-complete-interrupt.png" alt="加完数量后在改状态前中断">
-    <figcaption>循环里只把货品主键和数量交给 onHandWriter，库位主键没有传下去。抛出之后，updateStatus 不会执行。</figcaption>
+    <img src="figures/78-service-complete.png" alt="加库存和改状态写在一起">
+    <figcaption>类上有 @Transactional。循环里的 addInventory 和后面的 updateStatus 在同一个事务里，一步失败就一起撤回。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/81-on-hand-writer.png" alt="加数量的方法自己提交">
-    <figcaption>REQUIRES_NEW 写在另一个 Bean 上。这个方法结束就提交，后面的中断撤不掉 on_hand。</figcaption>
+    <img src="figures/79-add-inventory.png" alt="按货品和库位记账">
+    <figcaption>这个格子还没有这一货就插入一行，quantity 等于这次的数量，version 写成 0。已经有了就把数量加上，version 加一。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/83-add-on-hand-sql.png" alt="数量加在 sku.on_hand">
-    <figcaption>#{delta} 是这次的数量，#{id} 是货品主键。条件里没有库位。返回的 int 是改了几行，不是加完后的数量。</figcaption>
+    <img src="figures/80-inventory-sql.png" alt="inventory 的查询插入和更新">
+    <figcaption>查、插、改都用 sku_id 加 location_id。#{delta} 是这次要加的数量。更新语句还不拿 version 当条件。</figcaption>
   </figure>
   <figure class="shot">
-    <img src="figures/50-on-hand-column.png" alt="sku 表新增 on_hand">
-    <figcaption>V9 给 sku 加了一列 on_hand。一张货品只有这一个总数。</figcaption>
+    <img src="figures/56-inventory-table.png" alt="inventory 表按货品和库位唯一">
+    <figcaption>V11：唯一键是 sku_id 加 location_id。同一种货进两个格子，是两行。</figcaption>
   </figure>
 </section>
 
 <section>
-  <h2>两张入库单做完之后</h2>
-  <p>第一张：<code>SKU-001</code> 进 <code>A-01-01</code>，数量 10。第二张：同一货品进 <code>A-01-02</code>，数量 8。两次完成都返回下面这种结果。</p>
+  <h2>第三部分里那一版的结果</h2>
+  <p>数量如果加在 <code>sku.on_hand</code> 这一个总数上，并且这一步单独提交，改状态之前再中断，就答不出每个格子有多少，单据也还是草稿。</p>
   <figure class="shot">
     <img src="figures/53-inbound-interrupted.png" alt="完成入库返回中断">
-    <figcaption>完成接口返回 400，message 是 INBOUND_STATUS_INTERRUPTED。</figcaption>
+    <figcaption>那一版完成接口返回 400，message 是 INBOUND_STATUS_INTERRUPTED。</figcaption>
   </figure>
   <figure class="shot">
     <img src="figures/54-sku-on-hand.png" alt="sku.on_hand 变成 18">
-    <figcaption>sku 表里 SKU-001 的 on_hand 是 18。看不出 10 在 A-01-01、8 在 A-01-02。</figcaption>
+    <figcaption>SKU-001 的 on_hand 是 18。看不出 10 在 A-01-01、8 在 A-01-02。</figcaption>
   </figure>
   <figure class="shot">
     <img src="figures/55-inbound-draft.png" alt="入库单仍是草稿">
-    <figcaption>两张入库单的 status 仍是 DRAFT。数量已经加上，单据没有完成。</figcaption>
+    <figcaption>两张入库单的 status 仍是 DRAFT。</figcaption>
   </figure>
-  <div class="see"><b>对一下</b> 问 <code>A-01-01</code> 上现在有多少轴承。表上只有 18 这一个数。两张单都还写着草稿。</div>
+</section>
+
+<section>
+  <h2>按上面写完之后</h2>
+  <p>同一张货 <code>SKU-001</code>，10 进 <code>A-01-01</code>，8 进 <code>A-01-02</code>。两次完成都返回已完成。问某个格子，读 <code>inventory.quantity</code> 那一行。</p>
+  <figure class="shot">
+    <img src="figures/59-complete-ok.png" alt="完成入库返回 COMPLETED">
+    <figcaption>完成接口返回 200，status 是 COMPLETED。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/60-inventory-rows.png" alt="inventory 两行分别是 10 和 8">
+    <figcaption>inventory 两行：A-01-01 是 10，A-01-02 是 8。问某个格子，直接读这一行的 quantity。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/61-inbound-completed.png" alt="两张入库单已完成">
+    <figcaption>两张入库单的 status 都是 COMPLETED。数量和状态一起定下来。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>重温：把这个分支合并进第三部分</h2>
+  <p>第一部分做过一次：自己的仓库里新建分支、推上去、在网页上创建 Pull Request、在网页上点合并。这次用课堂仓库重温，分支已经定好。</p>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第三部分改良版</code>，上面是这份讲义和入库代码。目标分支是 <code>第三部分</code>。教师先按下面做完，学生看。全班只合并这一次，不要每人再推一个同名分支。</p>
+
+  <h3>1. 切到改良版</h3>
+  <p>GitHub Desktop 里点 Fetch origin，再点 Current Branch，选「第三部分改良版」。列表里没有，就说明网上还没有这条分支。</p>
+  <p>这一步的意思：接下来要送出去的是改良版，不是第三部分本身。</p>
+
+  <h3>2. 推上去</h3>
+  <p>上方如果是 Publish branch 或 Push origin，点它。账号和第一部分一样：用户名是 Gitee 个性地址，密码框粘贴私人令牌。没有写入权限时，这一步会被拒绝，接着看教师的屏幕即可。</p>
+  <p>这一步的意思：Pull Request 只能合并网上已经有的分支。Push 是把改良版送到 Gitee。</p>
+
+  <h3>3. 在网页上创建 Pull Request</h3>
+  <p>浏览器打开该仓库，点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>第三部分改良版</code>，目标分支选 <code>第三部分</code>。标题写「合入第三部分改良版」。点「创建」。</p>
+  <p>这一步的意思：这是一张合并申请，请把改良版上多出来的提交并进第三部分。创建之后，第三部分还没有变。页面上能看到将要并进去的文件。</p>
+
+  <h3>4. 在网页上合并</h3>
+  <p>就在这个 Pull Request 页面点「合并」，再确认。不要回 GitHub Desktop 点 Merge。</p>
+  <p>这一步的意思：网页把改良版的提交接进第三部分。点完以后，第三部分里才有这次的改动。</p>
+  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。源分支和目标分支写的是第三部分改良版 → 第三部分。</div>
+
+  <h3>5. 把合并结果拿回来</h3>
+  <p>GitHub Desktop 里 Current Branch 换成「第三部分」。上方变成 Pull origin 时点它。</p>
+  <p>这一步的意思：合并发生在网上。Pull 把第三部分的新提交拿进你正在看的这份本地仓库。不点的话，你电脑上的第三部分还是合并前的样子。</p>
+  <div class="see"><b>你应该看到</b> History 里出现刚才网页上的那次合并。当前分支是第三部分，里面已经有改良版的内容。</div>
 </section>
 
 <section>

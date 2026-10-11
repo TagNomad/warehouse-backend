@@ -5,10 +5,12 @@ import com.eurasia.pro_skill.domain.InboundOrder;
 import com.eurasia.pro_skill.domain.InboundOrderLine;
 import com.eurasia.pro_skill.entity.InboundOrderEntity;
 import com.eurasia.pro_skill.entity.InboundOrderLineEntity;
+import com.eurasia.pro_skill.entity.InventoryEntity;
 import com.eurasia.pro_skill.entity.SkuEntity;
 import com.eurasia.pro_skill.entity.WarehouseLocationEntity;
 import com.eurasia.pro_skill.mapper.InboundOrderLineMapper;
 import com.eurasia.pro_skill.mapper.InboundOrderMapper;
+import com.eurasia.pro_skill.mapper.InventoryMapper;
 import com.eurasia.pro_skill.mapper.SkuMapper;
 import com.eurasia.pro_skill.mapper.WarehouseLocationMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,14 +23,14 @@ import java.util.List;
 // 入库业务。Controller 把字段传进来，这里决定写哪张表。
 @Service // 注册成 Bean，Controller 才能注入
 @RequiredArgsConstructor // 为下面的 final 字段生成构造方法
-@Transactional // 这个类的方法默认开一个事务。加数量那一步不在这个事务里
+@Transactional // 这个类里的方法默认开一个事务。complete 里加库存和改状态一起提交，失败就一起撤回
 public class InboundService {
 
     private final InboundOrderMapper orderMapper; // 写 inbound_order
     private final InboundOrderLineMapper lineMapper; // 写 inbound_order_line
-    private final SkuMapper skuMapper; // 按编码或主键找货品，也负责改 on_hand
+    private final SkuMapper skuMapper; // 按编码或主键找货品
     private final WarehouseLocationMapper locationMapper; // 按编码或主键找库位
-    private final SkuOnHandWriter onHandWriter; // 加数量用它自己的事务，外层中断撤不掉
+    private final InventoryMapper inventoryMapper; // 按货品 + 库位记账
 
     public InboundOrder create() { // 没有页面字段。单号和状态都在这里生成
         InboundOrderEntity entity = new InboundOrderEntity(); // 准备要插入的那一行，此时还没有 id
@@ -63,18 +65,30 @@ public class InboundService {
     public InboundOrder complete(Long orderId) { // 路径上只有主键，没有新的数量
         InboundOrderEntity order = requireDraft(orderId); // 不是草稿就不能再完成一次
         List<InboundOrderLineEntity> lines = lineMapper.listByOrderId(order.getId()); // 这张单上已经加过的行
-        if (lines.isEmpty()) { // 没有行就没有数量可加
+        if (lines.isEmpty()) { // 没有行就没有数量可记
             throw new BusinessException("INBOUND_LINE_REQUIRED", "入库单还没有行");
         }
-        for (InboundOrderLineEntity line : lines) {
-            // 数量加到货品的 on_hand。这一步自己提交，下面抛出也撤不掉
-            // 行上的 locationId 没有传进去，所以两个格子的数量会加在同一个总数上
-            onHandWriter.add(line.getSkuId(), line.getQuantity());
+        for (InboundOrderLineEntity line : lines) { // 每一行单独记到自己的货品和库位
+            // 和下面改状态在同一个事务里。这里失败，库存和状态都会撤回
+            addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity());
         }
-        // 数量已经提交。状态还没改成 COMPLETED，这里中断，方法到不了 updateStatus
-        throw new BusinessException(
-                "INBOUND_STATUS_INTERRUPTED",
-                "INBOUND_STATUS_INTERRUPTED：入库完成在改状态前中断");
+        order.setStatus(InboundOrder.COMPLETED); // 数量记下之后，同一事务里把草稿改成完成
+        orderMapper.updateStatus(order); // SQL 只改 status 这一列
+        return toDomain(orderMapper.getById(order.getId())); // 再查一次，返回的 status 是 COMPLETED
+    }
+
+    private void addInventory(Long skuId, Long locationId, int quantity) {
+        InventoryEntity existing = inventoryMapper.getBySkuAndLocation(skuId, locationId); // 这个格子有没有这一货
+        if (existing == null) { // 第一次放到这个格子，插入新的一行
+            InventoryEntity row = new InventoryEntity();
+            row.setSkuId(skuId); // 哪一种货
+            row.setLocationId(locationId); // 哪一个格子
+            row.setQuantity(quantity); // 第一次的数量就是这一行的数量
+            row.setVersion(0); // 先写入。乐观锁以后再拿它做更新条件
+            inventoryMapper.insert(row); // 唯一键是货品主键 + 库位主键，同一个格子不会有第二行
+            return;
+        }
+        inventoryMapper.addQuantity(skuId, locationId, quantity); // 已有这一行：quantity 加上，version 加一
     }
 
     private InboundOrderEntity requireDraft(Long orderId) {
