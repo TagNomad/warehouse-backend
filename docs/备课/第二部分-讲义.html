@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第二部分讲义 · 仓库里的货是什么</title>
+<title>第二部分讲义 · 货品与入库</title>
 <style>
   :root {
     --ink: #1c2430;
@@ -85,7 +85,7 @@
 <body>
 <header class="top">
   <h1>第二部分 · 货品与入库</h1>
-  <p>第 11 周整周。周一看货品怎样进表，同一种编码为什么能记下两次。周三看入库：数量记在哪，单据状态有没有一起变成完成。类不必手写，可以用 DeepSeek 或 Kimi 按讲义生成，再对照下面的图看数据怎么走。</p>
+  <p>第 11 周整周。周一看货品怎样进表，同一种编码为什么能记下两次。周三看入库：数量记在哪，单据状态有没有一起变成完成。「第二部分」和「第二部分改良版」用的是这一份讲义。改良版改的是代码，改了两块：相同编码在插入前拒绝，并给 code 加上唯一约束；入库按货品加库位各记一行，数量和状态同一次提交。</p>
 </header>
 <main>
 
@@ -101,7 +101,7 @@
     <div class="box">库位<br>A-01-01、A-01-02、B-01-01</div>
   </div>
   <p>能登录的人已经在 <code>tb_user</code> 里。课堂账号是 <code>admin</code>，密码 <code>Admin@123</code>。</p>
-  <p>格子还在。货品已经记在 <code>sku</code> 表里，有编码、名称、单位。今天看一条创建请求怎么走到这张表。数量、入库、出库这节不做。</p>
+  <p>格子还在。货品已经记在 <code>sku</code> 表里，有编码、名称、单位。周一先看一条创建请求怎么走到这张表。周三再看入库完成之后，每个格子上各有多少。</p>
 </section>
 
 <section>
@@ -127,8 +127,6 @@
     <tr><td><code>converter</code></td><td>domain 和 entity 互转</td><td><code>WarehouseConverter</code></td></tr>
   </table>
   <p>库区、库位也是这几层，只是名字换成 Zone、Location。今天的货品照这个加，不新发明一层。</p>
-</section>
-
 </section>
 
 <section>
@@ -252,9 +250,31 @@
   <p>所以第二次也是 200。编码、名称、单位都顺利走到了表里，只是没有任何一层拒绝相同编码。</p>
 </section>
 
+
+<section>
+  <h2>改良版改了这一块：相同编码进不了第二行</h2>
+  <p>「第二部分改良版」上的货品创建，在 Service 停住，到不了 INSERT。表上再加一道唯一约束，直接写库也进不了第二行。下面四张图就是改良版里的代码和结果。</p>
+  <figure class="shot">
+    <img src="figures/40-get-by-code.png" alt="按编码查询的 SQL">
+    <figcaption>#{code} 是这次请求传来的编码。查不到就是 null。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/41-sku-reject.png" alt="查到已有编码就拒绝">
+    <figcaption>existing 不是 null 时抛出 SKU_CODE_DUPLICATED，下面的 insert 不会执行。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/42-v8-unique.png" alt="V8 给 code 加唯一约束">
+    <figcaption>V8 在已经执行过的 V7 之后，给 code 加上 UNIQUE KEY uk_code。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/43-duplicate-400.png" alt="再次创建 SKU-001 返回 400">
+    <figcaption>再提交一次 SKU-001，响应是 400，message 里是 SKU_CODE_DUPLICATED。表里这个编码仍是原来那一行。</figcaption>
+  </figure>
+</section>
+
 <section>
   <h2>三个接口，数据经过哪里</h2>
-  <p>和用户、货品一样，Controller 不写 SQL。页面上的字段传到 Service，Service 再交给 Mapper。编码在进表之前换成主键。</p>
+  <p>和用户、货品一样，Controller 不写 SQL。页面上的字段传到 Service，Service 再交给 Mapper。编码在进表之前换成主键。新建草稿和加一行，两个分支是同一套。不同的是完成时数量写到哪里、状态是否一起改。</p>
   <div class="flow">
     <div class="box">InboundController<br>接路径和字段</div>
     <span class="arrow">→</span>
@@ -355,8 +375,104 @@
 </section>
 
 <section>
-  <h2>这一部分改完之后</h2>
-  <p>相同编码的拒绝、按货品加库位记账、入库数量和状态同一次提交，都在「第二部分改良版」。那份讲义按同样的三层给出改完的代码图和结果图。课堂上把改良版合并进第二部分，只合并这一次。</p>
+  <h2>改良版改了这一块：每个格子一行，数量和状态一起提交</h2>
+  <p>「第二部分改良版」上的完成，把数量记到「货品 + 库位」，并和单据状态同一次提交。Controller 仍只传 id。变的是 Service 和它调用的 SQL。</p>
+  <div class="flow">
+    <div class="box">InboundController<br>只传 id</div>
+    <span class="arrow">→</span>
+    <div class="box">InboundService<br>加库存并改状态</div>
+    <span class="arrow">→</span>
+    <div class="box">InventoryMapper<br>按货品 + 库位</div>
+    <span class="arrow">→</span>
+    <div class="box">MySQL<br>inventory</div>
+  </div>
+  <figure class="shot">
+    <img src="figures/78-service-complete.png" alt="加库存和改状态写在一起">
+    <figcaption>类上有 @Transactional。循环里的 addInventory 和后面的 updateStatus 在同一个事务里，一步失败就一起撤回。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/79-add-inventory.png" alt="按货品和库位记账">
+    <figcaption>这个格子还没有这一货就插入一行，quantity 等于这次的数量，version 写成 0。已经有了就把数量加上，version 加一。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/80-inventory-sql.png" alt="inventory 的查询插入和更新">
+    <figcaption>查、插、改都用 sku_id 加 location_id。#{delta} 是这次要加的数量。更新语句还不拿 version 当条件。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/56-inventory-table.png" alt="inventory 表按货品和库位唯一">
+    <figcaption>V11：唯一键是 sku_id 加 location_id。同一种货进两个格子，是两行。</figcaption>
+  </figure>
+  <p>同一张货 <code>SKU-001</code>，10 进 <code>A-01-01</code>，8 进 <code>A-01-02</code>。两次完成都返回已完成。问某个格子，读 <code>inventory.quantity</code> 那一行。</p>
+  <figure class="shot">
+    <img src="figures/59-complete-ok.png" alt="完成入库返回 COMPLETED">
+    <figcaption>完成接口返回 200，status 是 COMPLETED。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/60-inventory-rows.png" alt="inventory 两行分别是 10 和 8">
+    <figcaption>inventory 两行：A-01-01 是 10，A-01-02 是 8。问某个格子，直接读这一行的 quantity。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/61-inbound-completed.png" alt="两张入库单已完成">
+    <figcaption>两张入库单的 status 都是 COMPLETED。数量和状态一起定下来。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>改良版改了哪两块</h2>
+  <p>讲义到这里是同一份。「第二部分改良版」上不同的是代码，就这两块。</p>
+  <table>
+    <tr><th>这一部分现在的代码</th><th>改良版上的代码</th></tr>
+    <tr>
+      <td>相同编码还能再插入一行。<code>sku.code</code> 没有唯一约束，<code>create</code> 也不查询。</td>
+      <td><code>getByCode</code> 查到就拒绝，错误码 <code>SKU_CODE_DUPLICATED</code>。<code>V8</code> 给 <code>code</code> 加 <code>UNIQUE KEY</code>。</td>
+    </tr>
+    <tr>
+      <td>完成时把数量加在 <code>sku.on_hand</code>，库位没有记下来。这一步单独提交，改状态之前中断，单据仍是 <code>DRAFT</code>。</td>
+      <td>数量记到 <code>inventory</code>，按货品 + 库位各一行。加数量和改状态在同一个事务里，单据是 <code>COMPLETED</code>。</td>
+    </tr>
+  </table>
+  <p>新建草稿、加一行，两个分支是同一套。课堂上把改良版合并进第二部分，带过去的是上面这两块代码。</p>
+</section>
+
+<section>
+  <h2>重温：把改良版合并进第二部分</h2>
+  <p>第一部分做过一次：自己的仓库里新建分支、推上去、在网页上创建 Pull Request、在网页上点合并。这次用课堂仓库重温，分支已经定好。</p>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第二部分改良版</code>，上面是改过的货品和入库代码。目标分支是 <code>第二部分</code>。讲义和这一份相同。教师先按下面做完，学生看。全班只合并这一次，不要每人再推一个同名分支。</p>
+
+  <h3>1. 切到改良版</h3>
+  <p>GitHub Desktop 里点 Fetch origin，再点 Current Branch，选「第二部分改良版」。列表里没有，就说明网上还没有这条分支。</p>
+  <p>这一步的意思：接下来要送出去的是改良版，不是第二部分本身。</p>
+
+  <h3>2. 推上去</h3>
+  <p>上方如果是 Publish branch 或 Push origin，点它。账号和第一部分一样：用户名是 Gitee 个性地址，密码框粘贴私人令牌。没有写入权限时，这一步会被拒绝，接着看教师的屏幕即可。</p>
+  <p>这一步的意思：Pull Request 只能合并网上已经有的分支。Push 是把改良版送到 Gitee。</p>
+
+  <h3>3. 在网页上创建 Pull Request</h3>
+  <p>浏览器打开该仓库，点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>第二部分改良版</code>，目标分支选 <code>第二部分</code>。标题写「合入第二部分改良版」。点「创建」。</p>
+  <p>这一步的意思：这是一张合并申请，请把改良版上多出来的提交并进第二部分。创建之后，第二部分还没有变。页面上能看到将要并进去的文件，主要是货品查重、唯一约束，以及按库位记账的完成逻辑。</p>
+
+  <h3>4. 在网页上合并</h3>
+  <p>就在这个 Pull Request 页面点「合并」，再确认。不要回 GitHub Desktop 点 Merge。</p>
+  <p>这一步的意思：网页把改良版的提交接进第二部分。点完以后，第二部分里才有这次的代码。</p>
+  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。源分支和目标分支写的是第二部分改良版 → 第二部分。</div>
+
+  <h3>5. 把合并结果拿回来</h3>
+  <p>GitHub Desktop 里 Current Branch 换成「第二部分」。上方变成 Pull origin 时点它。</p>
+  <p>这一步的意思：合并发生在网上。Pull 把第二部分的新提交拿进你正在看的这份本地仓库。不点的话，你电脑上的第二部分还是合并前的样子。</p>
+  <div class="see"><b>你应该看到</b> History 里出现刚才网页上的那次合并。当前分支是第二部分，里面已经有改良版的代码。</div>
+</section>
+
+<section>
+  <h2>作业里要写同类接口时</h2>
+  <p>把下面这段发给 DeepSeek 或 Kimi。生成后按上面的顺序检查：编码有没有在进表之前被拒绝，库位有没有进到某一行，数量有没有和单据状态分两次提交。</p>
+  <pre>这是 Spring Boot 项目，包名 com.eurasia.pro_skill。
+请按 UserController 的方式写入库：Controller 把字段传给 Service，不要用 builder。
+入库单 inbound_order：单号、状态 DRAFT/COMPLETED、创建时间。
+入库行 inbound_order_line：货品、库位、数量。
+完成时把数量记到「货品 + 库位」各自的一行，并在同一个事务里把状态改成 COMPLETED。
+库存表 inventory：sku_id、location_id、quantity、version，唯一键是货品加库位。
+货品编码不能重复：插入前按 code 查询，已存在就拒绝；表上给 code 加唯一约束。
+生成后说明：一次完成请求里，数量和状态分别在哪一层写下去。</pre>
 </section>
 
 </main>
