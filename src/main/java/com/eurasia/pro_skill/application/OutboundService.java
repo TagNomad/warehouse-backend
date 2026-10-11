@@ -17,12 +17,18 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 // 出库业务。Controller 把路径和字段传进来，这里决定读哪张表、写哪张表。完成时从 inventory 里减数量。
 @Service // 注册成 Bean，OutboundController 才能注入
@@ -41,6 +47,7 @@ public class OutboundService {
     private final LessonRedis redis; // 记 Idempotency-Key
     private final StockLock stockLock; // 一个格子一把 Redis 锁
     private final InventoryCache inventoryCache; // 数量改了以后删缓存
+    private final TransactionTemplate transactionTemplate; // 在方法中间开事务：complete 要先拿锁再开
 
     private static final long IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000L; // 一天内重发同一个键都算重复
 
@@ -84,7 +91,34 @@ public class OutboundService {
         return toDomain(order); // 把这张单和它的全部行一起返回
     }
 
-    public OutboundOrder complete(Long orderId) { // POST /outbound-orders/{id}/complete，路径上只有主键
+    // POST /outbound-orders/{id}/complete，路径上只有主键。
+    // 这个方法自己不开事务：sku-location 要先拿锁，再开事务读数量。
+    // MySQL 默认可重复读，事务里第一次查询就定下了能看到的数据，锁拿得再早，事务开得比锁早也会读到旧数。
+    @Transactional(propagation = Propagation.SUPPORTS)
+    public OutboundOrder complete(Long orderId) {
+        if (!switches.lockBeforeRead()) { // stock-lock 是 after-check：直接开事务，锁在 deduct 里判断完才拿
+            return transactionTemplate.execute(status -> deduct(orderId));
+        }
+        OutboundOrderEntity order = orderMapper.getById(orderId); // 还没开事务，只为拿到单号和行
+        if (order == null) {
+            throw new BusinessException("OUTBOUND_NOT_FOUND", "出库单不存在：" + orderId);
+        }
+        Set<String> lockKeys = new TreeSet<>(); // 排好序再加锁。两张单都按同一顺序拿，不会互相等死
+        for (OutboundOrderLineEntity line : lineMapper.listByOrderId(orderId)) {
+            lockKeys.add(StockLock.key(line.getSkuId(), line.getLocationId())); // lock:inv:货品主键:库位主键
+        }
+        Map<String, String> owners = new LinkedHashMap<>(); // 锁的键 → 加锁时写进去的标记
+        try {
+            for (String lockKey : lockKeys) {
+                owners.put(lockKey, stockLock.acquire(lockKey, order.getOrderNo())); // 别人拿着就等，最多 10 秒
+            }
+            return transactionTemplate.execute(status -> deduct(orderId)); // 拿到锁才开事务；返回时已经提交
+        } finally {
+            owners.forEach(stockLock::release); // 提交或回滚之后才放，下一张单读到的是提交后的数
+        }
+    }
+
+    private OutboundOrder deduct(Long orderId) { // 在 transactionTemplate 开的事务里执行
         OutboundOrderEntity order = requireDraft(orderId); // 已完成的单不能再完成一次
         List<OutboundOrderLineEntity> lines = lineMapper.listByOrderId(order.getId()); // 这张单上加过的行
         if (lines.isEmpty()) { // 没有行就没有数量可减
@@ -92,10 +126,6 @@ public class OutboundService {
         }
         for (OutboundOrderLineEntity line : lines) { // 每一行减自己那个格子
             String lockKey = StockLock.key(line.getSkuId(), line.getLocationId()); // lock:inv:货品主键:库位主键
-            if (switches.lockBeforeRead()) { // stock-lock 是 sku-location：先拿锁，再读数量
-                String owner = stockLock.acquire(lockKey, order.getOrderNo()); // 别人拿着就等，最多 10 秒
-                stockLock.releaseAfterCompletion(lockKey, owner); // 登记好：这个事务提交或回滚之后才放
-            }
             // 用行上记下的两个主键，找到 inventory 里这种货在这个格子上的那一行
             InventoryEntity inventory = inventoryMapper.getBySkuAndLocation(line.getSkuId(), line.getLocationId());
             if (inventory == null) { // 这个格子上从来没入过这种货

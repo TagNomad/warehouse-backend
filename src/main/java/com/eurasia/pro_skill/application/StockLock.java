@@ -5,8 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
@@ -43,16 +41,6 @@ public class StockLock {
     public void release(String key, String owner) {
         redis.deleteIfValue(key, owner); // 值还是自己的标记才删。超时后被别人拿走的锁不会被误删
         log.info("{} 放开锁 {}", owner.substring(0, owner.indexOf(':')), key);
-    }
-
-    // 事务结束才放：提交或回滚之后。放早了，下一张单会读到还没提交的旧数量
-    public void releaseAfterCompletion(String key, String owner) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) { // 提交、回滚都会走到这里，锁不会漏放
-                release(key, owner);
-            }
-        });
     }
 
     private void sleep() {
