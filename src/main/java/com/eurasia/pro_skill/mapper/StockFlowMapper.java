@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Options;
 @Mapper
 public interface StockFlowMapper {
 
+    // 五个值都取自 entity 的同名属性。id 不在列清单里，由 MySQL 自增。
     @Insert("INSERT INTO stock_flow (biz_no, sku_id, location_id, quantity, created_at) " +
             "VALUES (#{bizNo}, #{skuId}, #{locationId}, #{quantity}, #{createdAt})")
     @Options(useGeneratedKeys = true, keyProperty = "id") // 把自增主键写回 entity.id
