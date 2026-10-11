@@ -13,4 +13,5 @@ public class Sku {
     private String name; // 货品名称
     private String unit; // 计量单位
     private LocalDateTime createdAt; // 创建时间，由 Service 在插入前写入
+    private Integer onHand; // 这张货品上的数量合计，不区分库位
 }

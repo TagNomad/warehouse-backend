@@ -23,6 +23,9 @@ public interface WarehouseLocationMapper {
     @Select("SELECT * FROM warehouse_location WHERE id=#{id}")
     WarehouseLocationEntity getById(Long id);
 
+    @Select("SELECT * FROM warehouse_location WHERE code=#{code} LIMIT 1")
+    WarehouseLocationEntity getByCode(String code);
+
     @Select("SELECT * FROM warehouse_location WHERE zone_id=#{zoneId} AND code=#{code}")
     WarehouseLocationEntity getByZoneIdAndCode(@Param("zoneId") Long zoneId, @Param("code") String code);
 
