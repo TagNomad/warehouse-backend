@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,17 +40,38 @@ class InboundControllerIntegrationTest {
         jdbcTemplate.update("INSERT INTO warehouse_zone (warehouse_id, code, name, type) VALUES (?, 'Z-IN', '区', 'STORAGE')", warehouseId);
         Long zoneId = jdbcTemplate.queryForObject("SELECT id FROM warehouse_zone WHERE code='Z-IN'", Long.class);
         jdbcTemplate.update("INSERT INTO warehouse_location (zone_id, code, name) VALUES (?, 'A-01-01', '位')", zoneId);
+        jdbcTemplate.update("INSERT INTO warehouse_location (zone_id, code, name) VALUES (?, 'A-01-02', '位')", zoneId);
     }
 
     @Test
-    @DisplayName("完成后数量加在货品上，单据仍是草稿")
-    void completeAddsOnHandAndLeavesDraft() throws Exception {
+    @DisplayName("两个库位各记一行，单据变成已完成")
+    void completeWritesInventoryAndCompletesOrder() throws Exception {
         mockMvc.perform(post("/skus")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":\"SKU-IN-001\",\"name\":\"轴承\",\"unit\":\"个\"}"))
                 .andExpect(status().isOk());
 
+        completeLine("A-01-01", 10);
+        completeLine("A-01-02", 8);
+
+        Integer first = jdbcTemplate.queryForObject(
+                "SELECT quantity FROM inventory WHERE sku_id = (SELECT id FROM sku WHERE code='SKU-IN-001') AND location_id = (SELECT id FROM warehouse_location WHERE code='A-01-01')",
+                Integer.class);
+        Integer second = jdbcTemplate.queryForObject(
+                "SELECT quantity FROM inventory WHERE sku_id = (SELECT id FROM sku WHERE code='SKU-IN-001') AND location_id = (SELECT id FROM warehouse_location WHERE code='A-01-02')",
+                Integer.class);
+        Integer onHand = jdbcTemplate.queryForObject(
+                "SELECT on_hand FROM sku WHERE code='SKU-IN-001'", Integer.class);
+        Integer completed = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM inbound_order WHERE status='COMPLETED'", Integer.class);
+        assertEquals(10, first);
+        assertEquals(8, second);
+        assertEquals(0, onHand);
+        assertEquals(2, completed);
+    }
+
+    private void completeLine(String locationCode, int quantity) throws Exception {
         MvcResult created = mockMvc.perform(post("/inbound-orders")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -60,19 +82,12 @@ class InboundControllerIntegrationTest {
         mockMvc.perform(post("/inbound-orders/" + id + "/lines")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"skuCode\":\"SKU-IN-001\",\"locationCode\":\"A-01-01\",\"quantity\":10}"))
+                        .content("{\"skuCode\":\"SKU-IN-001\",\"locationCode\":\"" + locationCode + "\",\"quantity\":" + quantity + "}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/inbound-orders/" + id + "/complete")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("INBOUND_STATUS_INTERRUPTED")));
-
-        Integer onHand = jdbcTemplate.queryForObject(
-                "SELECT on_hand FROM sku WHERE code='SKU-IN-001'", Integer.class);
-        String status = jdbcTemplate.queryForObject(
-                "SELECT status FROM inbound_order WHERE id=?", String.class, Long.valueOf(id));
-        org.junit.jupiter.api.Assertions.assertEquals(10, onHand);
-        org.junit.jupiter.api.Assertions.assertEquals("DRAFT", status);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
 }

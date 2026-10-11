@@ -5,10 +5,12 @@ import com.eurasia.pro_skill.domain.InboundOrder;
 import com.eurasia.pro_skill.domain.InboundOrderLine;
 import com.eurasia.pro_skill.entity.InboundOrderEntity;
 import com.eurasia.pro_skill.entity.InboundOrderLineEntity;
+import com.eurasia.pro_skill.entity.InventoryEntity;
 import com.eurasia.pro_skill.entity.SkuEntity;
 import com.eurasia.pro_skill.entity.WarehouseLocationEntity;
 import com.eurasia.pro_skill.mapper.InboundOrderLineMapper;
 import com.eurasia.pro_skill.mapper.InboundOrderMapper;
+import com.eurasia.pro_skill.mapper.InventoryMapper;
 import com.eurasia.pro_skill.mapper.SkuMapper;
 import com.eurasia.pro_skill.mapper.WarehouseLocationMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,7 @@ public class InboundService {
     private final InboundOrderLineMapper lineMapper;
     private final SkuMapper skuMapper;
     private final WarehouseLocationMapper locationMapper;
-    private final SkuOnHandWriter onHandWriter; // 加数量用它自己的事务
+    private final InventoryMapper inventoryMapper; // 按货品和库位记账，和改状态在同一个事务里
 
     public InboundOrder create() {
         InboundOrderEntity entity = new InboundOrderEntity();
@@ -66,13 +68,26 @@ public class InboundService {
             throw new BusinessException("INBOUND_LINE_REQUIRED", "入库单还没有行");
         }
         for (InboundOrderLineEntity line : lines) {
-            // 每一行的数量加到货品的 on_hand。这一步自己提交，后面中断也撤不掉
-            onHandWriter.add(line.getSkuId(), line.getQuantity());
+            // 这一行记到「货品 + 库位」。和下面改状态是同一个事务，任何一步失败都会一起撤回
+            addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity());
         }
-        // 数量已经提交。状态还没改成 COMPLETED，这里中断
-        throw new BusinessException(
-                "INBOUND_STATUS_INTERRUPTED",
-                "INBOUND_STATUS_INTERRUPTED：入库完成在改状态前中断");
+        order.setStatus(InboundOrder.COMPLETED); // 数量记下之后，同一事务里把草稿改成完成
+        orderMapper.updateStatus(order);
+        return toDomain(orderMapper.getById(order.getId()));
+    }
+
+    private void addInventory(Long skuId, Long locationId, int quantity) {
+        InventoryEntity existing = inventoryMapper.getBySkuAndLocation(skuId, locationId);
+        if (existing == null) {
+            InventoryEntity row = new InventoryEntity();
+            row.setSkuId(skuId); // 哪一种货
+            row.setLocationId(locationId); // 哪一个格子
+            row.setQuantity(quantity); // 第一次入库，数量就是这一行
+            row.setVersion(0); // 先写入，乐观锁以后再拿它做条件
+            inventoryMapper.insert(row);
+            return;
+        }
+        inventoryMapper.addQuantity(skuId, locationId, quantity); // 已有这一行，数量加上，version 加一
     }
 
     private InboundOrderEntity requireDraft(Long orderId) {
