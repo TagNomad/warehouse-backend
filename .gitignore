@@ -51,3 +51,5 @@ logs/
 src/main/resources/application-local.properties
 
 opencode.json
+### ===== 本机附件（file-store: local） =====
+data/

@@ -42,15 +42,18 @@ services:
         condition: service_healthy
 
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    # 官方 minio/minio 镜像已不再公开提供，这里用社区维护的 MinIO 构建，命令和控制台与官方相同
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: pro-skill-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000" # 应用读写对象走这个端口
+      - "9001:9001" # 网页控制台，浏览器打开 http://localhost:9001
+    volumes:
+      - pro-skill-minio-data:/data # 对象放在数据卷里，MinIO 容器重建也还在
 
   redis:
     image: redis:7
@@ -81,6 +84,7 @@ services:
       APP_LESSON_CONSUME_ONCE: ${APP_LESSON_CONSUME_ONCE:-on}
       APP_LESSON_CONSUME_FAIL_BEFORE_ACK: ${APP_LESSON_CONSUME_FAIL_BEFORE_ACK:-false}
       APP_LESSON_FILE_STORE: ${APP_LESSON_FILE_STORE:-local}
+      APP_LESSON_FILE_KEY: ${APP_LESSON_FILE_KEY:-filename}
       APP_LESSON_MINIO_ENDPOINT: ${APP_LESSON_MINIO_ENDPOINT:-http://minio:9000}
       DB_USERNAME: root
       DB_PASSWORD: root
@@ -91,6 +95,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      minio:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
       interval: 5s
@@ -100,3 +106,4 @@ services:
 
 volumes:
   pro-skill-mysql-data:
+  pro-skill-minio-data:

@@ -21,6 +21,7 @@ public class LessonSwitches {
     private final boolean consumeOnce; // on：同一条消息只写一行通知
     private final boolean consumeFailBeforeAck; // true：写完通知、确认之前失败一次，用来看消息重投
     private final boolean fileOnMinio; // minio：附件进对象存储
+    private final boolean uniqueFileKey; // unique：附件换成随机名存放，不用页面传来的文件名
     private final boolean inventoryPage; // page：库存列表分页
     private final boolean metrics; // on：记出库耗时和拒绝次数
 
@@ -37,7 +38,8 @@ public class LessonSwitches {
             @Value("${app.lesson.publish-after-commit:off}") String publishAfterCommit,
             @Value("${app.lesson.consume-once:off}") String consumeOnce,
             @Value("${app.lesson.consume-fail-before-ack:false}") String consumeFailBeforeAck,
-            @Value("${app.lesson.file-store:local}") String fileStore,
+            @Value("${app.lesson.file-store:local}") String fileStore, // local 或 minio
+            @Value("${app.lesson.file-key:filename}") String fileKey, // filename 或 unique
             @Value("${app.lesson.inventory-query:full}") String inventoryQuery,
             @Value("${app.lesson.metrics:off}") String metrics) {
         this.outboundCheck = enabled(outboundCheck);
@@ -53,6 +55,7 @@ public class LessonSwitches {
         this.consumeOnce = enabled(consumeOnce);
         this.consumeFailBeforeAck = enabled(consumeFailBeforeAck);
         this.fileOnMinio = "minio".equalsIgnoreCase(fileStore);
+        this.uniqueFileKey = "unique".equalsIgnoreCase(fileKey);
         this.inventoryPage = "page".equalsIgnoreCase(inventoryQuery);
         this.metrics = enabled(metrics);
     }
@@ -112,6 +115,10 @@ public class LessonSwitches {
 
     public boolean fileOnMinio() {
         return fileOnMinio;
+    }
+
+    public boolean uniqueFileKey() {
+        return uniqueFileKey;
     }
 
     public boolean inventoryPage() {

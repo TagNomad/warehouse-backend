@@ -21,6 +21,12 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
 
+  # 附件上传。默认只允许 1MB，手机拍的收货单常常超过
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   # Flyway
   flyway:
     enabled: true
@@ -65,6 +71,10 @@ logging:
 # consume-once：off 重投的消息再写一行通知；on 用消息编号去重。
 # consume-fail-before-ack：true 时消费者写完通知、XACK 之前失败一次，演示消息重投用。
 # notice-poll-ms：消费者多久读一次 Stream。
+# file-store：local 附件写进应用所在机器的磁盘，表里记绝对路径；minio 放进 MinIO 桶 wms，表里记对象 key。
+# file-key：filename 用页面传来的文件名存放；unique 换成随机名，只留扩展名。
+# local-file-dir：file-store 是 local 时的目录，相对进程的工作目录。
+# minio-endpoint：本机进程用 http://localhost:9000；容器里必须是 Compose 服务名 http://minio:9000。
 # datasource-host：本机进程用 localhost；容器里必须是 Compose 服务名 mysql。
 db:
   name: pro_skill
@@ -88,6 +98,11 @@ app:
     consume-fail-before-ack: false
     notice-poll-ms: 1000
     file-store: local
+    file-key: filename
+    local-file-dir: data/attachments
+    minio-endpoint: http://localhost:9000
+    minio-access: minioadmin
+    minio-secret: minioadmin
     inventory-query: full
     metrics: off
     redis-host: localhost
