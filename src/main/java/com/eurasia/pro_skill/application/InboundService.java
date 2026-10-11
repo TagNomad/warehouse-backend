@@ -101,16 +101,17 @@ public class InboundService {
 
     private void writeFlow(String orderNo, InboundOrderLineEntity line) {
         if (switches.flowAfterCommit()) { // on：流水和改状态在 InboundService 这一个事务里
-            StockFlowEntity row = new StockFlowEntity();
-            row.setBizNo(orderNo);
-            row.setSkuId(line.getSkuId());
-            row.setLocationId(line.getLocationId());
-            row.setQuantity(line.getQuantity());
-            row.setCreatedAt(java.time.LocalDateTime.now());
-            stockFlowMapper.insert(row); // 主事务回滚时，这一行一起没了
+            StockFlowEntity row = new StockFlowEntity(); // 准备 stock_flow 的一行
+            row.setBizNo(orderNo); // 写进 biz_no：入库单号，例如 IN-3
+            row.setSkuId(line.getSkuId()); // 写进 sku_id：来自入库行
+            row.setLocationId(line.getLocationId()); // 写进 location_id：来自入库行
+            row.setQuantity(line.getQuantity()); // 写进 quantity：这一行入库的数量
+            row.setCreatedAt(java.time.LocalDateTime.now()); // 写进 created_at
+            stockFlowMapper.insert(row); // 还没提交。主事务回滚时，这一行一起没了
             return;
         }
-        stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity()); // 自己先提交
+        // off：交给另一个 Bean，用 REQUIRES_NEW 另开事务。这一行马上提交，主事务回滚也撤不掉
+        stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity());
     }
 
     private InboundOrderEntity requireDraft(Long orderId) {
