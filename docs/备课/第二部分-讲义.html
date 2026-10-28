@@ -98,6 +98,38 @@
 </header>
 <main>
 
+<section id="preview">
+  <h2>先看页面：这一部分要做出什么</h2>
+  <p>前端切到「第二部分」分支，左边菜单多了「货品」「入库」两页。这一部分写的就是这两页上四个按钮背后的接口。</p>
+  <table>
+    <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
+    <tr><td>货品页「新建」</td><td><code>POST /skus</code></td><td><code>sku</code> 插入一行</td><td style="white-space:nowrap">第 5 节</td></tr>
+    <tr><td>入库页「新建入库单」</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 插入一行，状态 DRAFT</td><td style="white-space:nowrap">第 6 节</td></tr>
+    <tr><td>入库页「加一行」</td><td><code>POST /inbound-orders/{id}/lines</code></td><td><code>inbound_order_line</code> 插入一行</td><td style="white-space:nowrap">第 7 节</td></tr>
+    <tr><td>入库页「完成入库」</td><td><code>POST /inbound-orders/{id}/complete</code></td><td>原分支加在 <code>sku.on_hand</code>；改良版按货品 + 库位写进 <code>inventory</code></td><td style="white-space:nowrap">第 8 节</td></tr>
+  </table>
+  <p>两个后端分支用的是同一个前端。同一个按钮，返回不一样：</p>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/292-page-sku-defect.png" alt="第二部分货品页">
+      <figcaption><span class="tag bad">第二部分</span> 已经有 SKU-001，再建一次还是 200，表里出现两行。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/293-page-sku-fixed.png" alt="改良版货品页">
+      <figcaption><span class="tag ok">改良版</span> 同一个按钮返回 400 <code>SKU_CODE_DUPLICATED</code>，表里只有一行。</figcaption>
+    </figure>
+  </div>
+  <p>入库也一样：往 A-01-01 放 10 个、A-01-02 放 8 个，第二部分的 <code>on_hand</code> 一栏变成 18，分不出哪个格子上有几个；改良版的 <code>on_hand</code> 还是 0，数量按格子记进了 <code>inventory</code>。为什么会这样、该改哪几行，就是这一部分要讲的。</p>
+  <p>这一部分要学会四件事：</p>
+  <ul>
+    <li>照着第 5–8 节，自己写出这四个接口：Controller → Service → Mapper → 表。</li>
+    <li>看懂开关怎样让同一份代码走两条路（第 4 节）。</li>
+    <li>在页面、Adminer 里自己查出两个漏洞（第 10–11 节）。</li>
+    <li>说清改良版改了哪两块（第 12 节）。</li>
+  </ul>
+  <p>前端怎么启动、实验每一步在页面上怎么点，见第 16 节。</p>
+</section>
+
 <nav class="toc">
 <section>
   <h2>这一份讲义的顺序</h2>

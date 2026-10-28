@@ -98,6 +98,39 @@
 </header>
 <main>
 
+<section id="preview">
+  <h2>先看页面：这一部分要做出什么</h2>
+  <p>前端切到「第三部分」分支，左边菜单多了「出库」。出库页和入库页一样：新建、加一行、完成；多了每一行的「改数量」，和一个「同时完成勾选的单」按钮。这一部分写的就是这些按钮背后的接口。</p>
+  <table>
+    <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
+    <tr><td>「新建出库单」</td><td><code>POST /outbound-orders</code></td><td><code>outbound_order</code> 插入一行，状态 DRAFT</td><td style="white-space:nowrap">第 4 节</td></tr>
+    <tr><td>「加一行」</td><td><code>POST /outbound-orders/{id}/lines</code></td><td><code>outbound_order_line</code> 插入一行</td><td style="white-space:nowrap">第 5 节</td></tr>
+    <tr><td>「完成出库」</td><td><code>POST /outbound-orders/{id}/complete</code></td><td>从 <code>inventory</code> 那一格减数量，单据改成 COMPLETED</td><td style="white-space:nowrap">第 6 节</td></tr>
+    <tr><td>行上的「改」</td><td><code>PATCH /outbound-orders/{id}/lines/{lineId}</code></td><td>改 <code>outbound_order_line.quantity</code></td><td style="white-space:nowrap">第 7 节</td></tr>
+    <tr><td>入库页「完成入库」</td><td>第二部分的接口</td><td>多写一条 <code>stock_flow</code> 流水</td><td style="white-space:nowrap">第 8 节</td></tr>
+  </table>
+  <p>格子上只剩 1 件时，勾选两张各出 1 件的单，点「同时完成勾选的单」：</p>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/543-page-race-defect.png" alt="第三部分同时完成">
+      <figcaption><span class="tag bad">第三部分</span> 两张都返回 200。发出去 2 件，库存只少了 1 件。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/544-page-race-fixed.png" alt="改良版同时完成">
+      <figcaption><span class="tag ok">改良版</span> 一张 200，另一张 400 <code>STOCK_CONFLICT</code>，库存和单据对得上。</figcaption>
+    </figure>
+  </div>
+  <p>另外还有三处漏洞：剩余 10 出 15，原分支照样 200；已完成的单还能改数量；入库失败了，流水却留下来。前两处在页面的「接口返回」里就能看出来，第三处两边都返回 400，要到 Adminer 查 <code>stock_flow</code>。这一部分把这四处一个个查出来、改掉。</p>
+  <p>这一部分要学会四件事：</p>
+  <ul>
+    <li>照着第 4–7 节，自己写出四个出库接口：Controller → Service → Mapper → 表。</li>
+    <li>说清入库完成时流水为什么要和入库同一次提交（第 8 节）。</li>
+    <li>在页面、日志、Adminer 里查出四个漏洞（第 10–13 节）。</li>
+    <li>说清改良版改了哪四块，乐观锁的 <code>version</code> 怎样挡住同时出库（第 14 节）。</li>
+  </ul>
+  <p>实验每一步在页面上怎么点，见第 18 节。</p>
+</section>
+
 <nav class="toc">
 <section>
   <h2>这一份讲义的顺序</h2>
