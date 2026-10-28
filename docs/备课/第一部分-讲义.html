@@ -199,6 +199,7 @@
     <button type="button" id="btn-win" onclick="setOs('win')">Windows</button>
   </div>
   <nav class="jump">
+    <a href="#preview">先看页面</a>
     <a href="#git-idea">先讲 Git</a>
     <a href="#git-install">安装 GitHub Desktop</a>
     <a href="#git-clone">克隆到本地</a>
@@ -207,6 +208,24 @@
   </nav>
 </header>
 <main>
+
+<section id="preview">
+  <h2>先看页面：这两次课要做出什么</h2>
+  <p class="lead">先看终点。周三下课前，你的电脑上会跑着一个仓库管理系统：浏览器打开 <code>http://localhost:5173</code>，用 <code>admin</code> / <code>Admin@123</code> 登录，点「仓库管理」，再点 WH-001 的「库区库位」，看到下面这张图。</p>
+  <figure class="shot">
+    <img src="figures/18-page-warehouse-tree.png" alt="仓库管理页展开库区库位">
+    <figcaption>这一页上的每一样东西都要靠这两次课搭出来。前端页面是现成的，这门课写的是它背后的后端。</figcaption>
+  </figure>
+  <p>页面上看到的东西，和这两次课要做的事一一对应：</p>
+  <table>
+    <tr><th>页面上看到的</th><th>背后要先做到</th><th>在哪一节</th></tr>
+    <tr><td>项目代码在自己电脑上，能切到「第一部分」</td><td>用 GitHub Desktop 克隆课堂仓库，看懂分支和提交记录</td><td>先讲 Git、克隆到本地</td></tr>
+    <tr><td>数据有地方放</td><td>MySQL 在容器里跑起来，Adminer 用服务名 <code>mysql</code> 连上它</td><td>第一次课：只启动 MySQL 和 Adminer</td></tr>
+    <tr><td>登录能进去，仓库、库区、库位有数据</td><td>应用打成镜像、放进容器，连上数据库；启动时按迁移脚本建表、写入初始数据；8080 能访问</td><td>第二次课：把应用放进同一个文件</td></tr>
+    <tr><td>浏览器里的页面能调到后端</td><td>前端把 <code>/api</code> 开头的请求转给 8080</td><td>第二次课最后：用前端页面登录</td></tr>
+  </table>
+  <p>后面的顺序就是把这张表从上往下做一遍。做到最后一行，回来对照这张图。</p>
+</section>
 
 <section id="git-idea">
   <h2>先讲 Git</h2>
