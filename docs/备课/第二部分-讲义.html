@@ -100,32 +100,74 @@
 
 <section id="preview">
   <h2>先看页面：这一部分要做出什么</h2>
-  <p>前端切到「第二部分」分支，左边菜单多了「货品」「入库」两页。这一部分写的就是这两页上四个按钮背后的接口。</p>
+  <p>上学期的系统只知道仓库里有哪些格子：仓库 WH-001 下面有库位 A-01-01、A-01-02、B-01-01。这一部分让系统再记下两件事：</p>
+  <ol>
+    <li><b>仓库里有哪些货。</b>每一种货叫一个「货品」，用编码区分，比如 <code>SKU-003</code> 是垫圈。</li>
+    <li><b>每次进了多少货、放进了哪个格子。</b>这一步叫「入库」。</li>
+  </ol>
+  <p>前端切到「第二部分」分支，左边菜单多了「货品」「入库」两页。下面先看这两页，再看这一部分要解决的两个问题。</p>
+
+  <h3>货品页：登记有哪些货</h3>
+  <p>上面三个框填编码、名称、单位，点「新建」，货品表 <code>sku</code> 里就多一行。中间的表列出已经登记的货品。最下面「接口返回」记着每点一次按钮后端回了什么：绿色 200 是成功，红色 400 是被拒绝，下面是后端回的原文。</p>
+  <p><b>重点一：同一个编码能不能登记两次。</b>轴承 <code>SKU-001</code> 已经登记过了，在页面上再新建一次 <code>SKU-001</code>：</p>
+      <figure class="shot">
+        <img src="figures/296-preview-sku-defect.png" alt="第二部分货品页">
+        <figcaption><span class="tag bad">第二部分</span> 成功了（200）。表里出现两行 <code>SKU-001</code>，页面标出「编码重复」。以后入库选 <code>SKU-001</code>，系统只认第一行，第二行永远进不了货。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/297-preview-sku-fixed.png" alt="改良版货品页">
+        <figcaption><span class="tag ok">改良版</span> 被拒绝了（400），提示「货品编码已存在」。表里还是一行 <code>SKU-001</code>。</figcaption>
+      </figure>
+
+  <h3>入库页：记下进了多少、放在哪</h3>
+  <p>入库分三步：点「新建入库单」，得到一张空单，叫草稿；在单上选货品、选格子、填数量，点「加一行」；点「完成入库」，这批货才算进了仓库。页面上面列着建过的单，点哪一行就看哪一张；中间是选中的那一张单和它的每一行。</p>
+  <p>点「完成入库」时，数量要记到某个地方。系统里有两个地方可以记：</p>
+  <table>
+    <tr><th>名字</th><th>在哪</th><th>记的是什么</th></tr>
+    <tr><td><code>on_hand</code></td><td>货品表 <code>sku</code> 上的一列</td><td>这种货一共有多少个。一种货只有一个数，不分放在哪个格子</td></tr>
+    <tr><td><code>inventory</code></td><td>这一部分新加的库存表</td><td>每个格子上、每种货各有多少个。一个格子上的一种货占一行</td></tr>
+  </table>
+  <p><b>重点二：入库的数量记在哪。</b>在页面上做两张入库单：IN-1 往 A-01-01 放 10 个垫圈，IN-2 往 A-01-02 放 8 个垫圈，都点「完成入库」。入库页下面「货品数量合计 on_hand」一栏会跟着刷新：</p>
+      <figure class="shot">
+        <img src="figures/298-preview-inbound-defect.png" alt="第二部分入库页">
+        <figcaption><span class="tag bad">第二部分</span> 垫圈 <code>SKU-003</code> 的 on_hand 变成 18：10 和 8 加在了一起。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/299-preview-inbound-fixed.png" alt="改良版入库页">
+        <figcaption><span class="tag ok">改良版</span> on_hand 还是 0。改良版不往这一列加，数量写进了 <code>inventory</code>。</figcaption>
+      </figure>
+
+  <p>这一部分还没有查 <code>inventory</code> 的页面，到 Adminer 里看两张表：</p>
+      <figure class="shot">
+        <img src="figures/230-defect-stock-db.png" alt="第二部分 sku 和 inventory">
+        <figcaption><span class="tag bad">第二部分</span> <code>sku</code> 表里 on_hand 是 18，<code>inventory</code> 没有数据。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/231-fixed-stock-db.png" alt="改良版 sku 和 inventory">
+        <figcaption><span class="tag ok">改良版</span> <code>inventory</code> 两行：location_id 1（A-01-01）上 15 个，location_id 2（A-01-02）上 8 个。图里多做了一张 IN-3，又往 A-01-01 放了 5 个，所以是 15。</figcaption>
+      </figure>
+
+  <table>
+    <tr><th>想知道的</th><th>第二部分能答出来吗</th><th>改良版能答出来吗</th></tr>
+    <tr><td>垫圈一共有多少</td><td>能：on_hand 是 18</td><td>能：把 inventory 里垫圈的几行加起来</td></tr>
+    <tr><td>A-01-01 上有几个垫圈</td><td>不能，只有一个总数</td><td>能：inventory 里那一行</td></tr>
+  </table>
+  <p>为什么一定要分格子：第三部分做出库，拣货的人要去某一个格子上拿货。只知道一共 18 个，系统说不出 A-01-01 上够不够拿。</p>
+
+  <h3>这一部分要写什么</h3>
+  <p>页面上这四个按钮，每个对应一个后端接口。这一部分照着讲义把它们写出来：</p>
   <table>
     <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
-    <tr><td>货品页「新建」</td><td><code>POST /skus</code></td><td><code>sku</code> 插入一行</td><td style="white-space:nowrap">第 5 节</td></tr>
-    <tr><td>入库页「新建入库单」</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 插入一行，状态 DRAFT</td><td style="white-space:nowrap">第 6 节</td></tr>
-    <tr><td>入库页「加一行」</td><td><code>POST /inbound-orders/{id}/lines</code></td><td><code>inbound_order_line</code> 插入一行</td><td style="white-space:nowrap">第 7 节</td></tr>
-    <tr><td>入库页「完成入库」</td><td><code>POST /inbound-orders/{id}/complete</code></td><td>原分支加在 <code>sku.on_hand</code>；改良版按货品 + 库位写进 <code>inventory</code></td><td style="white-space:nowrap">第 8 节</td></tr>
+    <tr><td>货品页「新建」</td><td><code>POST /skus</code></td><td><code>sku</code> 加一行</td><td style="white-space:nowrap">第 5 节</td></tr>
+    <tr><td>入库页「新建入库单」</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 加一行，状态是草稿</td><td style="white-space:nowrap">第 6 节</td></tr>
+    <tr><td>入库页「加一行」</td><td><code>POST /inbound-orders/{id}/lines</code></td><td><code>inbound_order_line</code> 加一行</td><td style="white-space:nowrap">第 7 节</td></tr>
+    <tr><td>入库页「完成入库」</td><td><code>POST /inbound-orders/{id}/complete</code></td><td>第二部分加在 <code>sku.on_hand</code>；改良版写进 <code>inventory</code></td><td style="white-space:nowrap">第 8 节</td></tr>
   </table>
-  <p>两个后端分支用的是同一个前端。同一个按钮，返回不一样：</p>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/292-page-sku-defect.png" alt="第二部分货品页">
-      <figcaption><span class="tag bad">第二部分</span> 已经有 SKU-001，再建一次还是 200，表里出现两行。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/293-page-sku-fixed.png" alt="改良版货品页">
-      <figcaption><span class="tag ok">改良版</span> 同一个按钮返回 400 <code>SKU_CODE_DUPLICATED</code>，表里只有一行。</figcaption>
-    </figure>
-  </div>
-  <p>入库也一样：往 A-01-01 放 10 个、A-01-02 放 8 个，第二部分的 <code>on_hand</code> 一栏变成 18，分不出哪个格子上有几个；改良版的 <code>on_hand</code> 还是 0，数量按格子记进了 <code>inventory</code>。为什么会这样、该改哪几行，就是这一部分要讲的。</p>
-  <p>这一部分要学会四件事：</p>
   <ul>
-    <li>照着第 5–8 节，自己写出这四个接口：Controller → Service → Mapper → 表。</li>
-    <li>看懂开关怎样让同一份代码走两条路（第 4 节）。</li>
-    <li>在页面、Adminer 里自己查出两个漏洞（第 10–11 节）。</li>
-    <li>说清改良版改了哪两块（第 12 节）。</li>
+    <li>第 5–8 节：每个接口从 Controller 写到 Mapper，看清页面上填的每个字段最后落在哪张表的哪一列。</li>
+    <li>第 4 节：两个分支的代码一样，靠两个开关决定走哪一条路。</li>
+    <li>第 10–11 节：在页面和 Adminer 里，自己把上面两个重点查出来。</li>
+    <li>第 12 节：改良版改了哪两处。</li>
   </ul>
   <p>前端怎么启动、实验每一步在页面上怎么点，见第 16 节。</p>
 </section>
@@ -544,29 +586,9 @@ TRUNCATE TABLE inventory;</pre>
     <figcaption>前端 <code>src/pages/skus/skus.api.ts</code>。第 22 行发 <code>POST /skus</code>，请求体就是那三个字段。apiClient 在前面加上 <code>/api</code>，浏览器发出的是 <code>POST /api/skus</code>。Vite 去掉 <code>/api</code> 交给后端，后面就是第 5 节：<code>SkuController.create</code> → <code>SkuService.create</code> → <code>SkuMapper.insert</code> → <code>sku</code> 表的 <code>code</code>、<code>name</code>、<code>unit</code> 三列。</figcaption>
   </figure>
   <h3>第 1–2 步：建货品</h3>
-  <p>货品页默认填好 <code>SKU-003</code> 垫圈，点「新建」。再把编码改成 <code>SKU-001</code>、名称改成轴承，点「新建」。</p>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/292-page-sku-defect.png" alt="第二部分货品页">
-      <figcaption><span class="tag bad">第二部分</span> 第二次也是 200，返回 id 4。表里两行 <code>SKU-001</code>，页面标出「编码重复」。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/293-page-sku-fixed.png" alt="改良版货品页">
-      <figcaption><span class="tag ok">改良版</span> 第二次返回 400，message 是 <code>SKU_CODE_DUPLICATED：货品编码已存在：SKU-001</code>。表里只有一行 <code>SKU-001</code>。</figcaption>
-    </figure>
-  </div>
+  <p>货品页默认填好 <code>SKU-003</code> 垫圈，点「新建」。再把编码改成 <code>SKU-001</code>、名称改成轴承，点「新建」。两个分支的结果见开头「先看页面」的重点一。</p>
   <h3>第 3–6 步：入库</h3>
-  <p>入库页点「新建入库单」，下拉框选货品编码和库位编码，填数量，点「加一行」，再点「完成入库」。上面的表是这个浏览器建过的单，点一行就切到那张单。下面一栏是每个货品的 <code>sku.on_hand</code>，完成入库后自动刷新。</p>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/294-page-inbound-defect.png" alt="第二部分入库页">
-      <figcaption><span class="tag bad">第二部分</span> IN-1、IN-2 完成后，<code>SKU-003</code> 的 on_hand 是 18。IN-3 加的一行 <code>SKU-001</code>，行上 skuId 是 1，id 4 那一行用不上。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/295-page-inbound-fixed.png" alt="改良版入库页">
-      <figcaption><span class="tag ok">改良版</span> 三张单都完成，on_hand 还是 0。数量记在 <code>inventory</code> 表里，这一部分没有查询它的接口，到 Adminer 查：A-01-01 上 15（version 1），A-01-02 上 8（version 0）。</figcaption>
-    </figure>
-  </div>
+  <p>入库页点「新建入库单」，下拉框选货品编码和库位编码，填数量，点「加一行」，再点「完成入库」。上面的表是这个浏览器建过的单，点一行就切到那张单。下面一栏是每个货品的 <code>sku.on_hand</code>，完成入库后自动刷新。两个分支的结果见开头「先看页面」的重点二。</p>
   <p>页面上建过的单记在浏览器里（localStorage）。数据库清空以后，点入库页右上角「清空记录」再开始。</p>
 </section>
 </main>
