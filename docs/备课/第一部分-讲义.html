@@ -211,20 +211,49 @@
 
 <section id="preview">
   <h2>先看页面：这两次课要做出什么</h2>
-  <p class="lead">先看终点。周三下课前，你的电脑上会跑着一个仓库管理系统：浏览器打开 <code>http://localhost:5173</code>，用 <code>admin</code> / <code>Admin@123</code> 登录，点「仓库管理」，再点 WH-001 的「库区库位」，看到下面这张图。</p>
+  <p class="lead">先看终点。周三下课前，你的电脑上要跑起一个仓库管理系统：浏览器打开 <code>http://localhost:5173</code>，用 <code>admin</code> / <code>Admin@123</code> 登录，点左边「仓库管理」，再点 WH-001 那一行的「库区库位」，看到下面这一页。</p>
   <figure class="shot">
     <img src="figures/18-page-warehouse-tree.png" alt="仓库管理页展开库区库位">
-    <figcaption>这一页上的每一样东西都要靠这两次课搭出来。前端页面是现成的，这门课写的是它背后的后端。</figcaption>
+    <figcaption>一个仓库分成几个库区，每个库区里有一个个格子，叫库位。WH-001 华东原料仓下面有两个库区；A 区有两个库位 A-01-01、A-01-02，B 区有一个库位 B-01-01。后面几部分的货就放在这些库位上。</figcaption>
   </figure>
-  <p>页面上看到的东西，和这两次课要做的事一一对应：</p>
+
+  <h3>这一页背后要跑着四样东西</h3>
+  <p>浏览器里只看到一个页面，背后其实有四个程序在一起工作：</p>
   <table>
-    <tr><th>页面上看到的</th><th>背后要先做到</th><th>在哪一节</th></tr>
-    <tr><td>项目代码在自己电脑上，能切到「第一部分」</td><td>用 GitHub Desktop 克隆课堂仓库，看懂分支和提交记录</td><td>先讲 Git、克隆到本地</td></tr>
-    <tr><td>数据有地方放</td><td>MySQL 在容器里跑起来，Adminer 用服务名 <code>mysql</code> 连上它</td><td>第一次课：只启动 MySQL 和 Adminer</td></tr>
-    <tr><td>登录能进去，仓库、库区、库位有数据</td><td>应用打成镜像、放进容器，连上数据库；启动时按迁移脚本建表、写入初始数据；8080 能访问</td><td>第二次课：把应用放进同一个文件</td></tr>
-    <tr><td>浏览器里的页面能调到后端</td><td>前端把 <code>/api</code> 开头的请求转给 8080</td><td>第二次课最后：用前端页面登录</td></tr>
+    <tr><th>程序</th><th>做什么</th><th>地址</th><th>怎么跑起来</th></tr>
+    <tr><td>前端</td><td>浏览器里看到的页面。现成的，不用自己写</td><td style="white-space:nowrap">5173</td><td>在前端文件夹里执行一条命令</td></tr>
+    <tr><td>后端（应用）</td><td>页面上每点一下，都由它查数据、写数据。这门课写的就是它</td><td style="white-space:nowrap">8080</td><td>Docker 容器</td></tr>
+    <tr><td>MySQL</td><td>数据库，仓库、库位、用户都存在这里</td><td style="white-space:nowrap">3306</td><td>Docker 容器</td></tr>
+    <tr><td>Adminer</td><td>在浏览器里看数据库里有哪些表、表里有什么的工具</td><td style="white-space:nowrap">8081</td><td>Docker 容器</td></tr>
   </table>
-  <p>后面的顺序就是把这张表从上往下做一遍。做到最后一行，回来对照这张图。</p>
+  <p>Docker 把每个程序连同它要用的东西装进一个独立的「容器」，所以自己电脑上不用安装 MySQL，也不用安装 Java。项目里的 <code>docker-compose.dev.yml</code> 写清楚要起哪几个容器，一条命令就能全部起来。起来以后，在 Docker Desktop 里能看到它们：</p>
+  <figure class="shot">
+    <img src="figures/10-docker-desktop.png" alt="Docker Desktop 的 Containers 页面">
+    <figcaption>Docker Desktop 的 Containers 页面。周一先起 MySQL 和 Adminer 这两个容器，周三再把后端加进来。</figcaption>
+  </figure>
+
+  <h3>这两次课的重点：容器里的 localhost 指的是谁</h3>
+  <p>在自己电脑上，<code>localhost</code> 指的是「这台电脑」。到了容器里，<code>localhost</code> 指的是「这个容器自己」。Adminer 和 MySQL 是两个容器，Adminer 在自己的容器里找 MySQL，是找不到的。周一就会碰到这件事：</p>
+  <figure class="shot">
+    <img src="figures/12-adminer-fail.png" alt="Adminer 服务器填 localhost 后的红字">
+    <figcaption>Adminer 登录页的「服务器」填 <code>localhost</code>，点登录，出现红字，连不上：Adminer 的容器里没有 MySQL。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/13-adminer-ok.png" alt="Adminer 里看到 pro_skill 的表">
+    <figcaption>「服务器」改填 <code>mysql</code>，就能进去，看到 <code>pro_skill</code> 库里的表。<code>mysql</code> 是 Compose 文件里给 MySQL 那个容器起的名字，几个容器之间用这个名字互相找。</figcaption>
+  </figure>
+
+  <p>周三后端放进容器以后也一样：后端连数据库要写 <code>mysql</code>，不能写 <code>localhost</code>。而在自己电脑的浏览器里，仍然用 <code>localhost:8080</code>、<code>localhost:8081</code> 打开它们，因为 Docker 把容器的端口接到了这台电脑上。</p>
+  <h3>这两次课按什么顺序做</h3>
+  <table>
+    <tr><th>要做到</th><th>在哪一节</th></tr>
+    <tr><td>项目代码在自己电脑上，能切到「第一部分」分支</td><td>先讲 Git、克隆到本地</td></tr>
+    <tr><td>MySQL 和 Adminer 跑起来，Adminer 用 <code>mysql</code> 连上数据库</td><td>第一次课：只启动 MySQL 和 Adminer</td></tr>
+    <tr><td>后端打成镜像、放进容器，启动时自己建好表、写入初始数据，<code>admin</code> 能登录</td><td>第二次课：把应用放进同一个文件</td></tr>
+    <tr><td>前端跑起来，页面上的请求能到后端</td><td>第二次课最后：用前端页面登录</td></tr>
+  </table>
+  <p>做到最后一行，回来对照开头那张图。</p>
 </section>
 
 <section id="git-idea">
