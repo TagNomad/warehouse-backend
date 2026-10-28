@@ -517,6 +517,28 @@ docker compose -f docker-compose.dev.yml start</pre>
   <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 15 周周三（第六部分）排错时再讲它是什么、解决什么、代码写在哪。</p>
 </section>
 
+<section id="frontend">
+  <h2>第二次课最后：用前端页面登录</h2>
+  <p class="lead">后端跑起来以后，接上现成的前端。前端仓库是 <code>https://gitee.com/dingsaier/warehouse-frontend.git</code>，用 GitHub Desktop 克隆。前端的分支名和后端一样：后端在「第一部分」，前端也切到「第一部分」。这门课不要求自己写前端代码，课上用它点页面、看接口返回。</p>
+  <p>前端要装 Node.js 20 或更新的版本。在前端文件夹里打开终端，执行：</p>
+  <pre data-os="both">npx pnpm@9 install
+npx pnpm@9 dev</pre>
+  <p>第一条装依赖，第一次和换分支后执行。第二条启动，终端里出现 <code>http://localhost:5173</code> 以后，用浏览器打开它，账号 <code>admin</code>，密码 <code>Admin@123</code>。</p>
+  <figure class="shot">
+    <img src="figures/17-vite-proxy.png" alt="vite.config.ts 里的代理">
+    <figcaption>前端 <code>vite.config.ts</code>。页面上的请求都发到 <code>/api</code> 开头的地址。第 63 行：凡是 <code>/api</code> 开头的，交给第 65 行写的后端，默认是本机 8080，也就是上面 Compose 映射出来的端口。第 67 行把 <code>/api</code> 去掉，所以页面发 <code>/api/auth/login</code>，后端收到的是 <code>/auth/login</code>，和上面 curl 的地址一样。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/18-page-warehouse-tree.png" alt="仓库管理页展开库区库位">
+    <figcaption>登录后点左边「仓库管理」，再点 WH-001 那一行的「库区库位」。下面列出两个库区、三个库位。第二部分入库时填的 <code>A-01-01</code>、<code>A-01-02</code>、<code>B-01-01</code> 就是这里的库位编码。</figcaption>
+  </figure>
+  <p>点「库区库位」这一下的数据流：页面调 <code>warehousesApi.getTree(1)</code>，浏览器发 <code>GET /api/warehouses/1/tree</code>，Vite 去掉 <code>/api</code> 交给后端 <code>GET /warehouses/{id}/tree</code>，后端查 <code>warehouse</code>、<code>warehouse_zone</code>、<code>warehouse_location</code> 三张表，拼成一棵树返回。</p>
+  <p>后端不在 8080 时，启动前端前设置后端地址，例如后端在 8090：</p>
+  <pre data-os="mac">VITE_PROXY_TARGET=http://localhost:8090 npx pnpm@9 dev</pre>
+  <pre data-os="win">$env:VITE_PROXY_TARGET="http://localhost:8090"; npx pnpm@9 dev</pre>
+  <div class="see"><b>你应该看到</b> 左边菜单有仪表盘、用户管理、仓库管理三项。仓库管理里有一行 WH-001 华东原料仓，展开后是 Z-STORAGE-01 和 Z-PICK-01 两个库区。货品、入库、出库三页从第二部分、第三部分的前端分支开始有。</div>
+</section>
+
 <section id="git-ops">
   <h2>随堂测验：新建分支，网页上合并</h2>
   <p class="lead">教师先按下面做完一遍，学生看，先不要跟着点。看完后，每人用自己的 Gitee 账号再做一遍。课堂仓库 <code>warehouse-backend</code> 只能克隆，不能推送，这次不要用它。</p>
@@ -588,6 +610,7 @@ docker compose -f docker-compose.dev.yml start</pre>
     <li><code>docker version</code> 有 Client 和 Server</li>
     <li>Adminer 用服务器名 <code>mysql</code> 能看见 <code>tb_user</code> 里的 admin</li>
     <li>应用健康检查是 <code>"status":"UP"</code>，账号 <code>admin</code> / <code>Admin@123</code> 能登录</li>
+    <li>前端 <code>http://localhost:5173</code> 能登录，仓库管理里能展开 WH-001 的库区和库位</li>
     <li>能指出 Dockerfile 第一段在镜像里编译，第二段只用 <code>java -jar app.jar</code> 启动</li>
     <li>知道容器里面的 <code>localhost</code> 不是旁边那个容器</li>
   </ul>

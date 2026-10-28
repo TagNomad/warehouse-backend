@@ -119,6 +119,7 @@
     <li><a href="#test">用测试把两条路径跑一遍</a></li>
     <li><a href="#merge">把改良版合并进第三部分</a></li>
     <li><a href="#ai">作业里要写同类接口时</a></li>
+    <li><a href="#page">在页面上复现</a></li>
   </ol>
 </section>
 </nav>
@@ -623,6 +624,39 @@ SELECT id, biz_no, sku_id, location_id, quantity FROM stock_flow WHERE biz_no = 
 生成后说明：两次同时完成同一个格子的出库，第二次为什么改到 0 行。</pre>
 </section>
 
+<section id="page">
+  <h2>18. 在页面上复现</h2>
+  <p>第 9 节的实验也可以在前端页面上点。前端仓库切到「第三部分」分支启动，左边菜单多了「出库」。第 1 步在入库页做，第 2–6 步在出库页做，第 3 步改数量仍然在 Adminer 里做。后端在「第三部分」和「第三部分改良版」之间切换时，前端不用动。</p>
+  <p>出库页和入库页一样：新建、加一行、完成。多了两样：每一行右边有「改数量」，发的是 <code>PATCH /outbound-orders/{id}/lines/{lineId}</code>；上面的表里，草稿单前面有勾选框，勾两张以上，点右上角「同时完成勾选的单」。</p>
+  <h3>第 2–4 步：出 15，改已完成的单</h3>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/541-page-outbound-defect.png" alt="第三部分出库页">
+      <figcaption><span class="tag bad">第三部分</span> 最下面是 OUT-1 出 15，返回 200。OUT-2 完成以后再把行改成 5，PATCH 也是 200，行上的数量变成 5。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/542-page-outbound-fixed.png" alt="改良版出库页">
+      <figcaption><span class="tag ok">改良版</span> OUT-1 返回 400 <code>INSUFFICIENT_STOCK：库存不足，剩余 10</code>，单还是 DRAFT。OUT-2 的 PATCH 返回 400 <code>ORDER_NOT_EDITABLE</code>，行还是 1。</figcaption>
+    </figure>
+  </div>
+  <h3>第 6 步：两张单同时完成</h3>
+  <p>手点两次，很难让两个请求在几毫秒内先后到。页面用一个按钮把两个请求一起发出去。后端仍然要把 <code>outbound-read-pause-ms</code> 设成 3000 再启动。OUT-4、OUT-5 各加一行数量 1，先不点完成；勾选这两张，点「同时完成勾选的单」。</p>
+  <figure class="shot">
+    <img src="figures/540-complete-together.png" alt="出库页的 completeTogether">
+    <figcaption>前端 <code>src/scripts/pages/outbound/list.ts</code>。第 96 行记下发出的时间。第 97–99 行对每张勾选的单各调一次 <code>outboundApi.complete</code>，<code>Promise.all</code> 等它们全部回来，所以两个请求是同一刻发出的。第 101–104 行按回来的先后记进「接口返回」。后端收到的是两个 <code>POST /outbound-orders/{{id}}/complete</code>，后面走第 6 节的 <code>OutboundService.complete</code>。</figcaption>
+  </figure>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/543-page-race-defect.png" alt="第三部分同时完成">
+      <figcaption><span class="tag bad">第三部分</span> 两条都是 200，发出时间相同，3 秒后一起回来。Adminer 里 A-01-01 是 0，version 还是 0：发出去 2 件，库存只少了 1 件。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/544-page-race-fixed.png" alt="改良版同时完成">
+      <figcaption><span class="tag ok">改良版</span> 一条 200，一条 400 <code>STOCK_CONFLICT：库存已被别人改过</code>，那张单还是 DRAFT。Adminer 里库存 0，version 是 3。</figcaption>
+    </figure>
+  </div>
+  <p>第 7 步在入库页做。两边都返回 400，区别在 <code>stock_flow</code> 表里有没有 IN-2，到 Adminer 看。</p>
+</section>
 </main>
 </body>
 </html>

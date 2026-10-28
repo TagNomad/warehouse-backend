@@ -117,6 +117,7 @@
     <li><a href="#test">用测试把两条路径跑一遍</a></li>
     <li><a href="#merge">把改良版合并进第二部分</a></li>
     <li><a href="#ai">作业里要写同类接口时</a></li>
+    <li><a href="#page">在页面上复现</a></li>
   </ol>
 </section>
 </nav>
@@ -496,6 +497,46 @@ TRUNCATE TABLE inventory;</pre>
 生成后用一段话说明：一次完成入库请求里，货品、库位、数量依次经过哪些类，落到哪张表的哪一列。</pre>
 </section>
 
+<section id="page">
+  <h2>16. 在页面上复现</h2>
+  <p>第 9 节的实验也可以在前端页面上点出来。前端仓库切到「第二部分」分支，<code>npx pnpm@9 dev</code> 启动，打开 <code>http://localhost:5173</code> 登录，左边菜单多了「货品」「入库」两页。后端在「第二部分」和「第二部分改良版」之间切换时，前端不用动：页面一样，点同一个按钮，返回不同。</p>
+  <p>每页最下面是「接口返回」。每点一次按钮记一条：左边是 HTTP 状态码，后面是调的接口和时间，下面是响应体原文，最新的在最上面。</p>
+  <h3>一个按钮怎样走到 sku 表</h3>
+  <p>第 5 节从 Controller 往下讲过创建货品。这里补上 Controller 之前的两步。</p>
+  <figure class="shot">
+    <img src="figures/290-sku-page-create.png" alt="货品页的 create">
+    <figcaption>前端 <code>src/scripts/pages/skus/list.ts</code>。点「新建」执行第 25 行。第 27 行把表单里的 <code>code</code>、<code>name</code>、<code>unit</code> 原样交给 <code>skusApi.create</code>。第 28 行把这次的状态码和响应体记进「接口返回」。第 31 行重新拉一次列表，表里多没多一行马上能看到。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/291-sku-api.png" alt="skus.api.ts 的 create">
+    <figcaption>前端 <code>src/pages/skus/skus.api.ts</code>。第 22 行发 <code>POST /skus</code>，请求体就是那三个字段。apiClient 在前面加上 <code>/api</code>，浏览器发出的是 <code>POST /api/skus</code>。Vite 去掉 <code>/api</code> 交给后端，后面就是第 5 节：<code>SkuController.create</code> → <code>SkuService.create</code> → <code>SkuMapper.insert</code> → <code>sku</code> 表的 <code>code</code>、<code>name</code>、<code>unit</code> 三列。</figcaption>
+  </figure>
+  <h3>第 1–2 步：建货品</h3>
+  <p>货品页默认填好 <code>SKU-003</code> 垫圈，点「新建」。再把编码改成 <code>SKU-001</code>、名称改成轴承，点「新建」。</p>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/292-page-sku-defect.png" alt="第二部分货品页">
+      <figcaption><span class="tag bad">第二部分</span> 第二次也是 200，返回 id 4。表里两行 <code>SKU-001</code>，页面标出「编码重复」。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/293-page-sku-fixed.png" alt="改良版货品页">
+      <figcaption><span class="tag ok">改良版</span> 第二次返回 400，message 是 <code>SKU_CODE_DUPLICATED：货品编码已存在：SKU-001</code>。表里只有一行 <code>SKU-001</code>。</figcaption>
+    </figure>
+  </div>
+  <h3>第 3–6 步：入库</h3>
+  <p>入库页点「新建入库单」，下拉框选货品编码和库位编码，填数量，点「加一行」，再点「完成入库」。上面的表是这个浏览器建过的单，点一行就切到那张单。下面一栏是每个货品的 <code>sku.on_hand</code>，完成入库后自动刷新。</p>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/294-page-inbound-defect.png" alt="第二部分入库页">
+      <figcaption><span class="tag bad">第二部分</span> IN-1、IN-2 完成后，<code>SKU-003</code> 的 on_hand 是 18。IN-3 加的一行 <code>SKU-001</code>，行上 skuId 是 1，id 4 那一行用不上。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/295-page-inbound-fixed.png" alt="改良版入库页">
+      <figcaption><span class="tag ok">改良版</span> 三张单都完成，on_hand 还是 0。数量记在 <code>inventory</code> 表里，这一部分没有查询它的接口，到 Adminer 查：A-01-01 上 15（version 1），A-01-02 上 8（version 0）。</figcaption>
+    </figure>
+  </div>
+  <p>页面上建过的单记在浏览器里（localStorage）。数据库清空以后，点入库页右上角「清空记录」再开始。</p>
+</section>
 </main>
 </body>
 </html>
