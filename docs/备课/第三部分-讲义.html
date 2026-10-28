@@ -100,33 +100,57 @@
 
 <section id="preview">
   <h2>先看页面：这一部分要做出什么</h2>
-  <p>前端切到「第三部分」分支，左边菜单多了「出库」。出库页和入库页一样：新建、加一行、完成；多了每一行的「改数量」，和一个「同时完成勾选的单」按钮。这一部分写的就是这些按钮背后的接口。</p>
+  <p>第二部分让系统记下了每个格子上有多少货（<code>inventory</code> 表，一个格子上的一种货一行）。这一部分做反方向的事：从某个格子上把货拿走，叫「出库」。</p>
+  <p>前端切到「第三部分」分支，左边菜单多了「出库」。</p>
+
+  <h3>出库页</h3>
+  <p>和入库页一样分三步：「新建出库单」得到一张草稿；选货品、选格子、填数量，点「加一行」；点「完成出库」，系统从那个格子的数量里减掉这一行。比入库页多两样：</p>
+  <ul>
+    <li>每一行右边有「改」，可以改这一行的数量。</li>
+    <li>草稿单前面有勾选框。勾两张，点右上角「同时完成勾选的单」，两个完成请求在同一刻发出去，相当于两个仓管员同时点了完成。</li>
+  </ul>
+  <p>这一部分有四个重点，都是账会对不上的情况。前三个在出库页上就能点出来，下面的图都是真实点出来的结果。</p>
+
+  <h3>重点一、二：剩余不够还能出吗；完成以后还能改吗</h3>
+  <p>A-01-01 上有 10 个轴承。OUT-1 要出 15 个，点「完成出库」。再建 OUT-2 出 1 个，完成以后把这一行的数量改成 5：</p>
+      <figure class="shot">
+        <img src="figures/545-preview-outbound-defect.png" alt="第三部分出库页">
+        <figcaption><span class="tag bad">第三部分</span> 两件事都成功了。OUT-1 出 15 也变成了 COMPLETED，格子上的数变成 -5，仓库里不可能有 -5 个。OUT-2 已经完成，这一行还是改成了 5（PATCH 200），单上写出去 5 个，库存只扣了 1 个。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/546-preview-outbound-fixed.png" alt="改良版出库页">
+        <figcaption><span class="tag ok">改良版</span> 两件事都被拒绝。OUT-1 返回 400「库存不足，剩余 10」，单还是 DRAFT。OUT-2 改数量返回 400「只有草稿可以改数量」，行上还是 1。</figcaption>
+      </figure>
+
+  <h3>重点三：两个人同时出库</h3>
+  <p>A-01-01 上只剩 1 个。OUT-4、OUT-5 各要出 1 个，都加好行先不完成；勾选这两张，点「同时完成勾选的单」：</p>
+      <figure class="shot">
+        <img src="figures/547-preview-race-defect.png" alt="第三部分同时完成">
+        <figcaption><span class="tag bad">第三部分</span> 两张都成功了。拿走了 2 个，库存只扣了 1 次。两个请求都先读到「还剩 1 个」，各自算出「还剩 0 个」写回去，后写的把先写的盖掉了。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/548-preview-race-fixed.png" alt="改良版同时完成">
+        <figcaption><span class="tag ok">改良版</span> 一张成功，另一张被拒绝：400「库存已被别人改过」，只拿走 1 个。</figcaption>
+      </figure>
+
+  <p>改良版怎么知道「被别人改过」：<code>inventory</code> 每一行多记一个版本号 <code>version</code>，每改一次加 1。写回时带上自己读到的版本号，版本号已经变了，就说明别人刚改过，这一次不写。</p>
+
+  <h3>重点四：入库失败了，记录却留下来</h3>
+  <p>这一部分在入库完成时多记一条「流水」（<code>stock_flow</code> 表），像银行流水，记着哪张单让哪个格子多了几个。入库中途出错时，单据和库存都会撤回。第三部分的流水却留了下来，账上多出一笔没发生的入库；改良版把流水一起撤回。这一处两个分支在页面上都返回 400，要到 Adminer 查 <code>stock_flow</code>。</p>
+
+  <h3>这一部分要写什么</h3>
   <table>
     <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
-    <tr><td>「新建出库单」</td><td><code>POST /outbound-orders</code></td><td><code>outbound_order</code> 插入一行，状态 DRAFT</td><td style="white-space:nowrap">第 4 节</td></tr>
-    <tr><td>「加一行」</td><td><code>POST /outbound-orders/{id}/lines</code></td><td><code>outbound_order_line</code> 插入一行</td><td style="white-space:nowrap">第 5 节</td></tr>
-    <tr><td>「完成出库」</td><td><code>POST /outbound-orders/{id}/complete</code></td><td>从 <code>inventory</code> 那一格减数量，单据改成 COMPLETED</td><td style="white-space:nowrap">第 6 节</td></tr>
-    <tr><td>行上的「改」</td><td><code>PATCH /outbound-orders/{id}/lines/{lineId}</code></td><td>改 <code>outbound_order_line.quantity</code></td><td style="white-space:nowrap">第 7 节</td></tr>
-    <tr><td>入库页「完成入库」</td><td>第二部分的接口</td><td>多写一条 <code>stock_flow</code> 流水</td><td style="white-space:nowrap">第 8 节</td></tr>
+    <tr><td>「新建出库单」</td><td><code>POST /outbound-orders</code></td><td><code>outbound_order</code> 加一行，状态是草稿</td><td style="white-space:nowrap">第 4 节</td></tr>
+    <tr><td>「加一行」</td><td><code>POST /outbound-orders/{id}/lines</code></td><td><code>outbound_order_line</code> 加一行</td><td style="white-space:nowrap">第 5 节</td></tr>
+    <tr><td>「完成出库」</td><td><code>POST /outbound-orders/{id}/complete</code></td><td>从 <code>inventory</code> 那一格减数量，单据改成完成</td><td style="white-space:nowrap">第 6 节</td></tr>
+    <tr><td>行上的「改」</td><td><code>PATCH /outbound-orders/{id}/lines/{lineId}</code></td><td>改 <code>outbound_order_line</code> 的数量</td><td style="white-space:nowrap">第 7 节</td></tr>
+    <tr><td>入库页「完成入库」</td><td>第二部分的接口</td><td>多写一条 <code>stock_flow</code></td><td style="white-space:nowrap">第 8 节</td></tr>
   </table>
-  <p>格子上只剩 1 件时，勾选两张各出 1 件的单，点「同时完成勾选的单」：</p>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/543-page-race-defect.png" alt="第三部分同时完成">
-      <figcaption><span class="tag bad">第三部分</span> 两张都返回 200。发出去 2 件，库存只少了 1 件。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/544-page-race-fixed.png" alt="改良版同时完成">
-      <figcaption><span class="tag ok">改良版</span> 一张 200，另一张 400 <code>STOCK_CONFLICT</code>，库存和单据对得上。</figcaption>
-    </figure>
-  </div>
-  <p>另外还有三处漏洞：剩余 10 出 15，原分支照样 200；已完成的单还能改数量；入库失败了，流水却留下来。前两处在页面的「接口返回」里就能看出来，第三处两边都返回 400，要到 Adminer 查 <code>stock_flow</code>。这一部分把这四处一个个查出来、改掉。</p>
-  <p>这一部分要学会四件事：</p>
   <ul>
-    <li>照着第 4–7 节，自己写出四个出库接口：Controller → Service → Mapper → 表。</li>
-    <li>说清入库完成时流水为什么要和入库同一次提交（第 8 节）。</li>
-    <li>在页面、日志、Adminer 里查出四个漏洞（第 10–13 节）。</li>
-    <li>说清改良版改了哪四块，乐观锁的 <code>version</code> 怎样挡住同时出库（第 14 节）。</li>
+    <li>第 4–8 节：每个接口从 Controller 写到 Mapper，看清数据落在哪张表的哪一列。</li>
+    <li>第 10–13 节：上面四个重点，每一个都在页面、日志、Adminer 里自己查一遍，再看是哪一行代码。</li>
+    <li>第 14 节：改良版改了哪四处。</li>
   </ul>
   <p>实验每一步在页面上怎么点，见第 18 节。</p>
 </section>
@@ -662,32 +686,13 @@ SELECT id, biz_no, sku_id, location_id, quantity FROM stock_flow WHERE biz_no = 
   <p>第 9 节的实验也可以在前端页面上点。前端仓库切到「第三部分」分支启动，左边菜单多了「出库」。第 1 步在入库页做，第 2–6 步在出库页做，第 3 步改数量仍然在 Adminer 里做。后端在「第三部分」和「第三部分改良版」之间切换时，前端不用动。</p>
   <p>出库页和入库页一样：新建、加一行、完成。多了两样：每一行右边有「改数量」，发的是 <code>PATCH /outbound-orders/{id}/lines/{lineId}</code>；上面的表里，草稿单前面有勾选框，勾两张以上，点右上角「同时完成勾选的单」。</p>
   <h3>第 2–4 步：出 15，改已完成的单</h3>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/541-page-outbound-defect.png" alt="第三部分出库页">
-      <figcaption><span class="tag bad">第三部分</span> 最下面是 OUT-1 出 15，返回 200。OUT-2 完成以后再把行改成 5，PATCH 也是 200，行上的数量变成 5。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/542-page-outbound-fixed.png" alt="改良版出库页">
-      <figcaption><span class="tag ok">改良版</span> OUT-1 返回 400 <code>INSUFFICIENT_STOCK：库存不足，剩余 10</code>，单还是 DRAFT。OUT-2 的 PATCH 返回 400 <code>ORDER_NOT_EDITABLE</code>，行还是 1。</figcaption>
-    </figure>
-  </div>
+  <p>两个分支的结果见开头「先看页面」的重点一、二。</p>
   <h3>第 6 步：两张单同时完成</h3>
-  <p>手点两次，很难让两个请求在几毫秒内先后到。页面用一个按钮把两个请求一起发出去。后端仍然要把 <code>outbound-read-pause-ms</code> 设成 3000 再启动。OUT-4、OUT-5 各加一行数量 1，先不点完成；勾选这两张，点「同时完成勾选的单」。</p>
+  <p>手点两次，很难让两个请求在几毫秒内先后到。页面用一个按钮把两个请求一起发出去。后端仍然要把 <code>outbound-read-pause-ms</code> 设成 3000 再启动。OUT-4、OUT-5 各加一行数量 1，先不点完成；勾选这两张，点「同时完成勾选的单」。两个分支的结果见开头「先看页面」的重点三。</p>
   <figure class="shot">
     <img src="figures/540-complete-together.png" alt="出库页的 completeTogether">
     <figcaption>前端 <code>src/scripts/pages/outbound/list.ts</code>。第 96 行记下发出的时间。第 97–99 行对每张勾选的单各调一次 <code>outboundApi.complete</code>，<code>Promise.all</code> 等它们全部回来，所以两个请求是同一刻发出的。第 101–104 行按回来的先后记进「接口返回」。后端收到的是两个 <code>POST /outbound-orders/{{id}}/complete</code>，后面走第 6 节的 <code>OutboundService.complete</code>。</figcaption>
   </figure>
-  <div class="pair">
-    <figure class="shot">
-      <img src="figures/543-page-race-defect.png" alt="第三部分同时完成">
-      <figcaption><span class="tag bad">第三部分</span> 两条都是 200，发出时间相同，3 秒后一起回来。Adminer 里 A-01-01 是 0，version 还是 0：发出去 2 件，库存只少了 1 件。</figcaption>
-    </figure>
-    <figure class="shot">
-      <img src="figures/544-page-race-fixed.png" alt="改良版同时完成">
-      <figcaption><span class="tag ok">改良版</span> 一条 200，一条 400 <code>STOCK_CONFLICT：库存已被别人改过</code>，那张单还是 DRAFT。Adminer 里库存 0，version 是 3。</figcaption>
-    </figure>
-  </div>
   <p>第 7 步在入库页做。两边都返回 400，区别在 <code>stock_flow</code> 表里有没有 IN-2，到 Adminer 看。</p>
 </section>
 </main>
