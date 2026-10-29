@@ -5,7 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Map;
 
-// 第四部分两条路径的测试共用。数据真正提交，Redis 换成内存实现，每个测试前后都清空。
+// 第三部分两条路径的测试共用。数据真正提交，Redis 换成内存实现，每个测试前后都清空。
 abstract class RedisPathSupport extends OutboundRaceSupport {
 
     @Autowired

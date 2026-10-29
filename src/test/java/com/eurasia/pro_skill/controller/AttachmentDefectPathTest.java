@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 第五部分那一侧。两个分支上都跑这一份，开关在这里写死。
+// 第四部分那一侧。两个分支上都跑这一份，开关在这里写死。
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.lesson.file-key=filename",
         "app.lesson.local-file-dir=target/test-attachments/data"
 })
-@DisplayName("第五部分：附件写在本机磁盘、用原名存放")
+@DisplayName("第四部分：附件写在本机磁盘、用原名存放")
 class AttachmentDefectPathTest extends AttachmentPathSupport {
 
     @Test
