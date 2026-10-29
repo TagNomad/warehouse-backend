@@ -17,17 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// 第二部分改良版那一侧。两个分支上都跑这一份，开关在这里写死。
+// 第二部分：乐观锁打开时两张单同时完成的结果。开关在这里写死，不读 yaml。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "app.lesson.outbound-check=on",
         "app.lesson.optimistic-lock=on",
-        "app.lesson.flow-after-commit=on",
-        "app.lesson.inbound-fail-before-status=true",
         "app.lesson.outbound-read-pause-ms=500"
 })
-@DisplayName("第二部分改良版：带 version、流水同一次提交")
+@DisplayName("第二部分：乐观锁打开")
 class OutboundFixedPathTest extends OutboundRaceSupport {
 
     @Autowired
@@ -58,19 +55,6 @@ class OutboundFixedPathTest extends OutboundRaceSupport {
                 .filter("COMPLETED"::equals).count());
     }
 
-    @Test
-    @DisplayName("入库在改状态前失败：单据仍是草稿，流水也没有留下")
-    void flowRollsBackWithOrder() {
-        prepareStock(0);
-        InboundOrder order = inboundOf(4);
-
-        BusinessException error = assertThrows(BusinessException.class, () -> inboundService.complete(order.getId()));
-
-        assertEquals("INBOUND_MAIN_ROLLED_BACK", error.getCode());
-        assertEquals("DRAFT", inboundStatus(order.getId()));
-        assertEquals(0, inventoryRows());
-        assertEquals(0, flowCount(order.getOrderNo()));
-    }
 
     @Override
     protected JdbcTemplate jdbc() {

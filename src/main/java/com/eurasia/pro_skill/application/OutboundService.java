@@ -84,7 +84,7 @@ public class OutboundService {
             log.info("读到数量 {}", current); // 两次请求同时进来时，日志里会有两句读到同一个数
             pauseAfterRead(); // 课堂复现用。默认 0 毫秒，不停
             int next = current - line.getQuantity(); // 减去这一行的数量。剩余不够时这里会变成负数
-            if (switches.outboundCheck() && next < 0) { // outbound-check 是 off 时这一行不成立，负数也会写进去
+            if (next < 0) { // 剩余不够就停下，不把负数写进去
                 throw new BusinessException("INSUFFICIENT_STOCK", "INSUFFICIENT_STOCK：库存不足，剩余 " + current);
             }
             int updated; // 改到了几行。1 是改到了，0 是没改到
@@ -110,8 +110,8 @@ public class OutboundService {
         if (order == null) { // 路径上的单号不存在
             throw new BusinessException("OUTBOUND_NOT_FOUND", "出库单不存在：" + orderId);
         }
-        // order-state 是 enforced 时，不是 DRAFT 就停在这里。是 open 时这一行不成立，已完成的单也能往下走
-        if (switches.orderStateEnforced() && !OutboundOrder.DRAFT.equals(order.getStatus())) {
+        // 不是 DRAFT 就停在这里：已完成的单，库存已经按原数量减过，不能再改行
+        if (!OutboundOrder.DRAFT.equals(order.getStatus())) {
             throw new BusinessException("ORDER_NOT_EDITABLE", "ORDER_NOT_EDITABLE：只有草稿可以改数量：" + order.getOrderNo());
         }
         OutboundOrderLineEntity line = lineMapper.getById(lineId); // 按行主键找这一行
