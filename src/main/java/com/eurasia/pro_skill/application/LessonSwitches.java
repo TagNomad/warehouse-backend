@@ -8,10 +8,7 @@ import org.springframework.stereotype.Component;
 @Component // 注册成 Bean，Service 构造时注入
 public class LessonSwitches {
 
-    private final boolean outboundCheck; // on：出库前看剩余够不够
     private final boolean optimisticLock; // on：更新库存时带上读到的 version
-    private final boolean orderStateEnforced; // enforced：不是草稿就不能改行
-    private final boolean flowAfterCommit; // on：流水和入库完成在同一个事务里
     private final boolean inboundFailBeforeStatus; // true：改状态前让主事务失败，用来看流水会不会留下来
     private final long outboundReadPauseMs; // 大于 0：出库读到数量后停这么多毫秒，让两次请求读到同一个旧数
     private final boolean cacheEvict; // on：出库提交后删掉这个格子的库存缓存
@@ -26,26 +23,20 @@ public class LessonSwitches {
     private final boolean metrics; // on：记出库耗时和拒绝次数
 
     public LessonSwitches(
-            @Value("${app.lesson.outbound-check:off}") String outboundCheck, // 没写时按 off
-            @Value("${app.lesson.optimistic-lock:off}") String optimisticLock,
-            @Value("${app.lesson.order-state:open}") String orderState, // open 或 enforced
-            @Value("${app.lesson.flow-after-commit:off}") String flowAfterCommit,
+            @Value("${app.lesson.optimistic-lock:on}") String optimisticLock,
             @Value("${app.lesson.inbound-fail-before-status:false}") String inboundFailBeforeStatus,
             @Value("${app.lesson.outbound-read-pause-ms:0}") long outboundReadPauseMs, // 毫秒，0 是不停
-            @Value("${app.lesson.cache-evict:off}") String cacheEvict,
-            @Value("${app.lesson.stock-lock:after-check}") String stockLock, // after-check 或 sku-location
-            @Value("${app.lesson.submit-once:off}") String submitOnce,
-            @Value("${app.lesson.publish-after-commit:off}") String publishAfterCommit,
-            @Value("${app.lesson.consume-once:off}") String consumeOnce,
+            @Value("${app.lesson.cache-evict:on}") String cacheEvict,
+            @Value("${app.lesson.stock-lock:sku-location}") String stockLock, // after-check 或 sku-location
+            @Value("${app.lesson.submit-once:on}") String submitOnce,
+            @Value("${app.lesson.publish-after-commit:on}") String publishAfterCommit,
+            @Value("${app.lesson.consume-once:on}") String consumeOnce,
             @Value("${app.lesson.consume-fail-before-ack:false}") String consumeFailBeforeAck,
-            @Value("${app.lesson.file-store:local}") String fileStore, // local 或 minio
-            @Value("${app.lesson.file-key:filename}") String fileKey, // filename 或 unique
+            @Value("${app.lesson.file-store:minio}") String fileStore, // local 或 minio
+            @Value("${app.lesson.file-key:unique}") String fileKey, // filename 或 unique
             @Value("${app.lesson.inventory-query:full}") String inventoryQuery,
             @Value("${app.lesson.metrics:off}") String metrics) {
-        this.outboundCheck = enabled(outboundCheck);
         this.optimisticLock = enabled(optimisticLock);
-        this.orderStateEnforced = "enforced".equalsIgnoreCase(orderState);
-        this.flowAfterCommit = enabled(flowAfterCommit);
         this.inboundFailBeforeStatus = enabled(inboundFailBeforeStatus);
         this.outboundReadPauseMs = outboundReadPauseMs;
         this.cacheEvict = enabled(cacheEvict);
@@ -65,21 +56,12 @@ public class LessonSwitches {
         return "on".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value);
     }
 
-    public boolean outboundCheck() {
-        return outboundCheck;
-    }
 
     public boolean optimisticLock() {
         return optimisticLock;
     }
 
-    public boolean orderStateEnforced() {
-        return orderStateEnforced;
-    }
 
-    public boolean flowAfterCommit() {
-        return flowAfterCommit;
-    }
 
     public boolean inboundFailBeforeStatus() {
         return inboundFailBeforeStatus;

@@ -20,9 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "app.lesson.outbound-check=on",
         "app.lesson.optimistic-lock=off",
-        "app.lesson.flow-after-commit=off",
         "app.lesson.inbound-fail-before-status=true",
         "app.lesson.outbound-read-pause-ms=500",
         "app.lesson.stock-lock=after-check"
@@ -57,19 +55,6 @@ class OutboundDefectPathTest extends OutboundRaceSupport {
         assertEquals("COMPLETED", outboundStatus(second));
     }
 
-    @Test
-    @DisplayName("入库在改状态前失败：单据仍是草稿，流水已经留下")
-    void flowStaysAfterRollback() {
-        prepareStock(0);
-        InboundOrder order = inboundOf(4);
-
-        BusinessException error = assertThrows(BusinessException.class, () -> inboundService.complete(order.getId()));
-
-        assertEquals("INBOUND_MAIN_ROLLED_BACK", error.getCode());
-        assertEquals("DRAFT", inboundStatus(order.getId()));
-        assertEquals(0, inventoryRows());
-        assertEquals(1, flowCount(order.getOrderNo()));
-    }
 
     @Override
     protected JdbcTemplate jdbc() {
