@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作业一 · 同一张入库单被同时完成两次</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6b7a;
+    --line: #d7e0ea;
+    --paper: #f4f7fb;
+    --card: #fff;
+    --blue: #1d6fbf;
+    --ok: #067647;
+    --ok-soft: #e7f6ee;
+    --bad: #b42318;
+    --bad-soft: #fdeceb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 18px/1.65 "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+  header.top { background: #12324f; color: #fff; padding: 36px 8vw 28px; }
+  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 52rem; }
+  h1 { font-size: 34px; line-height: 1.25; margin: 0; }
+  main { width: min(980px, 92vw); margin: 0 auto; padding: 28px 0 80px; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 24px 26px;
+    margin: 18px 0;
+  }
+  h2 { font-size: 26px; margin: 0 0 12px; }
+  h3 { font-size: 20px; margin: 24px 0 8px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre {
+    background: #0f1c2b;
+    color: #e8eef6;
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow: auto;
+    font: 15px/1.55 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .see {
+    background: var(--ok-soft);
+    border-left: 4px solid var(--ok);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  .see b { color: var(--ok); }
+  .badbox {
+    background: var(--bad-soft);
+    border-left: 4px solid var(--bad);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  .badbox b { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 16px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 10px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 650; }
+  figure.shot { margin: 16px 0 8px; }
+  figure.shot img { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; display: block; }
+  figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pair figure.shot { margin: 8px 0; }
+  .tag { display: inline-block; font-size: 14px; font-weight: 650; padding: 1px 8px; border-radius: 6px; color: #fff; }
+  .tag.bad { background: var(--bad); }
+  .tag.ok { background: var(--ok); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .box {
+    border: 2px solid var(--blue);
+    border-radius: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    font-weight: 650;
+    text-align: center;
+  }
+  .arrow { color: var(--muted); }
+  a { color: var(--blue); }
+  ol.steps { padding-left: 1.2em; }
+  ol.steps > li { margin: 10px 0; }
+  nav.toc ol { columns: 2; margin: 0; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } nav.toc ol { columns: 1; } }
+</style>
+<body>
+<header class="top">
+  <h1>作业一 · 同一张入库单被同时完成两次</h1>
+  <p>个人作业，占总评 10%。第 10 周布置，<b>第 12 周周日 23:59</b> 截止。只用到第一部分（货品与入库）和第二部分（出库与并发）的内容。在课堂的 WMS 上找到一个并发问题，按「复现 → 分析 → 修复 → 验证」做完，交前后端代码和一份报告。</p>
+</header>
+<main>
+
+<section>
+  <h2>1. 问题是什么</h2>
+  <p>入库页点「完成入库」，后端把这张单每一行的数量加进 <code>inventory</code>，写一行 <code>stock_flow</code>，再把单子改成 <code>COMPLETED</code>。一张单只能完成一次。</p>
+  <p>可是同一张单的「完成入库」请求如果<b>同时</b>到了两次，比如用户连点了两下、网络重发了一次、两个浏览器标签同时点，库存会被加两次。下面是老师在 MySQL 上实测的结果（示例学号 2023011234，所以货品是 <code>SKU-1234</code>，数量 34）：</p>
+  <figure class="shot">
+    <img src="images/1-repro-page.png" alt="同时完成两次都成功">
+    <figcaption>入库单 IN-2 有一行：SKU-1234、A-01-01、34 个。点「同时完成 ×2」，两个请求在同一时刻发出，两次都返回 200。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/2-repro-db.png" alt="库存加了两次">
+    <figcaption>A-01-01 上原来有 34 个（IN-1 入的）。IN-2 只入 34 个，库存却从 34 变成 102，<code>stock_flow</code> 里 IN-2 有两行。</figcaption>
+  </figure>
+  <p>第二部分课上讲的是两张<b>出库单</b>同时完成、库存扣错。这次是同一张<b>入库单</b>完成了两次，道理相通，代码要你自己改。</p>
+</section>
+
+<section>
+  <h2>2. 你要做的四步</h2>
+  <p>先在 Gitee 上把老师的后端、前端两个仓库各 Fork 一份到自己名下，用 GitHub Desktop 克隆你自己的那两份，从「第二部分」分支新建 <code>作业一</code> 分支再改，改完 Push 到你自己的仓库。</p>
+
+  <h3>第一步：复现</h3>
+  <ul>
+    <li><b>后端加一个开关</b> <code>app.lesson.inbound-complete-once</code>，取值 <code>on</code> / <code>off</code>，默认 <code>on</code>。<code>off</code> 时走现在的写法，能复现上面的问题。写法参照第二部分的 <code>optimistic-lock</code>：<code>LessonSwitches</code> 和 <code>application.yaml</code>。</li>
+    <li><b>前端入库页加一个按钮「同时完成 ×2」</b>：把同一张单的两个「完成入库」请求同时发出去，两个结果都显示在「接口返回」里。写法参照出库页的「同时完成勾选的单」（<code>outbound/list.ts</code> 的 <code>completeTogether</code>）。</li>
+    <li>后端启动参数加 <code>--app.lesson.inbound-complete-once=off</code>，用自己的数据做一遍，截图页面和数据库。</li>
+  </ul>
+  <div class="see"><b>注意：</b>复现前先往这个库位入一次库，让 <code>inventory</code> 里已经有这一行。格子原来没有这种货时，两次请求都会去插入第一行，撞唯一键返回 500。那是另一个现象，修好之后它也会一起消失，但复现时先避开。</div>
+
+  <h3>第二步：分析</h3>
+  <p>用一张时序表写清两个请求各自走到了哪一步，数据库里的 <code>status</code> 和 <code>quantity</code> 当时是多少。然后回答三个问题：</p>
+  <ol>
+    <li>为什么两个请求都认为这张单还是草稿？</li>
+    <li><code>InboundService</code> 上已经有 <code>@Transactional</code>，为什么挡不住？</li>
+    <li>这个问题和第二部分「两张出库单同时完成」哪里一样？</li>
+  </ol>
+
+  <h3>第三步：修复</h3>
+  <p>开关 <code>on</code> 时，同一张单只能完成一次：先到的那次成功，后到的那次返回 400（错误码 <code>INBOUND_NOT_DRAFT</code>），库存只加一次，流水只有一行。</p>
+  <ul>
+    <li>修法要靠数据库挡住。想想第二部分是怎么让「后写的那一次」失败的。</li>
+    <li>不能只用 Java 的 <code>synchronized</code> 或 <code>ReentrantLock</code>：后端跑两台时，一台的锁管不到另一台。</li>
+    <li>改的地方写注释，说清这一行在防什么。</li>
+  </ul>
+
+  <h3>第四步：验证</h3>
+  <ul>
+    <li><b>并发测试：</b>两个线程同时完成同一张单。开关 <code>off</code> 时断言库存加了两次；<code>on</code> 时断言只加一次、一次成功一次 <code>INBOUND_NOT_DRAFT</code>。写法参照第二部分的 <code>OutboundRaceSupport</code>、<code>OutboundDefectPathTest</code>、<code>OutboundFixedPathTest</code>，开关用 <code>@TestPropertySource</code> 写在测试类上。</li>
+    <li><b>原有测试全部通过：</b><code>./mvnw test</code> 显示 <code>BUILD SUCCESS</code>。</li>
+    <li><b>页面和数据库：</b>开关 <code>on</code>，用一张新单再点「同时完成 ×2」，截图一个 200、一个 400，以及数据库里只加了一次。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3. 数据用你自己的学号</h2>
+  <p>报告里所有截图都用自己的数据，每个人都不一样：</p>
+  <ul>
+    <li>货品编码 <code>SKU-学号后四位</code>，例如学号 2023011234 就是 <code>SKU-1234</code>。</li>
+    <li>入库数量是学号末两位，末两位是 00 就用 100。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. 交什么</h2>
+  <table>
+    <tr><th>交什么</th><th>要求</th></tr>
+    <tr><td>后端代码</td><td>个人 Gitee 仓库的 <code>作业一</code> 分支。至少两次提交：先提交「复现」（开关、off 的写法），再提交「修复和验证」（on 的写法、并发测试）。</td></tr>
+    <tr><td>前端代码</td><td>个人 Gitee 仓库的 <code>作业一</code> 分支，入库页有「同时完成 ×2」。</td></tr>
+    <tr><td>报告</td><td>用本目录的 <code>作业一-报告模板.docx</code> 写，四个步骤都要有。导出 PDF，文件名 <code>学号-姓名-作业一.pdf</code>，交到课程平台。</td></tr>
+  </table>
+  <p>仓库设成公开，或者把老师加为成员。截止后再推送的提交不算。</p>
+  <p>老师批改时会：拉下你的两个仓库，<code>./mvnw test</code>，后端分别用 <code>off</code>、<code>on</code> 启动，在页面上点「同时完成 ×2」，到数据库看库存。交之前自己按这个顺序走一遍。</p>
+</section>
+
+<section>
+  <h2>5. 评分</h2>
+  <table>
+    <tr><th>项</th><th>看什么</th><th>分</th></tr>
+    <tr><td>复现</td><td><code>off</code> 时按钮能让库存加两次；报告里有页面和数据库截图</td><td>20</td></tr>
+    <tr><td>分析</td><td>时序表对；三个问题答到点上</td><td>20</td></tr>
+    <tr><td>修复</td><td><code>on</code> 时只加一次、后到的返回 400；靠数据库挡住；注释写清楚；报告逐行说明改动</td><td>25</td></tr>
+    <tr><td>验证</td><td>并发测试 <code>off</code>、<code>on</code> 都有断言并通过；原有测试全过；报告有截图</td><td>25</td></tr>
+    <tr><td>报告规范</td><td>用自己学号的数据；截图清楚、图下有说明</td><td>10</td></tr>
+  </table>
+</section>
+</main>
+</body>
+</html>
