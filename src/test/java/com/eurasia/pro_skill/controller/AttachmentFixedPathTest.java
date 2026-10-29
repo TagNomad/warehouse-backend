@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 改良版那一侧。两个分支上都跑这一份，开关在这里写死。
+// 开关在默认（正确）的一侧。开关写死在这里，不看 application.yaml。
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.lesson.file-key=unique",
         "app.lesson.local-file-dir=target/test-attachments/data"
 })
-@DisplayName("改良版：附件放进对象存储、换成随机名")
+@DisplayName("第四部分正确写法：附件放进对象存储、换成随机名")
 class AttachmentFixedPathTest extends AttachmentPathSupport {
 
     @Test

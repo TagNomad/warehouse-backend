@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 第四部分那一侧。两个分支上都跑这一份，开关在这里写死。
+// 开关拨到演示问题的一侧。开关写死在这里，不看 application.yaml。
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
