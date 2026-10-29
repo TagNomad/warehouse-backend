@@ -83,7 +83,7 @@ public class InboundService {
             row.setSkuId(skuId); // 列 sku_id：哪一种货
             row.setLocationId(locationId); // 列 location_id：哪一个格子
             row.setQuantity(quantity); // 列 quantity：第一次的数量就是这一行入库单行的数量
-            row.setVersion(0); // 列 version：先写 0，第三部分的乐观锁拿它做更新条件
+            row.setVersion(0); // 列 version：先写 0，第二部分的乐观锁拿它做更新条件
             inventoryMapper.insert(row); // 返回 1。唯一键是 sku_id + location_id，同一个格子不会有第二行
             return;
         }

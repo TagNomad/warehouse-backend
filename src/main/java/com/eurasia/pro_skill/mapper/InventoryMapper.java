@@ -25,7 +25,7 @@ public interface InventoryMapper {
     int insert(InventoryEntity entity); // 返回值是写下了几行，成功是 1，不是主键
 
     // 这个格子已经有一行时，把数量加上，version 加一。#{delta} 是这次要加的数量。
-    // 条件只按货品和库位，不拿 version 当条件。第三部分的乐观锁再加这一条。
+    // 条件只按货品和库位，不拿 version 当条件。第二部分的乐观锁再加这一条。
     @Update("UPDATE inventory SET quantity = quantity + #{delta}, version = version + 1 WHERE sku_id = #{skuId} AND location_id = #{locationId}")
     int addQuantity(@Param("skuId") Long skuId, @Param("locationId") Long locationId, @Param("delta") int delta); // 改到这一行返回 1
 }

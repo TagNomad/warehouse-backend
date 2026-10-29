@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第一部分讲义 · 拿到代码，把系统跑起来</title>
+<title>第一部分讲义 · 拿到代码跑起来，货品与入库</title>
 <style>
   :root {
     --ink: #1c2430;
@@ -92,14 +92,15 @@
 </head>
 <body>
 <header class="top">
-  <h1>第一部分 · 拿到代码，把系统跑起来</h1>
-  <p>第 10 周，2 课时。老师按下面的顺序一步步演示，你把代码下载下来，对照页面、代码和数据库看。</p>
+  <h1>第一部分 · 拿到代码跑起来，货品与入库</h1>
+  <p>第 10 周，6 课时，分支「第一部分」。第一次课（2 课时）拿到代码、把前后端跑起来；第二次课（4 课时）讲新增的货品与入库。老师按顺序一步步演示，你把代码下载下来，对照页面、代码和数据库看。</p>
 </header>
 <main>
 
 <nav class="toc">
 <section>
   <h2>这一份讲义的顺序</h2>
+  <p><b>第一次课：拿到代码，把系统跑起来</b></p>
   <ol>
     <li><a href="#end">先看终点</a></li>
     <li><a href="#git">用 GitHub Desktop 拿到代码</a></li>
@@ -107,6 +108,14 @@
     <li><a href="#frontend">把前端跑起来</a></li>
     <li><a href="#case">一个案例：点「库区库位」发生了什么</a></li>
     <li><a href="#pr">老师演示：分支、提交、Pull Request</a></li>
+  </ol>
+  <p><b>第二次课：货品与入库</b></p>
+  <ol start="7">
+    <li><a href="#b-page">先看页面</a></li>
+    <li><a href="#b-tables">用到的四张表</a></li>
+    <li><a href="#b-case">案例：把 10 个垫圈入库到 A-01-01</a></li>
+    <li><a href="#b-self">剩下的接口自己看</a></li>
+    <li><a href="#b-hw">作业里写同类接口时</a></li>
   </ol>
 </section>
 </nav>
@@ -124,12 +133,12 @@
 
 <section id="git">
   <h2>2. 用 GitHub Desktop 拿到代码</h2>
-  <p>代码放在 Gitee 上的仓库里。Git 记下代码的每一次修改（提交），同一份代码可以有几条修改线（分支）。这门课每一部分是一个分支，这一周用「第二部分」。</p>
+  <p>代码放在 Gitee 上的仓库里。Git 记下代码的每一次修改（提交），同一份代码可以有几条修改线（分支）。这门课每一部分是一个分支，这一周用「第一部分」。</p>
   <ol>
     <li>到 <a href="https://desktop.github.com">desktop.github.com</a> 下载 GitHub Desktop 并安装，第一次打开时跳过登录。</li>
     <li>File → Clone Repository → 点 URL，粘贴后端地址 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>，选一个本地文件夹，点 Clone。</li>
     <li>同样再克隆前端 <code>https://gitee.com/dingsaier/warehouse-frontend.git</code>。</li>
-    <li>两个仓库都点上方 Current Branch，选「第二部分」。</li>
+    <li>两个仓库都点上方 Current Branch，选「第一部分」。</li>
   </ol>
   <figure class="shot">
     <img src="figures/02-clone-dialog.png" alt="克隆窗口">
@@ -138,7 +147,7 @@
 
   <figure class="shot">
     <img src="figures/03-branch-list.png" alt="分支列表">
-    <figcaption>点 Current Branch 打开分支列表，选「第二部分」。文件夹里的代码会跟着换成这个分支的。</figcaption>
+    <figcaption>点 Current Branch 打开分支列表，选「第一部分」。文件夹里的代码会跟着换成这个分支的。</figcaption>
   </figure>
 
 </section>
@@ -203,6 +212,88 @@ npx pnpm@9 dev</pre>
     <li>Gitee 网页上新建 Pull Request，源分支选新分支，目标分支选主分支，点合并。</li>
   </ol>
   <p>课堂仓库只能克隆，不能推送；作业用自己的 Gitee 仓库做这几步。</p>
+</section>
+
+<section id="b-page">
+  <h2>7. 先看页面</h2>
+  <p>上一部分系统只知道仓库里有哪些格子。这一部分加两件事：<b>货品</b>（仓库里有哪些货）和<b>入库</b>（进了多少货、放进哪个格子）。左边菜单多了「货品」「入库」两页。</p>
+  <figure class="shot">
+    <img src="figures/w2-01-page-sku.png" alt="货品页">
+    <figcaption>货品页：填编码、名称、单位，点「新建」登记一种货。编码不能重复，重复会返回 400。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/w2-02-page-inbound.png" alt="入库页">
+    <figcaption>入库页：「新建入库单」得到一张草稿 → 选货品、库位、数量，点「加一行」→ 点「完成入库」。最下面「接口返回」是每次请求后端回了什么。</figcaption>
+  </figure>
+
+</section>
+
+<section id="b-tables">
+  <h2>8. 用到的四张表</h2>
+  <table>
+    <tr><th>表</th><th>存什么</th></tr>
+    <tr><td><code>sku</code></td><td>货品：编码、名称、单位。编码不重复</td></tr>
+    <tr><td><code>inbound_order</code></td><td>入库单：单号、状态（DRAFT 草稿 / COMPLETED 完成）</td></tr>
+    <tr><td><code>inbound_order_line</code></td><td>入库单上的每一行：哪种货、哪个库位、多少个</td></tr>
+    <tr><td><code>inventory</code></td><td>库存：每个库位上每种货有多少个，一个库位上的一种货一行</td></tr>
+  </table>
+  <p>表由启动时的迁移脚本建好，脚本在 <code>src/main/resources/db/migration</code>，V7、V10、V11 是这一部分的。</p>
+</section>
+
+<section id="b-case">
+  <h2>9. 案例：把 10 个垫圈入库到 A-01-01</h2>
+  <p>在入库页上点三下，发出三个请求：</p>
+  <table>
+    <tr><th>页面上点</th><th>请求</th><th>数据库里多了什么</th></tr>
+    <tr><td>新建入库单</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 一行 IN-1，状态 DRAFT</td></tr>
+    <tr><td>加一行（SKU-003、A-01-01、10）</td><td><code>POST /inbound-orders/1/lines</code></td><td><code>inbound_order_line</code> 一行</td></tr>
+    <tr><td>完成入库</td><td><code>POST /inbound-orders/1/complete</code></td><td><code>inventory</code> 一行：A-01-01 上 10 个垫圈；IN-1 变成 COMPLETED</td></tr>
+  </table>
+  <p>前两步只是记下单据，第三步才真正动库存。下面跟着「完成入库」这一个请求，从页面走到数据库。</p>
+  <figure class="shot">
+    <img src="figures/w2-03-front.png" alt="前端：完成入库">
+    <figcaption>前端。点「完成入库」执行 <code>complete()</code>，第 71 行调 <code>inboundApi.complete(id)</code>；<code>inbound.api.ts</code> 第 26 行发出 <code>POST /inbound-orders/1/complete</code>，没有请求体。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/w2-04-controller.png" alt="InboundController">
+    <figcaption>Controller。路径里的 1 是入库单主键，交给 <code>InboundService.complete</code>。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/w2-05-service.png" alt="InboundService">
+    <figcaption>Service。第 66 行确认还是草稿；第 67 行取出这张单的每一行；第 71–73 行每一行调 <code>addInventory</code>；第 74–75 行把单改成 COMPLETED。<code>addInventory</code> 先查这个库位上有没有这种货（第 80 行）：没有就插入新的一行（第 81–88 行），有就在原来那一行上加（第 90 行）。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/w2-06-mapper.png" alt="InventoryMapper">
+    <figcaption>Mapper。第 18 行按货品 + 库位查那一行；第 23 行插入新行；第 29 行在已有行上加数量。</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="figures/w2-07-db.png" alt="完成后的三张表">
+    <figcaption>完成后的数据。<code>inbound_order</code> 里 IN-1 是 COMPLETED；<code>inbound_order_line</code> 记着 sku_id 3（垫圈）、location_id 1（A-01-01）、10；<code>inventory</code> 多了一行同样的货品、库位、数量。</figcaption>
+  </figure>
+
+  <p>同一个库位再入一次垫圈，<code>inventory</code> 不会多一行，而是那一行的 quantity 加上去。</p>
+</section>
+
+<section id="b-self">
+  <h2>10. 剩下的接口自己看</h2>
+  <p>下面几个接口走的是同一条路。照着第 9 节，从前端文件找到 Controller，再到 Service、Mapper，最后到表：</p>
+  <table>
+    <tr><th>接口</th><th>做什么</th><th>前端</th><th>后端</th></tr>
+    <tr><td><code>POST /skus</code></td><td>新建货品，编码重复返回 400</td><td><code>pages/skus/skus.api.ts</code></td><td><code>SkuController</code> → <code>SkuService.create</code> → <code>SkuMapper</code></td></tr>
+    <tr><td><code>GET /skus</code></td><td>货品列表</td><td>同上</td><td><code>SkuController</code> → <code>SkuService.list</code></td></tr>
+    <tr><td><code>POST /inbound-orders</code></td><td>新建入库单（草稿）</td><td><code>pages/inbound/inbound.api.ts</code></td><td><code>InboundController</code> → <code>InboundService.create</code></td></tr>
+    <tr><td><code>POST /inbound-orders/{id}/lines</code></td><td>加一行：把货品编码、库位编码换成主键再插入</td><td>同上</td><td><code>InboundService.addLine</code> → <code>InboundOrderLineMapper</code></td></tr>
+  </table>
+</section>
+
+<section id="b-hw">
+  <h2>11. 作业里写同类接口时</h2>
+  <p>先写表，再按 Controller → Service → Mapper 的顺序写，和上面的案例一一对照：请求里的每个字段有没有走到 SQL；改库存和改单据状态是不是在同一个方法里一起完成。</p>
 </section>
 </main>
 </body>
