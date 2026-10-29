@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第二部分讲义 · 货品与入库</title>
+<title>第二部分讲义 · 出库与并发</title>
 <style>
   :root {
     --ink: #1c2430;
@@ -92,104 +92,608 @@
 </head>
 <body>
 <header class="top">
-  <h1>第二部分 · 货品与入库</h1>
-  <p>第 10 周，4 课时。老师用一个入库的案例，从页面一路讲到数据库；其余接口照着同样的路自己看。</p>
+  <h1>第二部分 · 出库与并发</h1>
+  <p>第 12 周和第 13 周。第一部分已经按「货品 + 库位」记下数量。这一部分加出库的四个接口，并在入库完成时写一条库存流水。这几处代码各有一个漏洞：剩余不够也照减；已完成的单还能改数量；两次同时出库只减了一次；入库失败了流水却留下来。</p>
+  <p>「第二部分」和「第二部分改良版」用的是这一份讲义。两个分支的 Java 代码相同，漏洞那一侧和修好那一侧都在 Service 里，用 <code>application.yaml</code> 的四个开关选走哪一侧。改良版改的是这四个开关的值，改完以后同一个请求走修好的那几行。每一节都给出两个分支上同一个操作的真实结果。</p>
 </header>
 <main>
+
+<section id="preview">
+  <h2>先看页面：这一部分要做出什么</h2>
+  <p>第一部分让系统记下了每个格子上有多少货（<code>inventory</code> 表，一个格子上的一种货一行）。这一部分做反方向的事：从某个格子上把货拿走，叫「出库」。</p>
+  <p>前端切到「第二部分」分支，左边菜单多了「出库」。</p>
+
+  <h3>出库页</h3>
+  <p>和入库页一样分三步：「新建出库单」得到一张草稿；选货品、选格子、填数量，点「加一行」；点「完成出库」，系统从那个格子的数量里减掉这一行。比入库页多两样：</p>
+  <ul>
+    <li>每一行右边有「改」，可以改这一行的数量。</li>
+    <li>草稿单前面有勾选框。勾两张，点右上角「同时完成勾选的单」，两个完成请求在同一刻发出去，相当于两个仓管员同时点了完成。</li>
+  </ul>
+  <p>这一部分有四个重点，都是账会对不上的情况。前三个在出库页上就能点出来，下面的图都是真实点出来的结果。</p>
+
+  <h3>重点一、二：剩余不够还能出吗；完成以后还能改吗</h3>
+  <p>A-01-01 上有 10 个轴承。OUT-1 要出 15 个，点「完成出库」。再建 OUT-2 出 1 个，完成以后把这一行的数量改成 5：</p>
+      <figure class="shot">
+        <img src="figures/545-preview-outbound-defect.png" alt="第二部分出库页">
+        <figcaption><span class="tag bad">第二部分</span> 两件事都成功了。OUT-1 出 15 也变成了 COMPLETED，格子上的数变成 -5，仓库里不可能有 -5 个。OUT-2 已经完成，这一行还是改成了 5（PATCH 200），单上写出去 5 个，库存只扣了 1 个。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/546-preview-outbound-fixed.png" alt="改良版出库页">
+        <figcaption><span class="tag ok">改良版</span> 两件事都被拒绝。OUT-1 返回 400「库存不足，剩余 10」，单还是 DRAFT。OUT-2 改数量返回 400「只有草稿可以改数量」，行上还是 1。</figcaption>
+      </figure>
+
+  <h3>重点三：两个人同时出库</h3>
+  <p>A-01-01 上只剩 1 个。OUT-4、OUT-5 各要出 1 个，都加好行先不完成；勾选这两张，点「同时完成勾选的单」：</p>
+      <figure class="shot">
+        <img src="figures/547-preview-race-defect.png" alt="第二部分同时完成">
+        <figcaption><span class="tag bad">第二部分</span> 两张都成功了。拿走了 2 个，库存只扣了 1 次。两个请求都先读到「还剩 1 个」，各自算出「还剩 0 个」写回去，后写的把先写的盖掉了。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="figures/548-preview-race-fixed.png" alt="改良版同时完成">
+        <figcaption><span class="tag ok">改良版</span> 一张成功，另一张被拒绝：400「库存已被别人改过」，只拿走 1 个。</figcaption>
+      </figure>
+
+  <p>改良版怎么知道「被别人改过」：<code>inventory</code> 每一行多记一个版本号 <code>version</code>，每改一次加 1。写回时带上自己读到的版本号，版本号已经变了，就说明别人刚改过，这一次不写。</p>
+
+  <h3>重点四：入库失败了，记录却留下来</h3>
+  <p>这一部分在入库完成时多记一条「流水」（<code>stock_flow</code> 表），像银行流水，记着哪张单让哪个格子多了几个。入库中途出错时，单据和库存都会撤回。第二部分的流水却留了下来，账上多出一笔没发生的入库；改良版把流水一起撤回。这一处两个分支在页面上都返回 400，要到 Adminer 查 <code>stock_flow</code>。</p>
+
+  <h3>这一部分要写什么</h3>
+  <table>
+    <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
+    <tr><td>「新建出库单」</td><td><code>POST /outbound-orders</code></td><td><code>outbound_order</code> 加一行，状态是草稿</td><td style="white-space:nowrap">第 4 节</td></tr>
+    <tr><td>「加一行」</td><td><code>POST /outbound-orders/{id}/lines</code></td><td><code>outbound_order_line</code> 加一行</td><td style="white-space:nowrap">第 5 节</td></tr>
+    <tr><td>「完成出库」</td><td><code>POST /outbound-orders/{id}/complete</code></td><td>从 <code>inventory</code> 那一格减数量，单据改成完成</td><td style="white-space:nowrap">第 6 节</td></tr>
+    <tr><td>行上的「改」</td><td><code>PATCH /outbound-orders/{id}/lines/{lineId}</code></td><td>改 <code>outbound_order_line</code> 的数量</td><td style="white-space:nowrap">第 7 节</td></tr>
+    <tr><td>入库页「完成入库」</td><td>第一部分的接口</td><td>多写一条 <code>stock_flow</code></td><td style="white-space:nowrap">第 8 节</td></tr>
+  </table>
+  <ul>
+    <li>第 4–8 节：每个接口从 Controller 写到 Mapper，看清数据落在哪张表的哪一列。</li>
+    <li>第 10–13 节：上面四个重点，每一个都在页面、日志、Adminer 里自己查一遍，再看是哪一行代码。</li>
+    <li>第 14 节：改良版改了哪四处。</li>
+  </ul>
+  <p>实验每一步在页面上怎么点，见第 18 节。</p>
+</section>
 
 <nav class="toc">
 <section>
   <h2>这一份讲义的顺序</h2>
   <ol>
-    <li><a href="#page">先看页面</a></li>
-    <li><a href="#tables">用到的四张表</a></li>
-    <li><a href="#case">案例：把 10 个垫圈入库到 A-01-01</a></li>
-    <li><a href="#self">剩下的接口自己看</a></li>
-    <li><a href="#hw">作业里写同类接口时</a></li>
+    <li><a href="#new">这一部分加了什么</a></li>
+    <li><a href="#tables">两张新表</a></li>
+    <li><a href="#switch">开关怎样起作用</a></li>
+    <li><a href="#api1">接口一：新建出库草稿</a></li>
+    <li><a href="#api2">接口二：给草稿加一行</a></li>
+    <li><a href="#api3">接口三：完成出库</a></li>
+    <li><a href="#api4">接口四：改一行的数量</a></li>
+    <li><a href="#flow">入库完成时写流水</a></li>
+    <li><a href="#order">实验顺序</a></li>
+    <li><a href="#d1">漏洞一：剩余不够也照减</a></li>
+    <li><a href="#d2">漏洞二：已完成的单还能改</a></li>
+    <li><a href="#d3">漏洞三：两次同时出库只减一次</a></li>
+    <li><a href="#d4">漏洞四：入库失败，流水留下</a></li>
+    <li><a href="#sum">改良版改了哪四块</a></li>
+    <li><a href="#test">用测试把两条路径跑一遍</a></li>
+    <li><a href="#merge">把改良版合并进第二部分</a></li>
+    <li><a href="#ai">作业里要写同类接口时</a></li>
+    <li><a href="#page">在页面上复现</a></li>
   </ol>
 </section>
 </nav>
 
-<section id="page">
-  <h2>1. 先看页面</h2>
-  <p>上一部分系统只知道仓库里有哪些格子。这一部分加两件事：<b>货品</b>（仓库里有哪些货）和<b>入库</b>（进了多少货、放进哪个格子）。左边菜单多了「货品」「入库」两页。</p>
+<section id="new">
+  <h2>1. 这一部分加了什么</h2>
+  <p>出库和第一部分的入库是同一种写法：先建一张草稿，往草稿上加行，最后完成。完成时按行上记下的货品和库位，从 <code>inventory</code> 里减去数量，再把单据改成 <code>COMPLETED</code>。</p>
+  <table>
+    <tr><th>接口</th><th>做什么</th><th>写到哪张表</th></tr>
+    <tr><td><code>POST /outbound-orders</code></td><td>新建一张出库草稿，没有请求体</td><td><code>outbound_order</code> 插入一行</td></tr>
+    <tr><td><code>POST /outbound-orders/{id}/lines</code></td><td>给草稿加一行：哪种货、从哪个库位出、多少</td><td><code>outbound_order_line</code> 插入一行</td></tr>
+    <tr><td><code>POST /outbound-orders/{id}/complete</code></td><td>完成出库，没有请求体</td><td>改 <code>inventory.quantity</code>，改 <code>outbound_order.status</code></td></tr>
+    <tr><td><code>PATCH /outbound-orders/{id}/lines/{lineId}</code></td><td>改一行的数量</td><td>改 <code>outbound_order_line.quantity</code></td></tr>
+    <tr><td><code>POST /inbound-orders/{id}/complete</code>（已有）</td><td>入库完成时多写一条流水</td><td><code>stock_flow</code> 插入一行</td></tr>
+  </table>
   <figure class="shot">
-    <img src="figures/w2-01-page-sku.png" alt="货品页">
-    <figcaption>货品页：填编码、名称、单位，点「新建」登记一种货。编码不能重复，重复会返回 400。</figcaption>
+    <img src="figures/300-swagger-outbound.png" alt="Swagger 里的出库四个接口">
+    <figcaption>启动后打开 <code>http://localhost:8080/swagger-ui.html</code>，「出库」分组下就是这四个接口。右边的锁表示要先登录，把 <code>POST /auth/login</code> 返回的 token 填进 Authorize。</figcaption>
   </figure>
-
-  <figure class="shot">
-    <img src="figures/w2-02-page-inbound.png" alt="入库页">
-    <figcaption>入库页：「新建入库单」得到一张草稿 → 选货品、库位、数量，点「加一行」→ 点「完成入库」。最下面「接口返回」是每次请求后端回了什么。</figcaption>
-  </figure>
-
+  <p>每个接口都按同一条路走：</p>
+  <div class="flow">
+    <div class="box">Request 类<br><small>JSON 字段</small></div><span class="arrow">→</span>
+    <div class="box">OutboundController<br><small>取路径和字段</small></div><span class="arrow">→</span>
+    <div class="box">OutboundService<br><small>查、算、判断</small></div><span class="arrow">→</span>
+    <div class="box">Mapper<br><small>一条 SQL</small></div><span class="arrow">→</span>
+    <div class="box">表的某一列</div>
+  </div>
+  <p>下面每个接口都按这个顺序给出真实代码，图里的行号就是文件里的行号。</p>
 </section>
 
 <section id="tables">
-  <h2>2. 用到的四张表</h2>
-  <table>
-    <tr><th>表</th><th>存什么</th></tr>
-    <tr><td><code>sku</code></td><td>货品：编码、名称、单位。编码不重复</td></tr>
-    <tr><td><code>inbound_order</code></td><td>入库单：单号、状态（DRAFT 草稿 / COMPLETED 完成）</td></tr>
-    <tr><td><code>inbound_order_line</code></td><td>入库单上的每一行：哪种货、哪个库位、多少个</td></tr>
-    <tr><td><code>inventory</code></td><td>库存：每个库位上每种货有多少个，一个库位上的一种货一行</td></tr>
-  </table>
-  <p>表由启动时的迁移脚本建好，脚本在 <code>src/main/resources/db/migration</code>，V7、V10、V11 是这一部分的。</p>
+  <h2>2. 两张新表</h2>
+  <p><code>V12</code> 建出库单和出库行，<code>V13</code> 建库存流水。Flyway 在启动时按版本号执行，库里没有的表会自动建出来。</p>
+  <figure class="shot">
+    <img src="figures/306-v12.png" alt="V12 出库表">
+    <figcaption><code>outbound_order</code> 是单据本身：单号、状态、创建时间。<code>outbound_order_line</code> 是单据上的一行，<code>order_id</code> 指向出库单，<code>sku_id</code> 和 <code>location_id</code> 存的是主键，不是 <code>SKU-001</code>、<code>A-01-01</code> 这样的编码。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/307-v13.png" alt="V13 流水表">
+    <figcaption><code>stock_flow</code> 每次入库完成按行写一条：<code>biz_no</code> 是入库单号，另外三列和入库行一样。</figcaption>
+  </figure>
+  <p><code>inventory</code> 是第一部分的表，这一部分只读和改它。列是 <code>id</code>、<code>sku_id</code>、<code>location_id</code>、<code>quantity</code>、<code>version</code>，唯一键是 <code>sku_id + location_id</code>，一个格子上的一种货只有一行。</p>
 </section>
 
-<section id="case">
-  <h2>3. 案例：把 10 个垫圈入库到 A-01-01</h2>
-  <p>在入库页上点三下，发出三个请求：</p>
+<section id="switch">
+  <h2>3. 开关怎样起作用</h2>
+  <p>四个漏洞都由开关控制。一个开关的值走三步进到代码里：</p>
+  <div class="flow">
+    <div class="box">application.yaml<br><small>app.lesson.outbound-check: off</small></div><span class="arrow">→</span>
+    <div class="box">LessonSwitches<br><small>@Value 读成 boolean</small></div><span class="arrow">→</span>
+    <div class="box">OutboundService<br><small>if (switches.outboundCheck())</small></div>
+  </div>
+  <figure class="shot">
+    <img src="figures/301-switch-yaml.png" alt="第二部分的开关值">
+    <figcaption>第 51–59 行是每个开关的说明。第 68–71 行是这一部分的四个值，全部是漏洞那一侧。第 72 行 <code>inbound-fail-before-status</code> 是演示漏洞四用的，平时是 <code>false</code>。第 73 行 <code>outbound-read-pause-ms</code> 是演示漏洞三用的，平时是 0。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/303-switch-class.png" alt="LessonSwitches">
+    <figcaption>第 19–24 行用 <code>@Value("${app.lesson.xxx:默认值}")</code> 把 yaml 里的字符串取进来，冒号后面是没写时的默认值。第 25–29 行把字符串变成 boolean。第 34–36 行：yaml 里不加引号的 <code>on</code> 会被读成字符串 <code>"true"</code>，所以 <code>on</code>、<code>true</code>、<code>yes</code> 都算打开。Service 构造时注入这个类，调用 <code>switches.outboundCheck()</code> 这样的方法。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/304-switch-compose.png" alt="Compose 里的环境变量">
+    <figcaption>容器里跑时，<code>docker-compose.dev.yml</code> 的环境变量盖过 yaml。Spring 把 <code>APP_LESSON_OUTBOUND_CHECK</code> 对应到 <code>app.lesson.outbound-check</code>。<code>${APP_LESSON_OUTBOUND_CHECK:-off}</code> 的意思是：命令行没给这个变量就用 <code>off</code>。</figcaption>
+  </figure>
+  <p>改开关有三种办法，改完都要重启应用：</p>
   <table>
-    <tr><th>页面上点</th><th>请求</th><th>数据库里多了什么</th></tr>
-    <tr><td>新建入库单</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 一行 IN-1，状态 DRAFT</td></tr>
-    <tr><td>加一行（SKU-003、A-01-01、10）</td><td><code>POST /inbound-orders/1/lines</code></td><td><code>inbound_order_line</code> 一行</td></tr>
-    <tr><td>完成入库</td><td><code>POST /inbound-orders/1/complete</code></td><td><code>inventory</code> 一行：A-01-01 上 10 个垫圈；IN-1 变成 COMPLETED</td></tr>
+    <tr><th>怎样运行</th><th>怎样改</th></tr>
+    <tr><td>IDE 里运行 <code>ProSkillApplication</code></td><td>改 <code>application.yaml</code> 的值；或者在运行配置的 Program arguments 里写 <code>--app.lesson.outbound-check=on</code></td></tr>
+    <tr><td><code>java -jar</code></td><td>命令后面加 <code>--app.lesson.outbound-check=on</code></td></tr>
+    <tr><td>Compose</td><td><code>APP_LESSON_OUTBOUND_CHECK=on docker compose -f docker-compose.dev.yml up -d --build --force-recreate app</code></td></tr>
   </table>
-  <p>前两步只是记下单据，第三步才真正动库存。下面跟着「完成入库」这一个请求，从页面走到数据库。</p>
+  <h3>改良版上的值</h3>
   <figure class="shot">
-    <img src="figures/w2-03-front.png" alt="前端：完成入库">
-    <figcaption>前端。点「完成入库」执行 <code>complete()</code>，第 71 行调 <code>inboundApi.complete(id)</code>；<code>inbound.api.ts</code> 第 26 行发出 <code>POST /inbound-orders/1/complete</code>，没有请求体。</figcaption>
+    <img src="figures/302-switch-yaml-improved.png" alt="改良版的开关值">
+    <figcaption>改良版的 <code>application.yaml</code>，第 68–71 行是修好那一侧的值。其它行和第二部分相同。</figcaption>
   </figure>
-
   <figure class="shot">
-    <img src="figures/w2-04-controller.png" alt="InboundController">
-    <figcaption>Controller。路径里的 1 是入库单主键，交给 <code>InboundService.complete</code>。</figcaption>
+    <img src="figures/305-improved-diff.png" alt="改良版的差别">
+    <figcaption>两个分支的差别就是这八行：yaml 四行，Compose 四行。红色是第二部分，绿色是改良版。合并改良版带过去的就是这些值。</figcaption>
   </figure>
-
-  <figure class="shot">
-    <img src="figures/w2-05-service.png" alt="InboundService">
-    <figcaption>Service。第 66 行确认还是草稿；第 67 行取出这张单的每一行；第 71–73 行每一行调 <code>addInventory</code>；第 74–75 行把单改成 COMPLETED。<code>addInventory</code> 先查这个库位上有没有这种货（第 80 行）：没有就插入新的一行（第 81–88 行），有就在原来那一行上加（第 90 行）。</figcaption>
-  </figure>
-
-  <figure class="shot">
-    <img src="figures/w2-06-mapper.png" alt="InventoryMapper">
-    <figcaption>Mapper。第 18 行按货品 + 库位查那一行；第 23 行插入新行；第 29 行在已有行上加数量。</figcaption>
-  </figure>
-
-  <figure class="shot">
-    <img src="figures/w2-07-db.png" alt="完成后的三张表">
-    <figcaption>完成后的数据。<code>inbound_order</code> 里 IN-1 是 COMPLETED；<code>inbound_order_line</code> 记着 sku_id 3（垫圈）、location_id 1（A-01-01）、10；<code>inventory</code> 多了一行同样的货品、库位、数量。</figcaption>
-  </figure>
-
-  <p>同一个库位再入一次垫圈，<code>inventory</code> 不会多一行，而是那一行的 quantity 加上去。</p>
 </section>
 
-<section id="self">
-  <h2>4. 剩下的接口自己看</h2>
-  <p>下面几个接口走的是同一条路。照着第 3 节，从前端文件找到 Controller，再到 Service、Mapper，最后到表：</p>
+<section id="api1">
+  <h2>4. 接口一：新建出库草稿</h2>
+  <p><code>POST /outbound-orders</code>，没有请求体。单号要用主键拼出来，而主键要插入以后才有，所以先插一行占位，再改单号。</p>
   <table>
-    <tr><th>接口</th><th>做什么</th><th>前端</th><th>后端</th></tr>
-    <tr><td><code>POST /skus</code></td><td>新建货品，编码重复返回 400</td><td><code>pages/skus/skus.api.ts</code></td><td><code>SkuController</code> → <code>SkuService.create</code> → <code>SkuMapper</code></td></tr>
-    <tr><td><code>GET /skus</code></td><td>货品列表</td><td>同上</td><td><code>SkuController</code> → <code>SkuService.list</code></td></tr>
-    <tr><td><code>POST /inbound-orders</code></td><td>新建入库单（草稿）</td><td><code>pages/inbound/inbound.api.ts</code></td><td><code>InboundController</code> → <code>InboundService.create</code></td></tr>
-    <tr><td><code>POST /inbound-orders/{id}/lines</code></td><td>加一行：把货品编码、库位编码换成主键再插入</td><td>同上</td><td><code>InboundService.addLine</code> → <code>InboundOrderLineMapper</code></td></tr>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td><code>"PENDING"</code></td><td>Service 写死</td><td><code>entity.setOrderNo</code> → <code>insert</code> 的 <code>#{orderNo}</code></td><td><code>outbound_order.order_no</code>（先占位）</td></tr>
+    <tr><td><code>"DRAFT"</code></td><td><code>OutboundOrder.DRAFT</code></td><td><code>entity.setStatus</code> → <code>#{status}</code></td><td><code>outbound_order.status</code></td></tr>
+    <tr><td>当前时间</td><td><code>LocalDateTime.now()</code></td><td><code>#{createdAt}</code></td><td><code>outbound_order.created_at</code></td></tr>
+    <tr><td>主键</td><td>MySQL 自增</td><td><code>useGeneratedKeys</code> 写回 <code>entity.id</code></td><td><code>outbound_order.id</code></td></tr>
+    <tr><td><code>"OUT-" + id</code></td><td>Service 用主键拼</td><td><code>updateOrderNo</code> 的 <code>#{orderNo}</code>、<code>#{id}</code></td><td><code>outbound_order.order_no</code>（改成 OUT-1）</td></tr>
   </table>
+  <h3>Controller</h3>
+  <figure class="shot">
+    <img src="figures/401-ctrl-create.png" alt="OutboundController.create">
+    <figcaption>第 21 行定下这个类的路径前缀 <code>/outbound-orders</code>。第 28 行 <code>@PostMapping</code> 不带路径，就是 <code>POST /outbound-orders</code>。第 30 行不传任何字段，直接调 Service。</figcaption>
+  </figure>
+  <h3>Service</h3>
+  <figure class="shot">
+    <img src="figures/402-svc-create.png" alt="OutboundService.create">
+    <figcaption>第 41–44 行准备 <code>outbound_order</code> 的一行。第 45 行插入，返回的 int 是 1（写下了一行），主键写回 <code>entity.getId()</code>。第 46–47 行用主键拼出 <code>OUT-1</code> 再写回去。第 48 行把这一行转成返回给页面的对象。</figcaption>
+  </figure>
+  <h3>Mapper</h3>
+  <figure class="shot">
+    <img src="figures/403-mapper-order.png" alt="OutboundOrderMapper">
+    <figcaption>第 15 行的 <code>#{orderNo}</code>、<code>#{status}</code>、<code>#{createdAt}</code> 取 entity 上的同名属性。第 16 行把自增主键写回 <code>entity.id</code>。第 20 行改单号，第 24 行完成出库时改状态，第 28 行按主键查一张单。</figcaption>
+  </figure>
+  <h3>结果</h3>
+  <figure class="shot">
+    <img src="figures/404-resp-create.png" alt="新建草稿的响应">
+    <figcaption>返回的 <code>orderNo</code> 是 <code>OUT-1</code>，<code>status</code> 是 <code>DRAFT</code>，还没有行。</figcaption>
+  </figure>
 </section>
 
-<section id="hw">
-  <h2>5. 作业里写同类接口时</h2>
-  <p>先写表，再按 Controller → Service → Mapper 的顺序写，和上面的案例一一对照：请求里的每个字段有没有走到 SQL；改库存和改单据状态是不是在同一个方法里一起完成。</p>
+<section id="api2">
+  <h2>5. 接口二：给草稿加一行</h2>
+  <p><code>POST /outbound-orders/1/lines</code>，路径上的 1 是出库单主键。请求体：</p>
+  <pre>{ "skuCode": "SKU-001", "locationCode": "A-01-01", "quantity": 15 }</pre>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td><code>id</code></td><td>路径 <code>{id}</code></td><td><code>@PathVariable Long id</code> → <code>addLine(orderId, …)</code> → <code>requireDraft</code></td><td><code>outbound_order_line.order_id</code></td></tr>
+    <tr><td><code>skuCode</code></td><td>JSON</td><td><code>request.getSkuCode()</code> → <code>skuMapper.getByCode</code> 换成 <code>sku.id</code></td><td><code>outbound_order_line.sku_id</code></td></tr>
+    <tr><td><code>locationCode</code></td><td>JSON</td><td><code>request.getLocationCode()</code> → <code>locationMapper.getByCode</code> 换成 <code>location.id</code></td><td><code>outbound_order_line.location_id</code></td></tr>
+    <tr><td><code>quantity</code></td><td>JSON</td><td><code>request.getQuantity()</code> → <code>line.setQuantity</code></td><td><code>outbound_order_line.quantity</code></td></tr>
+  </table>
+  <h3>Request</h3>
+  <figure class="shot">
+    <img src="figures/411-req-line.png" alt="OutboundLineRequest">
+    <figcaption>三个字段名和 JSON 的键一一对应。<code>@NotBlank</code>、<code>@Positive</code> 在进 Controller 之前就检查，空编码或数量不大于 0 直接返回 400。</figcaption>
+  </figure>
+  <h3>Controller</h3>
+  <figure class="shot">
+    <img src="figures/412-ctrl-addline.png" alt="OutboundController.addLine">
+    <figcaption>第 35 行：<code>id</code> 取自路径，<code>request</code> 是整个 JSON。第 37 行和 <code>UserController</code> 一样，把三个字段一个个取出来传给 Service，不在这里组装对象。</figcaption>
+  </figure>
+  <h3>Service</h3>
+  <figure class="shot">
+    <img src="figures/413-svc-addline.png" alt="OutboundService.addLine">
+    <figcaption>第 53 行只有草稿能加行。第 54 行和第 58 行把编码换成表里的那一行，查不到就返回 400。第 62–66 行准备出库行，写进去的是两个主键。第 67 行插入，返回的 int 是 1，行主键写回 <code>line.getId()</code>。</figcaption>
+  </figure>
+  <h3>Mapper</h3>
+  <figure class="shot">
+    <img src="figures/414-mapper-line.png" alt="OutboundOrderLineMapper">
+    <figcaption>第 18–19 行的四个 <code>#{}</code> 取 entity 上的同名属性，列清单里没有 <code>id</code>。第 24 行按单据主键取回全部行，完成出库时要用。</figcaption>
+  </figure>
+  <h3>结果</h3>
+  <figure class="shot">
+    <img src="figures/415-resp-addline.png" alt="加一行的响应">
+    <figcaption>返回整张单。<code>lines</code> 里多了一行，行主键是 1。返回时主键又查回了编码，所以能看到 <code>SKU-001</code> 和 <code>A-01-01</code>。</figcaption>
+  </figure>
+</section>
+
+<section id="api3">
+  <h2>6. 接口三：完成出库</h2>
+  <p><code>POST /outbound-orders/2/complete</code>，没有请求体。数量用行上已经记下的 <code>quantity</code>。</p>
+  <table>
+    <tr><th>步骤</th><th>代码</th><th>读或写</th></tr>
+    <tr><td>1. 单据是不是草稿</td><td><code>requireDraft(orderId)</code> → <code>orderMapper.getById</code></td><td>读 <code>outbound_order</code></td></tr>
+    <tr><td>2. 取这张单的行</td><td><code>lineMapper.listByOrderId</code></td><td>读 <code>outbound_order_line</code></td></tr>
+    <tr><td>3. 找这个格子的库存</td><td><code>inventoryMapper.getBySkuAndLocation(line.getSkuId(), line.getLocationId())</code></td><td>读 <code>inventory</code> 一行</td></tr>
+    <tr><td>4. 算新数量</td><td><code>next = current - line.getQuantity()</code></td><td>只在内存里算</td></tr>
+    <tr><td>5. 写回数量</td><td><code>updateQuantity</code> 或 <code>updateQuantityIfVersion</code>（看开关）</td><td>写 <code>inventory.quantity</code></td></tr>
+    <tr><td>6. 改状态</td><td><code>orderMapper.updateStatus</code></td><td>写 <code>outbound_order.status</code></td></tr>
+  </table>
+  <h3>Controller</h3>
+  <figure class="shot">
+    <img src="figures/421-ctrl-complete.png" alt="OutboundController.complete">
+    <figcaption>只取路径上的主键交给 Service。Controller 不读库存，不写 SQL。</figcaption>
+  </figure>
+  <h3>Service</h3>
+  <figure class="shot">
+    <img src="figures/422-svc-complete.png" alt="OutboundService.complete">
+    <figcaption>第 79 行用行上的两个主键找到库存那一行。第 83 行读到剩余 <code>current</code>。第 86 行算出 <code>next</code>。第 87 行看开关决定剩余不够时停不停。第 91–98 行看开关决定写回时带不带 version。第 102–103 行改状态。整个方法在类上的 <code>@Transactional</code> 里，减库存和改状态一起提交。</figcaption>
+  </figure>
+  <h3>Mapper</h3>
+  <figure class="shot">
+    <img src="figures/423-mapper-inventory.png" alt="InventoryMapper">
+    <figcaption>第 20 行按货品和库位读一行。第 47 行条件只有 <code>id</code>，第 52 行条件多了 <code>version = #{version}</code>，并把 version 加一。两条 UPDATE 返回的 int 都是改到了几行：1 是改到了，0 是没改到。</figcaption>
+  </figure>
+  <h3>结果</h3>
+  <figure class="shot">
+    <img src="figures/424-resp-complete.png" alt="完成出库的响应">
+    <figcaption>剩余 10 时完成 OUT-2（出 1），<code>status</code> 变成 <code>COMPLETED</code>，<code>inventory.quantity</code> 变成 9。</figcaption>
+  </figure>
+</section>
+
+<section id="api4">
+  <h2>7. 接口四：改一行的数量</h2>
+  <p><code>PATCH /outbound-orders/2/lines/2</code>，第一个 2 是出库单主键，第二个 2 是行主键。请求体只有新数量：</p>
+  <pre>{ "quantity": 5 }</pre>
+  <table>
+    <tr><th>值</th><th>从哪来</th><th>经过</th><th>落在</th></tr>
+    <tr><td><code>id</code></td><td>路径 <code>{id}</code></td><td><code>orderMapper.getById</code>，看状态</td><td>只读</td></tr>
+    <tr><td><code>lineId</code></td><td>路径 <code>{lineId}</code></td><td><code>lineMapper.getById</code>，看是不是这张单的行；<code>updateQuantity</code> 的 <code>#{id}</code></td><td>UPDATE 的条件</td></tr>
+    <tr><td><code>quantity</code></td><td>JSON</td><td><code>request.getQuantity()</code> → <code>#{quantity}</code></td><td><code>outbound_order_line.quantity</code></td></tr>
+  </table>
+  <figure class="shot">
+    <img src="figures/431-req-qty.png" alt="OutboundLineQuantityRequest">
+    <figcaption>请求体只有一个字段，必须大于 0。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/432-ctrl-patch.png" alt="OutboundController.updateLine">
+    <figcaption>第 47 行 <code>@PatchMapping</code> 带两个路径变量。第 52 行把两个主键和新数量传给 Service。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/433-svc-patch.png" alt="OutboundService.updateLine">
+    <figcaption>第 109 行找出库单。第 114 行看开关决定已完成的单能不能改。第 117 行找这一行并确认属于这张单。第 121 行只改出库行的数量，<code>inventory</code> 不动。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/434-mapper-line-update.png" alt="OutboundOrderLineMapper.updateQuantity">
+    <figcaption>第 32 行的条件只有行主键，SQL 不看单据状态。状态要在 Service 里看，这一层不管。</figcaption>
+  </figure>
+</section>
+
+<section id="flow">
+  <h2>8. 入库完成时写流水</h2>
+  <p>入库三个接口是第一部分的。这一部分在 <code>InboundService.complete</code> 里加了一步：每一行加完库存，写一条 <code>stock_flow</code>。流水要和入库单一起成功、一起失败。写在哪个事务里，由 <code>flow-after-commit</code> 决定。</p>
+  <figure class="shot">
+    <img src="figures/441-svc-inbound-complete.png" alt="InboundService.complete">
+    <figcaption>第 77 行加库存，第 78 行写流水。第 80–82 行是演示用的失败开关：<code>inbound-fail-before-status</code> 是 <code>true</code> 时，在改状态之前抛出异常，整个事务回滚。平时这个开关是 <code>false</code>，不会走到第 81 行。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/442-svc-writeflow.png" alt="InboundService.writeFlow">
+    <figcaption>第 103 行看开关。<code>on</code> 时走第 104–110 行：在 <code>InboundService</code> 自己的事务里插入流水，第 110 行插入后还没提交。<code>off</code> 时走第 114 行：交给另一个 Bean。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/443-flow-writer.png" alt="StockFlowWriter">
+    <figcaption>第 20 行 <code>REQUIRES_NEW</code>：先把外层事务挂起，另开一个新事务，方法结束时新事务就提交。第 14 行的说明很要紧：这个方法必须放在另一个 Bean 里。同一个类里自己调自己，不经过 Spring 的代理，<code>REQUIRES_NEW</code> 不起作用。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/444-flow-mapper.png" alt="StockFlowMapper">
+    <figcaption>五个 <code>#{}</code> 取 entity 上的同名属性，写进 <code>stock_flow</code> 的五列。返回的 int 是 1，不是主键。</figcaption>
+  </figure>
+</section>
+
+<section id="order">
+  <h2>9. 实验顺序</h2>
+  <p>下面的结果都是按这个顺序在两个分支上各跑一遍得到的。想让主键和图上一样，先在 Adminer（<code>http://localhost:8081</code>，库 <code>pro_skill</code>）的「SQL命令」里清空这几张表：</p>
+  <pre>TRUNCATE TABLE stock_flow;
+TRUNCATE TABLE outbound_order_line;
+TRUNCATE TABLE outbound_order;
+TRUNCATE TABLE inbound_order_line;
+TRUNCATE TABLE inbound_order;
+TRUNCATE TABLE inventory;</pre>
+  <p>不清空也可以，主键以自己响应里的为准。货品 <code>SKU-001</code> 和库位 <code>A-01-01</code>、<code>A-01-02</code> 是前两部分已有的。每个请求都要带登录拿到的 token。</p>
+  <table>
+    <tr><th>步</th><th>请求</th><th><span class="tag bad">第二部分</span></th><th><span class="tag ok">改良版</span></th></tr>
+    <tr><td>1</td><td>入库 IN-1：<code>POST /inbound-orders</code>；<code>POST /inbound-orders/1/lines</code> <code>{"skuCode":"SKU-001","locationCode":"A-01-01","quantity":10}</code>；<code>POST /inbound-orders/1/complete</code></td><td colspan="2">两边一样：A-01-01 上 SKU-001 是 10</td></tr>
+    <tr><td>2</td><td>OUT-1 出 15：新建；<code>POST /outbound-orders/1/lines</code> <code>{"skuCode":"SKU-001","locationCode":"A-01-01","quantity":15}</code>；完成</td><td>200，库存 -5</td><td>400 <code>INSUFFICIENT_STOCK</code>，库存 10</td></tr>
+    <tr><td>3</td><td>只在第二部分做：Adminer 里执行 <code>UPDATE inventory SET quantity = 10 WHERE id = 1;</code></td><td>库存回到 10，后面几步和改良版从同一个数开始</td><td>不用做</td></tr>
+    <tr><td>4</td><td>OUT-2 出 1：新建；加一行 quantity 1；完成；再 <code>PATCH /outbound-orders/2/lines/2</code> <code>{"quantity":5}</code></td><td>PATCH 200，行变成 5，库存 9</td><td>PATCH 400 <code>ORDER_NOT_EDITABLE</code>，行还是 1</td></tr>
+    <tr><td>5</td><td>OUT-3 出 8：新建；加一行 quantity 8；完成</td><td colspan="2">两边一样：库存 1</td></tr>
+    <tr><td>6</td><td>把 <code>outbound-read-pause-ms</code> 设成 3000 重启。OUT-4、OUT-5 各出 1：两张都新建、加行；然后 3 秒内先后发两张的 complete</td><td>两张都 200，库存 0</td><td>一张 200，一张 400 <code>STOCK_CONFLICT</code>，库存 0</td></tr>
+    <tr><td>7</td><td>把 <code>inbound-fail-before-status</code> 设成 <code>true</code> 重启。入库 IN-2：新建；加一行 <code>{"skuCode":"SKU-001","locationCode":"A-01-02","quantity":4}</code>；完成</td><td>400，IN-2 是草稿，<code>stock_flow</code> 里有 IN-2</td><td>400，IN-2 是草稿，<code>stock_flow</code> 里没有 IN-2</td></tr>
+  </table>
+  <p>做完第 7 步把 <code>inbound-fail-before-status</code> 改回 <code>false</code>，<code>outbound-read-pause-ms</code> 改回 0。</p>
+</section>
+
+<section id="d1">
+  <h2>10. 漏洞一：剩余不够也照减</h2>
+  <h3>漏洞是什么</h3>
+  <p>完成出库时只算了 <code>next = current - 行数量</code>，没有看结果是不是小于 0。A-01-01 上只有 10 件，单据要出 15 件，系统照样完成，库存记成 -5。仓库里没有 -5 件货，这张单发出去的 5 件在账上找不到来源。</p>
+  <h3>复现：实验顺序第 2 步</h3>
+  <figure class="shot">
+    <img src="figures/503-resp-oversell-defect.png" alt="第二部分超卖的响应">
+    <figcaption><span class="tag bad">第二部分</span> 剩余 10 的格子出 15，响应是 200，<code>status</code> 是 <code>COMPLETED</code>。只看响应发现不了问题。</figcaption>
+  </figure>
+  <h3>去库里查</h3>
+  <p>Adminer「SQL命令」里执行：</p>
+  <pre>SELECT id, order_no, status FROM outbound_order WHERE id = 1;
+SELECT id, order_id, sku_id, location_id, quantity FROM outbound_order_line WHERE order_id = 1;
+SELECT id, sku_id, location_id, quantity, version FROM inventory WHERE sku_id = 1 AND location_id = 1;</pre>
+  <figure class="shot">
+    <img src="figures/310-defect-oversell-db.png" alt="库存变成 -5">
+    <figcaption><span class="tag bad">第二部分</span> OUT-1 已完成，行上是 15，<code>inventory.quantity</code> 是 -5。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <figure class="shot">
+    <img src="figures/501-oversell-defect.png" alt="检查不成立">
+    <figcaption><span class="tag bad">第二部分</span> 第 86 行算出 <code>next = 10 - 15 = -5</code>。第 87 行要求 <code>switches.outboundCheck()</code> 为真，<code>off</code> 时整个条件不成立，第 88 行不执行，代码往下把 -5 写进库。</figcaption>
+  </figure>
+  <h3>改良版怎么改</h3>
+  <p>改良版把 <code>outbound-check</code> 设成 <code>on</code>。第 87 行变成只看 <code>next &lt; 0</code>：剩余不够时走第 88 行抛出 <code>INSUFFICIENT_STOCK</code>。异常让整个事务回滚，减库存的 UPDATE 不会执行，单据也不会改成完成。</p>
+  <figure class="shot">
+    <img src="figures/502-oversell-fixed.png" alt="检查成立">
+    <figcaption><span class="tag ok">改良版</span> 同一段代码，第 87–88 行生效。</figcaption>
+  </figure>
+  <h3>改完的结果</h3>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/504-resp-oversell-fixed.png" alt="改良版的响应">
+      <figcaption><span class="tag ok">改良版</span> 同一个请求返回 400，message 写着剩余 10。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/311-fixed-oversell-db.png" alt="改良版的库">
+      <figcaption><span class="tag ok">改良版</span> OUT-1 还是 <code>DRAFT</code>，库存还是 10。</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="d2">
+  <h2>11. 漏洞二：已完成的单还能改</h2>
+  <h3>漏洞是什么</h3>
+  <p>库存是在完成那一刻按行上的数量减的。完成以后再改行上的数量，<code>inventory</code> 不会跟着变。单据上写出了 5 件，库存只少了 1 件，对账时两边对不上。单据应该只在草稿时能改，完成以后就定下来。</p>
+  <h3>复现：实验顺序第 4 步</h3>
+  <figure class="shot">
+    <img src="figures/513-resp-edit-defect.png" alt="已完成的单改成 5">
+    <figcaption><span class="tag bad">第二部分</span> OUT-2 已经是 <code>COMPLETED</code>，PATCH 仍返回 200，行上的数量变成 5。</figcaption>
+  </figure>
+  <h3>去库里查</h3>
+  <pre>SELECT id, order_no, status FROM outbound_order WHERE id = 2;
+SELECT id, order_id, quantity FROM outbound_order_line WHERE order_id = 2;
+SELECT id, sku_id, location_id, quantity, version FROM inventory WHERE sku_id = 1 AND location_id = 1;</pre>
+  <figure class="shot">
+    <img src="figures/320-defect-edit-db.png" alt="行是 5，库存是 9">
+    <figcaption><span class="tag bad">第二部分</span> 出库行是 5，库存是 9。10 减 5 应该是 5，库存只按完成时的 1 减了。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <figure class="shot">
+    <img src="figures/511-edit-defect.png" alt="状态检查不成立">
+    <figcaption><span class="tag bad">第二部分</span> 第 114 行要求 <code>switches.orderStateEnforced()</code> 为真。<code>open</code> 时条件不成立，不看单据状态，直接走到第 121 行改数量。</figcaption>
+  </figure>
+  <h3>改良版怎么改</h3>
+  <p>改良版把 <code>order-state</code> 设成 <code>enforced</code>。第 114 行只要状态不是 <code>DRAFT</code> 就走第 115 行，返回 <code>ORDER_NOT_EDITABLE</code>，第 121 行的 UPDATE 不执行。单据的状态只能从 <code>DRAFT</code> 走到 <code>COMPLETED</code>，完成以后行不能再动。</p>
+  <figure class="shot">
+    <img src="figures/512-edit-fixed.png" alt="状态检查成立">
+    <figcaption><span class="tag ok">改良版</span> 同一段代码，第 114–115 行生效。</figcaption>
+  </figure>
+  <h3>改完的结果</h3>
+  <div class="pair">
+    <figure class="shot">
+      <img src="figures/514-resp-edit-fixed.png" alt="改良版的响应">
+      <figcaption><span class="tag ok">改良版</span> 同一个 PATCH 返回 400 <code>ORDER_NOT_EDITABLE</code>。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="figures/321-fixed-edit-db.png" alt="改良版的库">
+      <figcaption><span class="tag ok">改良版</span> 行还是 1，库存 9，两边对得上。version 是 1，因为改良版减库存时带着 version 加一。</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="d3">
+  <h2>12. 漏洞三：两次同时出库只减一次</h2>
+  <h3>漏洞是什么</h3>
+  <p>完成出库是「先读、再算、再写」三步。格子上只剩 1 件，OUT-4 和 OUT-5 各出 1 件，几乎同时完成。两次请求都在对方写回之前读到 1，都算出 <code>1 - 1 = 0</code>，都把库存写成 0。结果两张单都完成，发出去 2 件，库存只少了 1 件。后写的那一次把先写的结果盖掉了，这叫丢失更新。</p>
+  <p><code>outbound-check</code> 打开也挡不住：两次算出的 <code>next</code> 都是 0，不小于 0。要挡住，写回时得确认「我读到的那一版还没被别人改过」。</p>
+  <h3>让两次请求读到同一个数</h3>
+  <p>两次请求要在几毫秒内先后到，手点很难点出来。课堂上用 <code>outbound-read-pause-ms</code> 把读和写之间拉开 3 秒：</p>
+  <figure class="shot">
+    <img src="figures/520-pause.png" alt="读到数量后停一下">
+    <figcaption>第 126 行取开关的值，默认 0 直接返回。设成 3000 时第 131 行停 3 秒。这个方法在 <code>complete</code> 第 85 行调用，位置在读到数量之后、写回之前。</figcaption>
+  </figure>
+  <p>启动时加 <code>--app.lesson.outbound-read-pause-ms=3000</code>（或改 yaml 第 73 行）。OUT-4、OUT-5 都新建、加好行以后，开两个终端，各粘一条，3 秒内先后回车。用 Postman 也行：开两个标签页，先后点 Send。</p>
+  <pre>curl -X POST http://localhost:8080/outbound-orders/4/complete -H "Authorization: Bearer 你的token"
+curl -X POST http://localhost:8080/outbound-orders/5/complete -H "Authorization: Bearer 你的token"</pre>
+  <h3>复现：实验顺序第 6 步</h3>
+  <figure class="shot">
+    <img src="figures/527-race-resp-defect.png" alt="两张都完成">
+    <figcaption><span class="tag bad">第二部分</span> 两个请求都返回 200，两张单都是 <code>COMPLETED</code>。</figcaption>
+  </figure>
+  <h3>去日志和库里查</h3>
+  <p>控制台日志里，方括号里的 <code>exec-9</code>、<code>exec-10</code> 是处理请求的线程名，一次请求从头到尾在同一个线程上，按线程名就能把两次请求分开。</p>
+  <figure class="shot">
+    <img src="figures/525-race-log-defect.png" alt="两次都读到 1">
+    <figcaption><span class="tag bad">第二部分</span> exec-9 和 exec-10 都打出「读到数量 1」。3 秒后两边各发一条 <code>UPDATE inventory SET quantity = ? WHERE id = ?</code>，参数都是 0，都是 <code>Updates: 1</code>。</figcaption>
+  </figure>
+  <pre>SELECT id, order_no, status FROM outbound_order WHERE id IN (4, 5);
+SELECT id, order_id, quantity FROM outbound_order_line WHERE order_id IN (4, 5);
+SELECT id, sku_id, location_id, quantity, version FROM inventory WHERE sku_id = 1 AND location_id = 1;</pre>
+  <figure class="shot">
+    <img src="figures/330-defect-race-db.png" alt="两张完成，库存 0">
+    <figcaption><span class="tag bad">第二部分</span> 两张单都完成，每张 1 件，库存从 1 变成 0。2 件出去了，账上只减了 1 件。version 一直是 0，这一侧的 UPDATE 不动它。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <figure class="shot">
+    <img src="figures/521-race-defect.png" alt="走 else">
+    <figcaption><span class="tag bad">第二部分</span> <code>optimistic-lock</code> 是 <code>off</code>，第 91 行不成立，走第 97–98 行，按 id 直接写成 <code>next</code>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/522-race-sql-defect.png" alt="条件只有 id">
+    <figcaption><span class="tag bad">第二部分</span> 第 47 行的条件只有 <code>id</code>。不管这一行在我读完之后有没有被改过，都改得到，都返回 1。</figcaption>
+  </figure>
+  <h3>改良版怎么改：乐观锁</h3>
+  <p>改良版把 <code>optimistic-lock</code> 设成 <code>on</code>，走第 92–96 行。读的时候连 <code>version</code> 一起读出来；写的时候条件带上这个 version，写成功就把 version 加一。</p>
+  <figure class="shot">
+    <img src="figures/523-race-fixed.png" alt="带 version">
+    <figcaption><span class="tag ok">改良版</span> 第 93 行把读到的 <code>inventory.getVersion()</code> 传给 Mapper。第 94 行返回 0 说明这一行在我读完之后被别人改过，第 95 行抛出 <code>STOCK_CONFLICT</code>，事务回滚，这张单留在草稿。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/524-race-sql-fixed.png" alt="条件带 version">
+    <figcaption><span class="tag ok">改良版</span> 第 52 行：<code>WHERE id = #{id} AND version = #{version}</code>，同时 <code>version = version + 1</code>。</figcaption>
+  </figure>
+  <p>两次请求还是都读到数量 1、version 2。先写的那次条件成立，库存变成 0，version 变成 3。MySQL 让第二条 UPDATE 等第一条提交以后再执行，这时 version 已经是 3，<code>version = 2</code> 对不上，改到 0 行。</p>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/526-race-log-fixed.png" alt="后到的改到 0 行">
+    <figcaption><span class="tag ok">改良版</span> 两次都读到 1，两条 UPDATE 都带着 <code>version = 2</code>。exec-10 先写，<code>Updates: 1</code>；exec-1 后写，<code>Updates: 0</code>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/528-race-resp-fixed.png" alt="一张完成一张冲突">
+    <figcaption><span class="tag ok">改良版</span> OUT-4 返回 200，OUT-5 返回 400 <code>STOCK_CONFLICT</code>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/331-fixed-race-db.png" alt="一张完成一张草稿">
+    <figcaption><span class="tag ok">改良版</span> OUT-4 完成，OUT-5 还是草稿。库存 0，正好出了 1 件。version 是 3：OUT-2、OUT-3、OUT-4 各加了一次。</figcaption>
+  </figure>
+</section>
+
+<section id="d4">
+  <h2>13. 漏洞四：入库失败，流水留下</h2>
+  <h3>漏洞是什么</h3>
+  <p>流水是「这张单让库存变了多少」的记录，只有入库单真的完成了才该有。<code>off</code> 时流水由 <code>StockFlowWriter</code> 另开事务写，写完马上提交。后面主事务失败回滚，库存和单据状态撤回去了，流水撤不回来。流水上写着 IN-2 入了 4 件，库里没有这 4 件，单据也没完成。</p>
+  <h3>复现：实验顺序第 7 步</h3>
+  <p>启动时加 <code>--app.lesson.inbound-fail-before-status=true</code>，让入库在改状态之前失败（第 8 节 <code>InboundService.complete</code> 第 80–82 行）。</p>
+  <figure class="shot">
+    <img src="figures/534-resp-inbound-fail.png" alt="入库失败的响应">
+    <figcaption>两个分支返回的都是这个 400。差别只在库里，要去 Adminer 看。</figcaption>
+  </figure>
+  <h3>去库里查</h3>
+  <pre>SELECT id, order_no, status FROM inbound_order WHERE id = 2;
+SELECT id, sku_id, location_id, quantity FROM inventory WHERE sku_id = 1 AND location_id = 2;
+SELECT id, biz_no, sku_id, location_id, quantity FROM stock_flow WHERE biz_no = 'IN-2';</pre>
+  <figure class="shot">
+    <img src="figures/340-defect-flow-db.png" alt="流水留下">
+    <figcaption><span class="tag bad">第二部分</span> IN-2 是 <code>DRAFT</code>，A-01-02 上没有库存，<code>stock_flow</code> 里却有 IN-2 的 4 件。</figcaption>
+  </figure>
+  <h3>是哪一行代码</h3>
+  <figure class="shot">
+    <img src="figures/531-flow-defect.png" alt="走 StockFlowWriter">
+    <figcaption><span class="tag bad">第二部分</span> <code>flow-after-commit</code> 是 <code>off</code>，第 103 行不成立，走第 114 行。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="figures/532-flow-writer-defect.png" alt="REQUIRES_NEW">
+    <figcaption><span class="tag bad">第二部分</span> 第 20 行另开事务，第 28 行插入，方法返回时这一行已经提交。外层在第 81 行抛异常时，只能撤回自己事务里的加库存，撤不回这一行。</figcaption>
+  </figure>
+  <h3>改良版怎么改：流水和入库同一次提交</h3>
+  <p>改良版把 <code>flow-after-commit</code> 设成 <code>on</code>，走第 104–111 行。流水用 <code>InboundService</code> 自己的 <code>stockFlowMapper</code> 插入，和加库存、改状态在同一个事务里。到第 81 行抛异常时，三处写一起撤回。</p>
+  <figure class="shot">
+    <img src="figures/533-flow-fixed.png" alt="同一个事务">
+    <figcaption><span class="tag ok">改良版</span> 第 103 行成立，流水在第 110 行插入，第 111 行返回，不再进 <code>StockFlowWriter</code>。</figcaption>
+  </figure>
+  <h3>改完的结果</h3>
+  <figure class="shot">
+    <img src="figures/341-fixed-flow-db.png" alt="流水也没有">
+    <figcaption><span class="tag ok">改良版</span> 同样的三条查询：IN-2 是 <code>DRAFT</code>，库存没有，<code>stock_flow</code> 里也没有 IN-2。单据、库存、流水三处一致。</figcaption>
+  </figure>
+</section>
+
+<section id="sum">
+  <h2>14. 改良版改了哪四块</h2>
+  <p>两个分支的 Java 代码相同。改良版改的是 <code>application.yaml</code> 和 <code>docker-compose.dev.yml</code> 里四个开关的默认值（第 3 节的差别图），改完以后同一个请求走 Service 里修好的那几行。</p>
+  <table>
+    <tr><th>开关</th><th><span class="tag bad">第二部分</span></th><th><span class="tag ok">改良版</span></th><th>改良版走的代码</th><th>同一操作的结果</th></tr>
+    <tr><td><code>outbound-check</code></td><td><code>off</code></td><td><code>on</code></td><td><code>OutboundService</code> 第 87–88 行：<code>next &lt; 0</code> 就抛出</td><td>出 15：-5 变成 400 <code>INSUFFICIENT_STOCK</code>，库存保持 10</td></tr>
+    <tr><td><code>order-state</code></td><td><code>open</code></td><td><code>enforced</code></td><td>第 114–115 行：不是 <code>DRAFT</code> 就抛出</td><td>改已完成的单：200 变成 400 <code>ORDER_NOT_EDITABLE</code></td></tr>
+    <tr><td><code>optimistic-lock</code></td><td><code>off</code></td><td><code>on</code></td><td>第 92–96 行和 <code>InventoryMapper</code> 第 52 行：带 version 更新</td><td>同时出库：两张都完成变成一张完成、一张 <code>STOCK_CONFLICT</code></td></tr>
+    <tr><td><code>flow-after-commit</code></td><td><code>off</code></td><td><code>on</code></td><td><code>InboundService</code> 第 104–111 行：同一个事务插入流水</td><td>入库失败：流水留下变成流水也撤回</td></tr>
+  </table>
+  <p>新建出库单、加一行、正常的完成出库，两个分支结果相同。</p>
+</section>
+
+<section id="test">
+  <h2>15. 用测试把两条路径跑一遍</h2>
+  <p>两个测试类把开关写死，在哪个分支上跑结果都一样，用来确认两条路径各自的行为：</p>
+  <table>
+    <tr><th>测试类</th><th>开关</th><th>断言</th></tr>
+    <tr><td><code>OutboundDefectPathTest</code></td><td><code>optimistic-lock=off</code>，<code>flow-after-commit=off</code></td><td>同时完成两张：两张都 <code>COMPLETED</code>，库存 0。入库失败：单据 <code>DRAFT</code>，流水有 1 行</td></tr>
+    <tr><td><code>OutboundFixedPathTest</code></td><td><code>optimistic-lock=on</code>，<code>flow-after-commit=on</code></td><td>同时完成两张：一张 <code>COMPLETED</code>，一张 <code>STOCK_CONFLICT</code>，库存 0。入库失败：流水 0 行</td></tr>
+  </table>
+  <pre>./mvnw test -Dtest='Outbound*PathTest'</pre>
+  <p><code>OutboundControllerIntegrationTest</code> 按当前分支的默认开关断言：第二部分上断言 -5 和 200，改良版上断言 <code>INSUFFICIENT_STOCK</code> 和 <code>ORDER_NOT_EDITABLE</code>。</p>
+</section>
+
+<section id="merge">
+  <h2>16. 把改良版合并进第二部分</h2>
+  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第二部分改良版</code>，目标分支是 <code>第二部分</code>。讲义两边是同一份，合并带过去的是第 3 节差别图里的开关值和对应的测试断言。操作和第一部分最后一节相同，教师做，全班看，只合并这一次。</p>
+  <ol class="steps">
+    <li>GitHub Desktop 里点 Fetch origin，Current Branch 选「第二部分改良版」。</li>
+    <li>上方是 Push origin 时点它，把改良版送到 Gitee。</li>
+    <li>浏览器打开仓库，「Pull Requests」→「新建 Pull Request」，源分支 <code>第二部分改良版</code>，目标分支 <code>第二部分</code>，标题「合入第二部分改良版」，点「创建」。文件列表里能看到 <code>application.yaml</code>、<code>docker-compose.dev.yml</code> 和 <code>OutboundControllerIntegrationTest</code>。</li>
+    <li>在这个 Pull Request 页面点「合并」并确认。</li>
+    <li>GitHub Desktop 切回「第二部分」，点 Pull origin。</li>
+  </ol>
+  <div class="see"><b>你应该看到</b> 第二部分的 <code>application.yaml</code> 第 68–71 行变成 <code>on</code>、<code>on</code>、<code>enforced</code>、<code>on</code>。重启后按实验顺序再跑一遍，结果和这份讲义里的改良版一致。</div>
+</section>
+
+<section id="ai">
+  <h2>17. 作业里要写同类接口时</h2>
+  <p>把下面这段发给 DeepSeek 或 Kimi。生成后按第 4–7 节的顺序检查：字段有没有原样走到 SQL，剩余不够有没有在 UPDATE 之前停下，UPDATE 的条件有没有带 version，影响行数是 0 时有没有报错。</p>
+  <pre>这是 Spring Boot 项目，包名 com.eurasia.pro_skill，MyBatis 注解写 SQL。
+请按 UserController 的方式写出库：Controller 把路径变量和请求字段一个个传给 Service，不要用 builder。
+出库单 outbound_order：单号 OUT-主键、状态 DRAFT/COMPLETED、创建时间。
+出库行 outbound_order_line：order_id、sku_id、location_id、quantity。请求里传货品编码和库位编码，Service 换成主键再写。
+完成出库时，按行上的货品和库位找到 inventory 那一行，读出 quantity 和 version：
+- 剩余不够就抛出 INSUFFICIENT_STOCK，不写库
+- UPDATE inventory SET quantity = ?, version = version + 1 WHERE id = ? AND version = ?
+- 影响行数是 0 就抛出 STOCK_CONFLICT
+- 减库存和改状态在同一个 @Transactional 里
+只有 DRAFT 的单能改行数量，否则抛出 ORDER_NOT_EDITABLE。
+每一行代码加注释：这个值从哪来、写到哪一列、返回的 int 是什么。
+生成后说明：两次同时完成同一个格子的出库，第二次为什么改到 0 行。</pre>
+</section>
+
+<section id="page">
+  <h2>18. 在页面上复现</h2>
+  <p>第 9 节的实验也可以在前端页面上点。前端仓库切到「第二部分」分支启动，左边菜单多了「出库」。第 1 步在入库页做，第 2–6 步在出库页做，第 3 步改数量仍然在 Adminer 里做。后端在「第二部分」和「第二部分改良版」之间切换时，前端不用动。</p>
+  <p>出库页和入库页一样：新建、加一行、完成。多了两样：每一行右边有「改数量」，发的是 <code>PATCH /outbound-orders/{id}/lines/{lineId}</code>；上面的表里，草稿单前面有勾选框，勾两张以上，点右上角「同时完成勾选的单」。</p>
+  <h3>第 2–4 步：出 15，改已完成的单</h3>
+  <p>两个分支的结果见开头「先看页面」的重点一、二。</p>
+  <h3>第 6 步：两张单同时完成</h3>
+  <p>手点两次，很难让两个请求在几毫秒内先后到。页面用一个按钮把两个请求一起发出去。后端仍然要把 <code>outbound-read-pause-ms</code> 设成 3000 再启动。OUT-4、OUT-5 各加一行数量 1，先不点完成；勾选这两张，点「同时完成勾选的单」。两个分支的结果见开头「先看页面」的重点三。</p>
+  <figure class="shot">
+    <img src="figures/540-complete-together.png" alt="出库页的 completeTogether">
+    <figcaption>前端 <code>src/scripts/pages/outbound/list.ts</code>。第 96 行记下发出的时间。第 97–99 行对每张勾选的单各调一次 <code>outboundApi.complete</code>，<code>Promise.all</code> 等它们全部回来，所以两个请求是同一刻发出的。第 101–104 行按回来的先后记进「接口返回」。后端收到的是两个 <code>POST /outbound-orders/{{id}}/complete</code>，后面走第 6 节的 <code>OutboundService.complete</code>。</figcaption>
+  </figure>
+  <p>第 7 步在入库页做。两边都返回 400，区别在 <code>stock_flow</code> 表里有没有 IN-2，到 Adminer 看。</p>
 </section>
 </main>
 </body>

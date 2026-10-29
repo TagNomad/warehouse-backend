@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// 第三部分改良版那一侧。两个分支上都跑这一份，开关在这里写死。
+// 第二部分改良版那一侧。两个分支上都跑这一份，开关在这里写死。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "app.lesson.inbound-fail-before-status=true",
         "app.lesson.outbound-read-pause-ms=500"
 })
-@DisplayName("第三部分改良版：带 version、流水同一次提交")
+@DisplayName("第二部分改良版：带 version、流水同一次提交")
 class OutboundFixedPathTest extends OutboundRaceSupport {
 
     @Autowired
