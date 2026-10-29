@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// 第四部分那一侧。两个分支上都跑这一份，开关在这里写死。
+// 第三部分那一侧。两个分支上都跑这一份，开关在这里写死。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "app.lesson.consume-once=off",
         "app.lesson.consume-fail-before-ack=true"
 })
-@DisplayName("第四部分：缓存不删、锁加在判断之后、不认重发、事务中发消息、重投再写")
+@DisplayName("第三部分：缓存不删、锁加在判断之后、不认重发、事务中发消息、重投再写")
 class RedisDefectPathTest extends RedisPathSupport {
 
     @BeforeEach

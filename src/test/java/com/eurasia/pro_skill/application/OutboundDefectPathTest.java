@@ -16,7 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-// 第三部分有漏洞的一侧。两个分支上都跑这一份，开关在这里写死。
+// 第二部分有漏洞的一侧。两个分支上都跑这一份，开关在这里写死。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
         "app.lesson.outbound-read-pause-ms=500",
         "app.lesson.stock-lock=after-check"
 })
-@DisplayName("第三部分：不带 version、流水另开事务")
+@DisplayName("第二部分：不带 version、流水另开事务")
 class OutboundDefectPathTest extends OutboundRaceSupport {
 
     @Autowired
