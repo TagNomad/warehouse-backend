@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 // 课堂开关。值写在 application.yaml 的 app.lesson 下，容器里由 Compose 的 APP_LESSON_* 盖过。
-// 每一部分默认走有漏洞的那一侧，这一部分的改良版把对应项改成修复后的值。
+// 每个开关默认是正确的写法；老师上课把一个拨到另一侧，演示不这么写会出什么错。
 @Component // 注册成 Bean，Service 构造时注入
 public class LessonSwitches {
 

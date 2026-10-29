@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// 第三部分那一侧。两个分支上都跑这一份，开关在这里写死。
+// 开关拨到演示问题的一侧。开关写死在这里，不看 application.yaml。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {

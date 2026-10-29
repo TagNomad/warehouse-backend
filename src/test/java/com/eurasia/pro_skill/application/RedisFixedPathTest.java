@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// 第三部分改良版那一侧。两个分支上都跑这一份，开关在这里写死。
+// 开关在默认（正确）的一侧。开关写死在这里，不看 application.yaml。
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "app.lesson.consume-once=on",
         "app.lesson.consume-fail-before-ack=true"
 })
-@DisplayName("第三部分改良版：提交后删缓存、读之前加锁、认重发、提交后发消息、按编号去重")
+@DisplayName("第三部分正确写法：提交后删缓存、读之前加锁、认重发、提交后发消息、按编号去重")
 class RedisFixedPathTest extends RedisPathSupport {
 
     @BeforeEach
