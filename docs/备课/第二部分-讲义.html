@@ -93,503 +93,103 @@
 <body>
 <header class="top">
   <h1>第二部分 · 货品与入库</h1>
-  <p>第 11 周整周。仓库系统要回答两件事：货放在哪，放的是什么货。「放在哪」上学期已经做完：仓库、库区、库位。这一部分加「是什么货」和「进了多少」：创建货品、查货品，入库单新建草稿、加一行、完成。这几处代码各有一个漏洞：相同编码的货品能记下两次；入库完成时数量只加在货品的合计上，分不出放在哪个格子。</p>
-  <p>「第二部分」和「第二部分改良版」用的是这一份讲义。两个分支的 Java 代码相同，漏洞那一侧和修好那一侧都写在 Service 里，用两个开关选走哪一侧。改良版改的是这两个开关的值，改完以后同一个请求走修好的那几行。每一节都给出两个分支上同一个操作的真实结果。</p>
+  <p>第 10 周，4 课时。老师用一个入库的案例，从页面一路讲到数据库；其余接口照着同样的路自己看。</p>
 </header>
 <main>
-
-<section id="preview">
-  <h2>先看页面：这一部分要做出什么</h2>
-  <p>上学期的系统只知道仓库里有哪些格子：仓库 WH-001 下面有库位 A-01-01、A-01-02、B-01-01。这一部分让系统再记下两件事：</p>
-  <ol>
-    <li><b>仓库里有哪些货。</b>每一种货叫一个「货品」，用编码区分，比如 <code>SKU-003</code> 是垫圈。</li>
-    <li><b>每次进了多少货、放进了哪个格子。</b>这一步叫「入库」。</li>
-  </ol>
-  <p>前端切到「第二部分」分支，左边菜单多了「货品」「入库」两页。下面先看这两页，再看这一部分要解决的两个问题。</p>
-
-  <h3>货品页：登记有哪些货</h3>
-  <p>上面三个框填编码、名称、单位，点「新建」，货品表 <code>sku</code> 里就多一行。中间的表列出已经登记的货品。最下面「接口返回」记着每点一次按钮后端回了什么：绿色 200 是成功，红色 400 是被拒绝，下面是后端回的原文。</p>
-  <p><b>重点一：同一个编码能不能登记两次。</b>轴承 <code>SKU-001</code> 已经登记过了，在页面上再新建一次 <code>SKU-001</code>：</p>
-      <figure class="shot">
-        <img src="figures/296-preview-sku-defect.png" alt="第二部分货品页">
-        <figcaption><span class="tag bad">第二部分</span> 成功了（200）。表里出现两行 <code>SKU-001</code>，页面标出「编码重复」。以后入库选 <code>SKU-001</code>，系统只认第一行，第二行永远进不了货。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="figures/297-preview-sku-fixed.png" alt="改良版货品页">
-        <figcaption><span class="tag ok">改良版</span> 被拒绝了（400），提示「货品编码已存在」。表里还是一行 <code>SKU-001</code>。</figcaption>
-      </figure>
-
-  <h3>入库页：记下进了多少、放在哪</h3>
-  <p>入库分三步：点「新建入库单」，得到一张空单，叫草稿；在单上选货品、选格子、填数量，点「加一行」；点「完成入库」，这批货才算进了仓库。页面上面列着建过的单，点哪一行就看哪一张；中间是选中的那一张单和它的每一行。</p>
-  <p>点「完成入库」时，数量要记到某个地方。系统里有两个地方可以记：</p>
-  <table>
-    <tr><th>名字</th><th>在哪</th><th>记的是什么</th></tr>
-    <tr><td><code>on_hand</code></td><td>货品表 <code>sku</code> 上的一列</td><td>这种货一共有多少个。一种货只有一个数，不分放在哪个格子</td></tr>
-    <tr><td><code>inventory</code></td><td>这一部分新加的库存表</td><td>每个格子上、每种货各有多少个。一个格子上的一种货占一行</td></tr>
-  </table>
-  <p><b>重点二：入库的数量记在哪。</b>在页面上做两张入库单：IN-1 往 A-01-01 放 10 个垫圈，IN-2 往 A-01-02 放 8 个垫圈，都点「完成入库」。入库页下面「货品数量合计 on_hand」一栏会跟着刷新：</p>
-      <figure class="shot">
-        <img src="figures/298-preview-inbound-defect.png" alt="第二部分入库页">
-        <figcaption><span class="tag bad">第二部分</span> 垫圈 <code>SKU-003</code> 的 on_hand 变成 18：10 和 8 加在了一起。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="figures/299-preview-inbound-fixed.png" alt="改良版入库页">
-        <figcaption><span class="tag ok">改良版</span> on_hand 还是 0。改良版不往这一列加，数量写进了 <code>inventory</code>。</figcaption>
-      </figure>
-
-  <p>这一部分还没有查 <code>inventory</code> 的页面，到 Adminer 里看两张表：</p>
-      <figure class="shot">
-        <img src="figures/230-defect-stock-db.png" alt="第二部分 sku 和 inventory">
-        <figcaption><span class="tag bad">第二部分</span> <code>sku</code> 表里 on_hand 是 18，<code>inventory</code> 没有数据。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="figures/231-fixed-stock-db.png" alt="改良版 sku 和 inventory">
-        <figcaption><span class="tag ok">改良版</span> <code>inventory</code> 两行：location_id 1（A-01-01）上 15 个，location_id 2（A-01-02）上 8 个。图里多做了一张 IN-3，又往 A-01-01 放了 5 个，所以是 15。</figcaption>
-      </figure>
-
-  <table>
-    <tr><th>想知道的</th><th>第二部分能答出来吗</th><th>改良版能答出来吗</th></tr>
-    <tr><td>垫圈一共有多少</td><td>能：on_hand 是 18</td><td>能：把 inventory 里垫圈的几行加起来</td></tr>
-    <tr><td>A-01-01 上有几个垫圈</td><td>不能，只有一个总数</td><td>能：inventory 里那一行</td></tr>
-  </table>
-  <p>为什么一定要分格子：第三部分做出库，拣货的人要去某一个格子上拿货。只知道一共 18 个，系统说不出 A-01-01 上够不够拿。</p>
-
-  <h3>这一部分要写什么</h3>
-  <p>页面上这四个按钮，每个对应一个后端接口。这一部分照着讲义把它们写出来：</p>
-  <table>
-    <tr><th>页面上点什么</th><th>调的接口</th><th>写到哪张表</th><th>讲义</th></tr>
-    <tr><td>货品页「新建」</td><td><code>POST /skus</code></td><td><code>sku</code> 加一行</td><td style="white-space:nowrap">第 5 节</td></tr>
-    <tr><td>入库页「新建入库单」</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 加一行，状态是草稿</td><td style="white-space:nowrap">第 6 节</td></tr>
-    <tr><td>入库页「加一行」</td><td><code>POST /inbound-orders/{id}/lines</code></td><td><code>inbound_order_line</code> 加一行</td><td style="white-space:nowrap">第 7 节</td></tr>
-    <tr><td>入库页「完成入库」</td><td><code>POST /inbound-orders/{id}/complete</code></td><td>第二部分加在 <code>sku.on_hand</code>；改良版写进 <code>inventory</code></td><td style="white-space:nowrap">第 8 节</td></tr>
-  </table>
-  <ul>
-    <li>第 5–8 节：每个接口从 Controller 写到 Mapper，看清页面上填的每个字段最后落在哪张表的哪一列。</li>
-    <li>第 4 节：两个分支的代码一样，靠两个开关决定走哪一条路。</li>
-    <li>第 10–11 节：在页面和 Adminer 里，自己把上面两个重点查出来。</li>
-    <li>第 12 节：改良版改了哪两处。</li>
-  </ul>
-  <p>前端怎么启动、实验每一步在页面上怎么点，见第 16 节。</p>
-</section>
 
 <nav class="toc">
 <section>
   <h2>这一份讲义的顺序</h2>
   <ol>
-    <li><a href="#new">这一部分加了什么</a></li>
-    <li><a href="#layers">代码按哪几层放</a></li>
-    <li><a href="#tables">用到的表</a></li>
-    <li><a href="#switch">开关怎样起作用</a></li>
-    <li><a href="#api1">接口一：创建货品</a></li>
-    <li><a href="#api2">接口二：新建入库草稿</a></li>
-    <li><a href="#api3">接口三：给草稿加一行</a></li>
-    <li><a href="#api4">接口四：完成入库</a></li>
-    <li><a href="#order">实验顺序</a></li>
-    <li><a href="#d1">漏洞一：同一个编码记了两次</a></li>
-    <li><a href="#d2">漏洞二：入库数量不分库位</a></li>
-    <li><a href="#sum">改良版改了哪两块</a></li>
-    <li><a href="#test">用测试把两条路径跑一遍</a></li>
-    <li><a href="#merge">把改良版合并进第二部分</a></li>
-    <li><a href="#ai">作业里要写同类接口时</a></li>
-    <li><a href="#page">在页面上复现</a></li>
+    <li><a href="#page">先看页面</a></li>
+    <li><a href="#tables">用到的四张表</a></li>
+    <li><a href="#case">案例：把 10 个垫圈入库到 A-01-01</a></li>
+    <li><a href="#self">剩下的接口自己看</a></li>
+    <li><a href="#hw">作业里写同类接口时</a></li>
   </ol>
 </section>
 </nav>
 
-<section id="new">
-  <h2>1. 这一部分加了什么</h2>
-  <p>上学期做完的「放在哪」：一个仓库下面有库区，库区下面有库位，库位是具体的格子。</p>
-  <div class="flow">
-    <div class="box">仓库<br><small>WH-001 华东原料仓</small></div><span class="arrow">→</span>
-    <div class="box">库区<br><small>A 区存储、B 区拣货</small></div><span class="arrow">→</span>
-    <div class="box">库位<br><small>A-01-01、A-01-02、B-01-01</small></div>
-  </div>
-  <p>这一部分加五个接口：</p>
-  <table>
-    <tr><th>接口</th><th>做什么</th><th>写到哪</th></tr>
-    <tr><td><code>GET /skus</code></td><td>查全部货品</td><td>只读</td></tr>
-    <tr><td><code>POST /skus</code></td><td>创建一种货品：编码、名称、单位</td><td><code>sku</code> 插入一行</td></tr>
-    <tr><td><code>POST /inbound-orders</code></td><td>新建一张入库草稿</td><td><code>inbound_order</code> 插入一行，状态 <code>DRAFT</code></td></tr>
-    <tr><td><code>POST /inbound-orders/{id}/lines</code></td><td>给草稿加一行：哪种货、进哪个格子、多少</td><td><code>inbound_order_line</code> 插入一行</td></tr>
-    <tr><td><code>POST /inbound-orders/{id}/complete</code></td><td>完成入库，把数量记下来</td><td><code>sku.on_hand</code> 或 <code>inventory</code>；<code>inbound_order.status</code> 改成 <code>COMPLETED</code></td></tr>
-  </table>
+<section id="page">
+  <h2>1. 先看页面</h2>
+  <p>上一部分系统只知道仓库里有哪些格子。这一部分加两件事：<b>货品</b>（仓库里有哪些货）和<b>入库</b>（进了多少货、放进哪个格子）。左边菜单多了「货品」「入库」两页。</p>
   <figure class="shot">
-    <img src="figures/200-swagger-sku-inbound.png" alt="Swagger 里的货品和入库">
-    <figcaption>启动后打开 <code>http://localhost:8080/swagger-ui.html</code>，「货品」和「入库」两组就是这五个接口。先用「鉴权」组的 <code>POST /auth/login</code> 拿到 token，点右上角 Authorize 贴进去，这五个接口才能调用。课堂账号 <code>admin</code>，密码 <code>Admin@123</code>。</figcaption>
+    <img src="figures/w2-01-page-sku.png" alt="货品页">
+    <figcaption>货品页：填编码、名称、单位，点「新建」登记一种货。编码不能重复，重复会返回 400。</figcaption>
   </figure>
-</section>
 
-<section id="layers">
-  <h2>2. 代码按哪几层放</h2>
-  <p>仓库、库区、库位已经按这几层写好。货品和入库照这个加，不新发明一层。一条请求的方向：</p>
-  <div class="flow">
-    <div class="box">Controller<br><small>接 HTTP，取字段</small></div><span class="arrow">→</span>
-    <div class="box">Service<br><small>业务判断，组装一行</small></div><span class="arrow">→</span>
-    <div class="box">Mapper<br><small>SQL</small></div><span class="arrow">→</span>
-    <div class="box">MySQL<br><small>表的列</small></div>
-  </div>
-  <table>
-    <tr><th>包</th><th>这一层做什么</th><th>货品看哪个</th><th>入库看哪个</th></tr>
-    <tr><td><code>controller</code></td><td>接请求，返回结果，不写 SQL</td><td><code>SkuController</code></td><td><code>InboundController</code></td></tr>
-    <tr><td><code>controller/request</code></td><td>请求体里的字段和校验</td><td><code>SkuCreateRequest</code></td><td><code>InboundLineRequest</code></td></tr>
-    <tr><td><code>application</code></td><td>业务</td><td><code>SkuService</code></td><td><code>InboundService</code></td></tr>
-    <tr><td><code>domain</code></td><td>返回给页面的业务对象</td><td><code>Sku</code></td><td><code>InboundOrder</code>、<code>InboundOrderLine</code></td></tr>
-    <tr><td><code>entity</code></td><td>和表的一行一一对应</td><td><code>SkuEntity</code></td><td><code>InboundOrderEntity</code>、<code>InboundOrderLineEntity</code>、<code>InventoryEntity</code></td></tr>
-    <tr><td><code>mapper</code></td><td>SQL</td><td><code>SkuMapper</code></td><td><code>InboundOrderMapper</code>、<code>InboundOrderLineMapper</code>、<code>InventoryMapper</code></td></tr>
-    <tr><td><code>converter</code></td><td>entity 转 domain</td><td><code>SkuConverter</code></td><td>写在 <code>InboundService.toDomain</code> 里</td></tr>
-  </table>
-  <p>Controller 的传参方式和 <code>UserController</code> 相同：从请求体里把字段一个个取出来交给 Service，不在 Controller 里组装对象。</p>
+  <figure class="shot">
+    <img src="figures/w2-02-page-inbound.png" alt="入库页">
+    <figcaption>入库页：「新建入库单」得到一张草稿 → 选货品、库位、数量，点「加一行」→ 点「完成入库」。最下面「接口返回」是每次请求后端回了什么。</figcaption>
+  </figure>
+
 </section>
 
 <section id="tables">
-  <h2>3. 用到的表</h2>
-  <p>表由 Flyway 在应用启动时建好，脚本在 <code>src/main/resources/db/migration</code>，文件名前面的 V 几就是执行顺序。</p>
-  <figure class="shot">
-    <img src="figures/201-v7-sku.png" alt="V7 货品表">
-    <figcaption>第 3 行 <code>id</code> 自增，插入时不传。第 4 行 <code>code</code> 只有 <code>NOT NULL</code>，没有唯一约束，同一个编码可以有很多行，这是漏洞一的来源。第 11–13 行启动时写入两种货：<code>SKU-001</code> 轴承、<code>SKU-002</code> 内六角螺栓。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/202-v3-unique.png" alt="V3 仓库表">
-    <figcaption>对照上学期的仓库表：第 14 行 <code>UNIQUE KEY uk_code (code)</code>，同一个仓库编码只能有一行。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/204-v9-on-hand.png" alt="V9 on_hand">
-    <figcaption>第 2 行给货品加一列 <code>on_hand</code>，一种货一个合计数。这一列里没有库位，是漏洞二的来源。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/205-v10-inbound.png" alt="V10 入库表">
-    <figcaption>入库单 <code>inbound_order</code>：第 4 行单号，第 5 行状态 <code>DRAFT</code> 或 <code>COMPLETED</code>，第 7 行单号唯一。入库行 <code>inbound_order_line</code>：第 13–16 行记下属于哪张单、哪种货（货品主键）、哪个格子（库位主键）、多少。行上是有库位的。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/206-v11-inventory.png" alt="V11 inventory">
-    <figcaption>库存表 <code>inventory</code>：第 4–6 行货品、库位、数量，一种货在一个格子上一行。第 7 行 <code>version</code> 每改一次数量加一，第三部分的乐观锁用它。第 8 行唯一键是货品 + 库位，同一个格子上的同一种货不会有第二行。</figcaption>
-  </figure>
-</section>
-
-<section id="switch">
-  <h2>4. 开关怎样起作用</h2>
-  <p>两个漏洞都由开关控制。一个开关的值走三步进到代码里：</p>
-  <div class="flow">
-    <div class="box">application.yaml<br><small>app.lesson.sku-code-check: off</small></div><span class="arrow">→</span>
-    <div class="box">LessonSwitches<br><small>@Value 读成 boolean</small></div><span class="arrow">→</span>
-    <div class="box">SkuService<br><small>if (lessonSwitches.skuCodeCheck())</small></div>
-  </div>
-  <figure class="shot">
-    <img src="figures/207-switch-yaml.png" alt="第二部分的开关值">
-    <figcaption>第 55–56 行是这一部分两个开关的说明。第 66 行 <code>sku-code-check: off</code>：创建货品不查编码。第 67 行 <code>inbound-stock: sku</code>：入库数量加在货品的 <code>on_hand</code> 上。两个都是漏洞那一侧。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/209-switch-class.png" alt="LessonSwitches">
-    <figcaption>第 15–16 行用 <code>@Value("${app.lesson.xxx:默认值}")</code> 把 yaml 里的字符串取进来，冒号后面是没写时的默认值。第 17 行把 <code>on</code> 变成 <code>true</code>。第 18 行：值是 <code>location</code> 时 <code>stockByLocation</code> 为 <code>true</code>，其它值都是 <code>false</code>。第 21–24 行：yaml 里不加引号的 <code>on</code> 会被读成字符串 <code>"true"</code>，所以 <code>on</code>、<code>true</code>、<code>yes</code> 都算打开。Service 构造时注入这个类。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/210-switch-compose.png" alt="Compose 里的开关">
-    <figcaption>应用跑在容器里时，<code>docker-compose.dev.yml</code> 的环境变量盖过 yaml。Spring 把 <code>APP_LESSON_SKU_CODE_CHECK</code> 对应到 <code>app.lesson.sku-code-check</code>。<code>${APP_LESSON_SKU_CODE_CHECK:-off}</code> 的意思是：命令行没给这个变量就用 <code>off</code>。</figcaption>
-  </figure>
-  <p>改开关有三种办法，改完都要重启应用：</p>
+  <h2>2. 用到的四张表</h2>
   <table>
-    <tr><th>怎样运行</th><th>怎样改</th></tr>
-    <tr><td>IDE 里运行 <code>ProSkillApplication</code></td><td>改 <code>application.yaml</code> 的值；或者在运行配置的 Program arguments 里写 <code>--app.lesson.sku-code-check=on</code></td></tr>
-    <tr><td><code>java -jar</code></td><td>命令后面加 <code>--app.lesson.sku-code-check=on --app.lesson.inbound-stock=location</code></td></tr>
-    <tr><td>Compose</td><td><code>APP_LESSON_SKU_CODE_CHECK=on APP_LESSON_INBOUND_STOCK=location docker compose -f docker-compose.dev.yml up -d --build --force-recreate app</code></td></tr>
+    <tr><th>表</th><th>存什么</th></tr>
+    <tr><td><code>sku</code></td><td>货品：编码、名称、单位。编码不重复</td></tr>
+    <tr><td><code>inbound_order</code></td><td>入库单：单号、状态（DRAFT 草稿 / COMPLETED 完成）</td></tr>
+    <tr><td><code>inbound_order_line</code></td><td>入库单上的每一行：哪种货、哪个库位、多少个</td></tr>
+    <tr><td><code>inventory</code></td><td>库存：每个库位上每种货有多少个，一个库位上的一种货一行</td></tr>
   </table>
-  <h3>改良版上的值</h3>
-  <figure class="shot">
-    <img src="figures/208-switch-yaml-improved.png" alt="改良版的开关值">
-    <figcaption>改良版的 <code>application.yaml</code>，第 66–67 行是修好那一侧的值：<code>on</code> 和 <code>location</code>。其它行和第二部分相同。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/211-improved-diff.png" alt="改良版的差别">
-    <figcaption>两个分支的差别就是这四行：yaml 两行，Compose 两行。红色是第二部分，绿色是改良版。合并改良版带过去的就是这些值。</figcaption>
-  </figure>
+  <p>表由启动时的迁移脚本建好，脚本在 <code>src/main/resources/db/migration</code>，V7、V10、V11 是这一部分的。</p>
 </section>
 
-<section id="api1">
-  <h2>5. 接口一：创建货品</h2>
-  <p>先看库里已经有什么：</p>
-  <figure class="shot">
-    <img src="figures/212-resp-skus.png" alt="GET /skus">
-    <figcaption>启动时 V7 写入的两行。<code>onHand</code> 是 <code>on_hand</code> 列，还没有入库，都是 0。</figcaption>
-  </figure>
-  <p>一次创建，三个字段这样走：</p>
+<section id="case">
+  <h2>3. 案例：把 10 个垫圈入库到 A-01-01</h2>
+  <p>在入库页上点三下，发出三个请求：</p>
   <table>
-    <tr><th>请求体</th><th>SkuCreateRequest</th><th>SkuService.create 参数</th><th>SkuEntity</th><th>SQL</th><th>sku 表的列</th></tr>
-    <tr><td><code>"code"</code></td><td><code>code</code></td><td><code>code</code></td><td><code>setCode</code></td><td><code>#{code}</code></td><td><code>code</code></td></tr>
-    <tr><td><code>"name"</code></td><td><code>name</code></td><td><code>name</code></td><td><code>setName</code></td><td><code>#{name}</code></td><td><code>name</code></td></tr>
-    <tr><td><code>"unit"</code></td><td><code>unit</code></td><td><code>unit</code></td><td><code>setUnit</code></td><td><code>#{unit}</code></td><td><code>unit</code></td></tr>
-    <tr><td>没有</td><td>没有</td><td>没有</td><td><code>setCreatedAt(now)</code></td><td><code>#{createdAt}</code></td><td><code>created_at</code></td></tr>
-    <tr><td>没有</td><td>没有</td><td>没有</td><td>插入后写回 <code>id</code></td><td>不在列清单里</td><td><code>id</code>（自增）</td></tr>
+    <tr><th>页面上点</th><th>请求</th><th>数据库里多了什么</th></tr>
+    <tr><td>新建入库单</td><td><code>POST /inbound-orders</code></td><td><code>inbound_order</code> 一行 IN-1，状态 DRAFT</td></tr>
+    <tr><td>加一行（SKU-003、A-01-01、10）</td><td><code>POST /inbound-orders/1/lines</code></td><td><code>inbound_order_line</code> 一行</td></tr>
+    <tr><td>完成入库</td><td><code>POST /inbound-orders/1/complete</code></td><td><code>inventory</code> 一行：A-01-01 上 10 个垫圈；IN-1 变成 COMPLETED</td></tr>
   </table>
-  <h3>请求体</h3>
+  <p>前两步只是记下单据，第三步才真正动库存。下面跟着「完成入库」这一个请求，从页面走到数据库。</p>
   <figure class="shot">
-    <img src="figures/241-sku-request.png" alt="SkuCreateRequest">
-    <figcaption>页面传来的三个字段。第 11–13 行：<code>@NotBlank</code> 拦住空编码，<code>@Size(max = 50)</code> 和表里 <code>VARCHAR(50)</code> 对齐。名称、单位同样。这一层没有 <code>id</code>，也没有创建时间。</figcaption>
+    <img src="figures/w2-03-front.png" alt="前端：完成入库">
+    <figcaption>前端。点「完成入库」执行 <code>complete()</code>，第 71 行调 <code>inboundApi.complete(id)</code>；<code>inbound.api.ts</code> 第 26 行发出 <code>POST /inbound-orders/1/complete</code>，没有请求体。</figcaption>
   </figure>
-  <h3>Controller</h3>
+
   <figure class="shot">
-    <img src="figures/242-sku-controller.png" alt="SkuController.create">
-    <figcaption>第 21 行这个类的路径都从 <code>/skus</code> 开始，第 28 行 <code>@PostMapping</code> 就是 <code>POST /skus</code>。第 29 行 <code>@RequestBody</code> 把 JSON 装进 <code>SkuCreateRequest</code>，<code>@Valid</code> 触发上面的校验，校验不过直接 400，进不了 Service。第 33 行把三个字段一个个取出来交给 Service，返回值 <code>Sku</code> 直接变成响应的 JSON。</figcaption>
+    <img src="figures/w2-04-controller.png" alt="InboundController">
+    <figcaption>Controller。路径里的 1 是入库单主键，交给 <code>InboundService.complete</code>。</figcaption>
   </figure>
-  <h3>Service</h3>
+
   <figure class="shot">
-    <img src="figures/243-sku-service.png" alt="SkuService.create">
-    <figcaption>第 25 行三个参数来自 Controller。第 26 行看开关：<code>sku-code-check</code> 是 <code>off</code> 时整段跳过，直接到第 35 行（漏洞一，第 10 节）。<code>on</code> 时第 27 行按编码查一次，第 28–32 行查到就抛 <code>SKU_CODE_DUPLICATED</code>，页面收到 400，不再插入。第 35–39 行组装要插入的一行，创建时间在这里生成。第 40 行插入，返回后 <code>entity.getId()</code> 才有值。第 41 行转成 <code>Sku</code> 返回。</figcaption>
+    <img src="figures/w2-05-service.png" alt="InboundService">
+    <figcaption>Service。第 66 行确认还是草稿；第 67 行取出这张单的每一行；第 71–73 行每一行调 <code>addInventory</code>；第 74–75 行把单改成 COMPLETED。<code>addInventory</code> 先查这个库位上有没有这种货（第 80 行）：没有就插入新的一行（第 81–88 行），有就在原来那一行上加（第 90 行）。</figcaption>
   </figure>
-  <h3>Mapper</h3>
+
   <figure class="shot">
-    <img src="figures/244-sku-mapper.png" alt="SkuMapper">
-    <figcaption>第 22 行按编码查一行，<code>#{code}</code> 是调用时传入的编码，查不到返回 <code>null</code>。<code>LIMIT 1</code>：同一个编码有多行时只拿到第一行（第 10 节会用到这一点）。第 41 行 INSERT 的列清单里没有 <code>id</code>，<code>#{code}</code>、<code>#{name}</code>、<code>#{unit}</code>、<code>#{createdAt}</code> 取 <code>entity</code> 上的同名属性。第 42 行插入后把 MySQL 生成的主键写回 <code>entity.id</code>。<code>insert</code> 返回的 int 是写下了几行，成功是 1，不是主键。</figcaption>
+    <img src="figures/w2-06-mapper.png" alt="InventoryMapper">
+    <figcaption>Mapper。第 18 行按货品 + 库位查那一行；第 23 行插入新行；第 29 行在已有行上加数量。</figcaption>
   </figure>
-  <h3>结果</h3>
+
   <figure class="shot">
-    <img src="figures/245-resp-sku-create.png" alt="POST /skus 结果">
-    <figcaption>新建 <code>SKU-003</code> 垫圈，<code>id</code> 是 3，是第 42 行写回来的。<code>onHand</code> 是 <code>null</code>：插入时没有设这一列，表里用默认值 0；返回的是插入前组装的那个对象，没有再查一次表。两个分支结果相同。</figcaption>
+    <img src="figures/w2-07-db.png" alt="完成后的三张表">
+    <figcaption>完成后的数据。<code>inbound_order</code> 里 IN-1 是 COMPLETED；<code>inbound_order_line</code> 记着 sku_id 3（垫圈）、location_id 1（A-01-01）、10；<code>inventory</code> 多了一行同样的货品、库位、数量。</figcaption>
   </figure>
+
+  <p>同一个库位再入一次垫圈，<code>inventory</code> 不会多一行，而是那一行的 quantity 加上去。</p>
 </section>
 
-<section id="api2">
-  <h2>6. 接口二：新建入库草稿</h2>
-  <p>入库分三步：先建一张草稿，往草稿上加行，最后完成。三个接口写在同一个 Controller 里：</p>
-  <figure class="shot">
-    <img src="figures/261-inbound-controller.png" alt="InboundController">
-    <figcaption>第 19 行路径从 <code>/inbound-orders</code> 开始。第 25–28 行新建草稿：没有请求体，什么也不传。第 32–35 行加一行：<code>{id}</code> 来自路径，三个字段来自 JSON，原样传给 Service（第 7 节）。第 39–41 行完成：只传路径上的主键（第 8 节）。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/262-service-create.png" alt="InboundService.create">
-    <figcaption>单号要用主键，主键插入之后才有，所以分两步。第 38 行单号先写占位的 <code>PENDING</code>，第 39 行状态 <code>DRAFT</code>。第 41 行插入，主键写回 <code>entity.getId()</code>。第 42 行单号变成 <code>IN-主键</code>，第 43 行把这一行的单号改掉。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/263-mapper-order.png" alt="InboundOrderMapper">
-    <figcaption>第 16 行插入 <code>order_no</code>、<code>status</code>、<code>created_at</code>，第 17 行写回主键。第 22 行只改 <code>order_no</code>。第 26 行只改 <code>status</code>，完成入库时用。每个方法返回的 int 都是改到了几行。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/264-resp-create.png" alt="新建草稿结果">
-    <figcaption>表里多一行：<code>id</code> 1，<code>order_no</code> <code>IN-1</code>，<code>status</code> <code>DRAFT</code>，还没有行。两个分支结果相同。</figcaption>
-  </figure>
-</section>
-
-<section id="api3">
-  <h2>7. 接口三：给草稿加一行</h2>
-  <p>页面上写的是编码，表里存的是主键。编码换成主键发生在 Service：</p>
+<section id="self">
+  <h2>4. 剩下的接口自己看</h2>
+  <p>下面几个接口走的是同一条路。照着第 3 节，从前端文件找到 Controller，再到 Service、Mapper，最后到表：</p>
   <table>
-    <tr><th>来自</th><th>值</th><th>Service 里怎么处理</th><th>inbound_order_line 的列</th></tr>
-    <tr><td>路径</td><td><code>{id}</code> = 1</td><td><code>requireDraft</code> 查出这张单，不是草稿就拒绝</td><td><code>order_id</code></td></tr>
-    <tr><td>JSON</td><td><code>"skuCode": "SKU-003"</code></td><td><code>skuMapper.getByCode</code> 换成货品那一行，取 <code>id</code></td><td><code>sku_id</code></td></tr>
-    <tr><td>JSON</td><td><code>"locationCode": "A-01-01"</code></td><td><code>locationMapper.getByCode</code> 换成库位那一行，取 <code>id</code></td><td><code>location_id</code></td></tr>
-    <tr><td>JSON</td><td><code>"quantity": 10</code></td><td>原样</td><td><code>quantity</code></td></tr>
+    <tr><th>接口</th><th>做什么</th><th>前端</th><th>后端</th></tr>
+    <tr><td><code>POST /skus</code></td><td>新建货品，编码重复返回 400</td><td><code>pages/skus/skus.api.ts</code></td><td><code>SkuController</code> → <code>SkuService.create</code> → <code>SkuMapper</code></td></tr>
+    <tr><td><code>GET /skus</code></td><td>货品列表</td><td>同上</td><td><code>SkuController</code> → <code>SkuService.list</code></td></tr>
+    <tr><td><code>POST /inbound-orders</code></td><td>新建入库单（草稿）</td><td><code>pages/inbound/inbound.api.ts</code></td><td><code>InboundController</code> → <code>InboundService.create</code></td></tr>
+    <tr><td><code>POST /inbound-orders/{id}/lines</code></td><td>加一行：把货品编码、库位编码换成主键再插入</td><td>同上</td><td><code>InboundService.addLine</code> → <code>InboundOrderLineMapper</code></td></tr>
   </table>
-  <figure class="shot">
-    <img src="figures/265-line-request.png" alt="InboundLineRequest">
-    <figcaption>第 13 行货品编码，第 16 行库位编码，第 20 行数量。第 19 行 <code>@Positive</code>：0 和负数在进 Service 之前就被拒绝。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/266-service-add-line.png" alt="InboundService.addLine">
-    <figcaption>第 48 行只有草稿能加行。第 49 行货品编码换成货品那一行，第 50–52 行查不到就 400 <code>SKU_NOT_FOUND</code>。第 53 行库位编码换成库位那一行。第 58–61 行组装入库行：属于哪张单、货品主键、库位主键、数量。第 62 行插入。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/267-mapper-line.png" alt="InboundOrderLineMapper">
-    <figcaption>第 17–18 行插入四列，值取 <code>entity</code> 的同名属性。第 19 行写回行主键。第 23 行按单号主键查出这张单的全部行，完成入库时用。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/268-resp-add-line.png" alt="加一行结果">
-    <figcaption>返回整张单。行上 <code>skuId</code> 3、<code>locationId</code> 1 是表里存的主键；<code>skuCode</code>、<code>locationCode</code> 是 <code>toDomain</code> 再用主键查回来的编码。两个分支结果相同。</figcaption>
-  </figure>
 </section>
 
-<section id="api4">
-  <h2>8. 接口四：完成入库</h2>
-  <p>完成时请求里只有入库单主键，数量、货品、库位都从这张单的行上取。两个分支的差别就在「数量记到哪」：</p>
-  <figure class="shot">
-    <img src="figures/271-service-complete.png" alt="InboundService.complete">
-    <figcaption>第 67 行不是草稿就不能再完成一次。第 68 行查出这张单的全部行。第 72 行一行一行处理，每一行都带着货品主键、库位主键、数量。第 73 行看开关 <code>inbound-stock</code>：是 <code>location</code> 时走第 74 行，把三个值都交给 <code>addInventory</code>；是 <code>sku</code> 时走第 77 行，只传货品主键和数量，行上的库位没用上（漏洞二，第 11 节）。第 80–81 行把状态改成 <code>COMPLETED</code>，和上面加数量在同一个事务里提交。第 82 行再查一次返回。</figcaption>
-  </figure>
-  <h3>漏洞那一侧：加在货品上</h3>
-  <figure class="shot">
-    <img src="figures/273-mapper-on-hand.png" alt="SkuMapper.addOnHand">
-    <figcaption>第 54 行 <code>on_hand = on_hand + #{delta}</code>，条件只有货品主键。两个格子的数量加进同一列。返回值是改到了几行，不是加完以后的数。</figcaption>
-  </figure>
-  <h3>修好那一侧：按格子记账</h3>
-  <figure class="shot">
-    <img src="figures/272-service-add-inventory.png" alt="InboundService.addInventory">
-    <figcaption>第 86 行按货品 + 库位找这个格子上的那一行，没有就是 <code>null</code>。第 87–94 行第一次放进这个格子：组装一行，<code>version</code> 先写 0，第 93 行插入。第 96 行已经有这一行：数量加上，<code>version</code> 加一。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/274-mapper-inventory.png" alt="InventoryMapper">
-    <figcaption>第 18 行按两个主键查一行，<code>@Param("skuId")</code> 里的名字就是 SQL 里 <code>#{skuId}</code> 的名字。第 23 行插入四列，第 24 行写回主键。第 29 行加数量、<code>version</code> 加一，条件是货品 + 库位。第三部分的乐观锁会在这条 SQL 的条件里再加上 <code>version</code>。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/275-resp-complete.png" alt="完成结果">
-    <figcaption>两个分支的响应相同：200，<code>status</code> 变成 <code>COMPLETED</code>。差别不在响应里，在表里：数量记进了哪一列、哪一行。第 11 节到 Adminer 里看。</figcaption>
-  </figure>
-</section>
-
-<section id="order">
-  <h2>9. 实验顺序</h2>
-  <p>下面的结果都是按这个顺序在两个分支上各跑一遍得到的。应用用 Compose 起在容器里：</p>
-  <pre>docker compose -f docker-compose.dev.yml up -d --build</pre>
-  <p>想让主键和图上一样，先在 Adminer（<code>http://localhost:8081</code>，服务器 <code>mysql</code>，用户 <code>root</code>，密码 <code>root</code>，库 <code>pro_skill</code>）的「SQL命令」里执行：</p>
-  <pre>DELETE FROM sku WHERE code = 'SKU-001' AND id &lt;&gt; 1;
-DELETE FROM sku WHERE code = 'SKU-003';
-ALTER TABLE sku AUTO_INCREMENT = 3;
-UPDATE sku SET on_hand = 0;
-TRUNCATE TABLE inbound_order_line;
-TRUNCATE TABLE inbound_order;
-TRUNCATE TABLE inventory;</pre>
-  <p>不清空也可以，主键以自己响应里的为准。每个请求都要带登录拿到的 token。</p>
-  <table>
-    <tr><th>步</th><th>请求</th><th><span class="tag bad">第二部分</span></th><th><span class="tag ok">改良版</span></th></tr>
-    <tr><td>1</td><td><code>POST /skus</code> <code>{"code":"SKU-003","name":"垫圈","unit":"个"}</code></td><td colspan="2">两边一样：200，<code>id</code> 3</td></tr>
-    <tr><td>2</td><td><code>POST /skus</code> <code>{"code":"SKU-001","name":"轴承","unit":"个"}</code></td><td>200，<code>id</code> 4，表里两行 <code>SKU-001</code></td><td>400 <code>SKU_CODE_DUPLICATED</code>，表里一行</td></tr>
-    <tr><td>3</td><td>IN-1：<code>POST /inbound-orders</code>；<code>POST /inbound-orders/1/lines</code> <code>{"skuCode":"SKU-003","locationCode":"A-01-01","quantity":10}</code>；<code>POST /inbound-orders/1/complete</code></td><td colspan="2">两边响应一样：200，<code>COMPLETED</code></td></tr>
-    <tr><td>4</td><td>IN-2：同样三步，加的一行是 <code>{"skuCode":"SKU-003","locationCode":"A-01-02","quantity":8}</code></td><td colspan="2">两边响应一样：200，<code>COMPLETED</code></td></tr>
-    <tr><td>5</td><td>Adminer 里查 <code>sku</code> 和 <code>inventory</code></td><td><code>SKU-003</code> 的 <code>on_hand</code> 是 18，<code>inventory</code> 没有数据</td><td><code>on_hand</code> 是 0，<code>inventory</code> 两行：A-01-01 10、A-01-02 8</td></tr>
-    <tr><td>6</td><td>第二部分：IN-3 新建，加一行 <code>{"skuCode":"SKU-001","locationCode":"B-01-01","quantity":5}</code>，不完成。<br>改良版：IN-3 新建，加一行 <code>{"skuCode":"SKU-003","locationCode":"A-01-01","quantity":5}</code>，完成</td><td>行上 <code>skuId</code> 是 1，<code>id</code> 4 那一行用不上</td><td>A-01-01 还是一行，数量 15，<code>version</code> 1</td></tr>
-  </table>
-  <h3>进第三部分之前</h3>
-  <p>第三部分会给 <code>sku.code</code> 加唯一索引。库里还留着两行 <code>SKU-001</code> 时，第三部分的应用启动会失败。做完实验执行一次：</p>
-  <pre>DELETE FROM sku WHERE code = 'SKU-001' AND id &lt;&gt; 1;</pre>
-</section>
-
-<section id="d1">
-  <h2>10. 漏洞一：同一个编码记了两次</h2>
-  <p>货品编码是仓库里认货的依据。扫码枪扫出 <code>SKU-001</code>，系统要能找到唯一的那种货。第二部分的创建接口不看编码有没有用过：</p>
-  <figure class="shot">
-    <img src="figures/251-resp-sku-dup-defect.png" alt="第二部分再建一次 SKU-001">
-    <figcaption>第二部分：再提交一次 <code>SKU-001</code>，仍然是 200，拿到新主键 4。<code>SkuService</code> 第 26 行开关是 <code>off</code>，查编码那一段整段跳过。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/220-defect-sku-db.png" alt="Adminer 里两行 SKU-001">
-    <figcaption>Adminer 里查 <code>sku</code>：<code>id</code> 1 和 <code>id</code> 4 都是 <code>SKU-001</code> 轴承。表上没有唯一约束（V7 第 4 行），数据库也拦不住。</figcaption>
-  </figure>
-  <p>多出来的一行马上带来第二个问题：入库行写的是编码，Service 用编码去找货品，找到的是哪一行？</p>
-  <figure class="shot">
-    <img src="figures/252-resp-dup-line.png" alt="入库行用哪一行">
-    <figcaption>第二部分：给 IN-3 加一行 <code>SKU-001</code>，行上 <code>skuId</code> 是 1。<code>getByCode</code> 的 <code>LIMIT 1</code> 只拿第一行，<code>id</code> 4 那一行永远进不了货。两行谁是真的，系统说不清。</figcaption>
-  </figure>
-  <h3>自己查</h3>
-  <ol class="steps">
-    <li>Adminer 里执行 <code>SELECT code, COUNT(*) FROM sku GROUP BY code HAVING COUNT(*) &gt; 1;</code>，有结果就说明有重复编码。</li>
-    <li>对照仓库：V3 的仓库表有唯一约束，<code>WarehouseService.create</code> 插入前也先查了编码。</li>
-  </ol>
-  <figure class="shot">
-    <img src="figures/203-warehouse-check.png" alt="WarehouseService.create">
-    <figcaption>上学期的仓库创建：第 38 行按编码查，第 39–40 行查到就抛 <code>WAREHOUSE_CODE_EXISTS</code>，然后才在第 55 行插入。货品创建少的就是这一段。</figcaption>
-  </figure>
-  <h3>改良版改了这一块：插入前先按编码查</h3>
-  <p>改良版把 <code>sku-code-check</code> 改成 <code>on</code>，<code>SkuService</code> 第 27–32 行开始执行（第 5 节的 Service 图）。</p>
-  <figure class="shot">
-    <img src="figures/253-resp-sku-dup-fixed.png" alt="改良版再建一次 SKU-001">
-    <figcaption>改良版：同一个请求返回 400，<code>message</code> 是 <code>SKU_CODE_DUPLICATED：货品编码已存在：SKU-001</code>。表里只有 <code>id</code> 1 一行。</figcaption>
-  </figure>
-  <p>插入前先查，挡住的是一个人先后提交两次。两个人在同一瞬间提交同一个编码时，两边都可能查到「没有」，再各自插入。这一种要靠表上的唯一索引兜底，第三部分加上（V8）。所以两层都要有：Service 先查，给页面一个看得懂的错误；表上唯一索引，保证并发时也不会有第二行。</p>
-</section>
-
-<section id="d2">
-  <h2>11. 漏洞二：入库数量不分库位</h2>
-  <p>入库行上明明写了库位，完成时却只把数量加在货品的合计上：</p>
-  <figure class="shot">
-    <img src="figures/281-resp-two-lines.png" alt="两张入库单的行">
-    <figcaption>两张单：IN-1 往 A-01-01（<code>locationId</code> 1）放 10 个垫圈，IN-2 往 A-01-02（<code>locationId</code> 2）放 8 个。两个分支的请求和响应相同。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/230-defect-stock-db.png" alt="第二部分完成后的表">
-    <figcaption>第二部分完成两张单以后：<code>SKU-003</code> 的 <code>on_hand</code> 是 18；<code>inventory</code> 无数据；两张单都是 <code>COMPLETED</code>；入库行上的 <code>location_id</code> 是 1 和 2。</figcaption>
-  </figure>
-  <p>问一句：A-01-01 上现在有多少垫圈？表里答不出来，只知道一共 18。拣货员要去哪个格子取货，系统给不出。第三部分做出库，出库单上也写库位，要从那个格子上减，这一步需要每个格子各自的数。</p>
-  <h3>自己查</h3>
-  <ol class="steps">
-    <li>Adminer 里看 <code>inbound_order_line</code>：每一行都有 <code>location_id</code>。</li>
-    <li>再看 <code>sku.on_hand</code>：只有一个数。说明库位在完成的路上丢了。</li>
-    <li>回到第 8 节的 <code>complete</code>：第 77 行只传了 <code>getSkuId()</code> 和 <code>getQuantity()</code>，<code>getLocationId()</code> 没有传下去。</li>
-  </ol>
-  <h3>改良版改了这一块：每个格子一行</h3>
-  <p>改良版把 <code>inbound-stock</code> 改成 <code>location</code>，<code>complete</code> 走第 74 行，按货品 + 库位记进 <code>inventory</code>（第 8 节的 <code>addInventory</code> 和 <code>InventoryMapper</code> 图）。同一个格子再入一次，是在那一行上加，不新增一行：</p>
-  <figure class="shot">
-    <img src="figures/282-resp-third-fixed.png" alt="改良版 IN-3">
-    <figcaption>改良版：IN-3 再往 A-01-01 放 5 个，200，<code>COMPLETED</code>。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/231-fixed-stock-db.png" alt="改良版完成后的表">
-    <figcaption>改良版完成三张单以后：<code>inventory</code> 两行。<code>location_id</code> 1 上 15 个，<code>version</code> 1，是 10 加 5、改过一次；<code>location_id</code> 2 上 8 个，<code>version</code> 0。<code>sku.on_hand</code> 不再用，都是 0。<code>sku</code> 表里没有第二行 <code>SKU-001</code>。</figcaption>
-  </figure>
-</section>
-
-<section id="sum">
-  <h2>12. 改良版改了哪两块</h2>
-  <table>
-    <tr><th>哪一块</th><th>开关</th><th>第二部分走的代码</th><th>改良版走的代码</th><th>同一个操作的结果</th></tr>
-    <tr><td>创建货品</td><td><code>sku-code-check</code>：<code>off</code> → <code>on</code></td><td><code>SkuService</code> 第 26 行跳过，直接插入</td><td>第 27–32 行：先按编码查，查到就抛 <code>SKU_CODE_DUPLICATED</code></td><td>再建 <code>SKU-001</code>：200、表里两行 → 400、表里一行</td></tr>
-    <tr><td>完成入库</td><td><code>inbound-stock</code>：<code>sku</code> → <code>location</code></td><td><code>InboundService</code> 第 77 行：<code>sku.on_hand</code> 加上，不分库位</td><td>第 74 行：<code>inventory</code> 按货品 + 库位各一行</td><td>10 + 8：<code>on_hand</code> 18 → A-01-01 10、A-01-02 8</td></tr>
-  </table>
-  <p>查货品、新建草稿、加一行，两个分支结果相同。完成入库时，加数量和改状态在两个分支上都是同一个事务里提交。</p>
-</section>
-
-<section id="test">
-  <h2>13. 用测试把两条路径跑一遍</h2>
-  <p>两个测试类把开关写死，测试库是内存里的 H2，每个测试结束后回滚：</p>
-  <table>
-    <tr><th>测试类</th><th>开关</th><th>断言</th></tr>
-    <tr><td><code>SkuInboundDefectPathTest</code></td><td><code>off</code>、<code>sku</code></td><td>同一个编码创建两次，两次都是 200，表里两行；两个格子各入 10 和 8，<code>on_hand</code> 是 18，<code>inventory</code> 没有行，两张单都是 <code>COMPLETED</code></td></tr>
-    <tr><td><code>SkuInboundFixedPathTest</code></td><td><code>on</code>、<code>location</code></td><td>第二次创建 400 <code>SKU_CODE_DUPLICATED</code>，表里一行；两个格子各一行 10 和 8，<code>on_hand</code> 是 0；同一个格子入两次还是一行，15，<code>version</code> 1</td></tr>
-  </table>
-  <pre>./mvnw test -Dtest='SkuInbound*PathTest'</pre>
-  <p>两份测试在两个分支上都能通过：开关写在测试类上，不读 yaml。</p>
-</section>
-
-<section id="merge">
-  <h2>14. 把改良版合并进第二部分</h2>
-  <p>第一部分做过一次：自己的仓库里新建分支、推上去、在网页上创建 Pull Request、在网页上点合并。这次用课堂仓库重温，分支已经定好。</p>
-  <p>仓库地址仍是 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。源分支是 <code>第二部分改良版</code>，目标分支是 <code>第二部分</code>。讲义两边是同一份，合并带过去的是第 4 节差别图里的四行开关值。教师按下面做，全班看，只合并这一次，不要每人再推一个同名分支。</p>
-  <ol class="steps">
-    <li>GitHub Desktop 里点 Fetch origin，再点 Current Branch，选「第二部分改良版」。这一步是说：接下来要送出去的是改良版。</li>
-    <li>上方是 Push origin 时点它。账号和第一部分一样：用户名是 Gitee 个性地址，密码框粘贴私人令牌。Pull Request 只能合并网上已经有的分支，Push 是把改良版送到 Gitee。</li>
-    <li>浏览器打开仓库，点「Pull Requests」→「新建 Pull Request」。源分支选 <code>第二部分改良版</code>，目标分支选 <code>第二部分</code>，标题写「合入第二部分改良版」，点「创建」。文件列表里能看到 <code>application.yaml</code> 和 <code>docker-compose.dev.yml</code>。创建之后，第二部分还没有变。</li>
-    <li>就在这个 Pull Request 页面点「合并」，再确认。网页把改良版的提交接进第二部分。</li>
-    <li>GitHub Desktop 里 Current Branch 换成「第二部分」，上方变成 Pull origin 时点它。合并发生在网上，Pull 把它拿到自己电脑上。</li>
-  </ol>
-  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。本地第二部分的 <code>application.yaml</code> 第 66–67 行变成 <code>on</code>、<code>location</code>。执行 <code>docker compose -f docker-compose.dev.yml up -d --build app</code> 让应用容器带着新值重建，按实验顺序再跑一遍，结果和这份讲义里的改良版一致。</div>
-</section>
-
-<section id="ai">
-  <h2>15. 作业里要写同类接口时</h2>
-  <p>把下面这段发给 DeepSeek 或 Kimi。生成后按第 5–8 节检查：请求体里的字段有没有原样走到 Mapper 的 INSERT；Controller 里有没有写 SQL 或者用 builder 组装对象；编码有没有在插入前查重、表上有没有唯一约束；数量有没有按「货品 + 库位」记，并且和单据状态在同一个事务里。</p>
-  <pre>这是 Spring Boot 项目，包名 com.eurasia.pro_skill，MyBatis 注解写 SQL，Flyway 建表。
-分层：controller、controller/request、application、domain、entity、mapper、converter。
-请按 UserController 的方式写：Controller 把请求体里的字段一个个传给 Service，不要用 builder，不要写 SQL。
-1. 货品 sku：编码 code、名称 name、单位 unit，自增 id，created_at。
-   POST /skus 创建：插入前按 code 查询，已存在就返回 SKU_CODE_DUPLICATED；表上给 code 加唯一约束。
-   GET /skus 查全部。
-2. 入库单 inbound_order：单号 IN-主键、状态 DRAFT/COMPLETED、创建时间。
-   入库行 inbound_order_line：order_id、sku_id、location_id、quantity。
-   POST /inbound-orders 新建草稿；POST /inbound-orders/{id}/lines 加一行，
-   请求体是 skuCode、locationCode、quantity，在 Service 里把编码换成主键再写入；
-   POST /inbound-orders/{id}/complete 完成。
-3. 库存 inventory：sku_id、location_id、quantity、version，唯一键是 sku_id + location_id。
-   完成时每一行按货品 + 库位记账：没有这一行就插入，有就 quantity 加上、version 加一；
-   在同一个事务里把入库单改成 COMPLETED。
-每一行代码加注释：这个值从哪来、写到哪一列、返回的 int 或 id 是什么。
-生成后用一段话说明：一次完成入库请求里，货品、库位、数量依次经过哪些类，落到哪张表的哪一列。</pre>
-</section>
-
-<section id="page">
-  <h2>16. 在页面上复现</h2>
-  <p>第 9 节的实验也可以在前端页面上点出来。前端仓库切到「第二部分」分支，<code>npx pnpm@9 dev</code> 启动，打开 <code>http://localhost:5173</code> 登录，左边菜单多了「货品」「入库」两页。后端在「第二部分」和「第二部分改良版」之间切换时，前端不用动：页面一样，点同一个按钮，返回不同。</p>
-  <p>每页最下面是「接口返回」。每点一次按钮记一条：左边是 HTTP 状态码，后面是调的接口和时间，下面是响应体原文，最新的在最上面。</p>
-  <h3>一个按钮怎样走到 sku 表</h3>
-  <p>第 5 节从 Controller 往下讲过创建货品。这里补上 Controller 之前的两步。</p>
-  <figure class="shot">
-    <img src="figures/290-sku-page-create.png" alt="货品页的 create">
-    <figcaption>前端 <code>src/scripts/pages/skus/list.ts</code>。点「新建」执行第 25 行。第 27 行把表单里的 <code>code</code>、<code>name</code>、<code>unit</code> 原样交给 <code>skusApi.create</code>。第 28 行把这次的状态码和响应体记进「接口返回」。第 31 行重新拉一次列表，表里多没多一行马上能看到。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/291-sku-api.png" alt="skus.api.ts 的 create">
-    <figcaption>前端 <code>src/pages/skus/skus.api.ts</code>。第 22 行发 <code>POST /skus</code>，请求体就是那三个字段。apiClient 在前面加上 <code>/api</code>，浏览器发出的是 <code>POST /api/skus</code>。Vite 去掉 <code>/api</code> 交给后端，后面就是第 5 节：<code>SkuController.create</code> → <code>SkuService.create</code> → <code>SkuMapper.insert</code> → <code>sku</code> 表的 <code>code</code>、<code>name</code>、<code>unit</code> 三列。</figcaption>
-  </figure>
-  <h3>第 1–2 步：建货品</h3>
-  <p>货品页默认填好 <code>SKU-003</code> 垫圈，点「新建」。再把编码改成 <code>SKU-001</code>、名称改成轴承，点「新建」。两个分支的结果见开头「先看页面」的重点一。</p>
-  <h3>第 3–6 步：入库</h3>
-  <p>入库页点「新建入库单」，下拉框选货品编码和库位编码，填数量，点「加一行」，再点「完成入库」。上面的表是这个浏览器建过的单，点一行就切到那张单。下面一栏是每个货品的 <code>sku.on_hand</code>，完成入库后自动刷新。两个分支的结果见开头「先看页面」的重点二。</p>
-  <p>页面上建过的单记在浏览器里（localStorage）。数据库清空以后，点入库页右上角「清空记录」再开始。</p>
+<section id="hw">
+  <h2>5. 作业里写同类接口时</h2>
+  <p>先写表，再按 Controller → Service → Mapper 的顺序写，和上面的案例一一对照：请求里的每个字段有没有走到 SQL；改库存和改单据状态是不是在同一个方法里一起完成。</p>
 </section>
 </main>
 </body>
