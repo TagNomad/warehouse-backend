@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>第一部分讲义 · Docker 从零开始</title>
+<title>第一部分讲义 · 拿到代码，把系统跑起来</title>
 <style>
   :root {
     --ink: #1c2430;
@@ -12,27 +12,20 @@
     --paper: #f4f7fb;
     --card: #fff;
     --blue: #1d6fbf;
-    --blue-soft: #e7f2fc;
-    --bad: #b42318;
-    --bad-soft: #fdeceb;
     --ok: #067647;
     --ok-soft: #e7f6ee;
-    --warn: #b54708;
+    --bad: #b42318;
+    --bad-soft: #fdeceb;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
   body {
     margin: 0;
     color: var(--ink);
     background: var(--paper);
     font: 18px/1.65 "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
   }
-  header.top {
-    background: #12324f;
-    color: #fff;
-    padding: 36px 8vw 28px;
-  }
-  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 46rem; }
+  header.top { background: #12324f; color: #fff; padding: 36px 8vw 28px; }
+  header.top p { margin: 8px 0 0; color: #c9d8e8; max-width: 52rem; }
   h1 { font-size: 34px; line-height: 1.25; margin: 0; }
   main { width: min(980px, 92vw); margin: 0 auto; padding: 28px 0 80px; }
   section {
@@ -43,635 +36,174 @@
     margin: 18px 0;
   }
   h2 { font-size: 26px; margin: 0 0 12px; }
-  h3 { font-size: 20px; margin: 22px 0 8px; }
-  .lead { color: var(--muted); margin-top: 0; }
-  .os {
-    display: flex; gap: 8px; margin: 12px 0 16px;
-  }
-  .os button {
-    border: 1px solid var(--line);
-    background: #fff;
-    border-radius: 999px;
-    padding: 8px 16px;
-    font: inherit;
-    cursor: pointer;
-  }
-  .os button.on { background: var(--blue); color: #fff; border-color: var(--blue); }
-  [data-os] { display: none; }
-  body.mac [data-os="mac"], body.win [data-os="win"], [data-os="both"] { display: block; }
-  pre, .mock {
+  h3 { font-size: 20px; margin: 24px 0 8px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre {
     background: #0f1c2b;
     color: #e8eef6;
     border-radius: 12px;
     padding: 14px 16px;
     overflow: auto;
-    font: 15px/1.55 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font: 15px/1.55 ui-monospace, Menlo, Consolas, monospace;
   }
   .see {
     background: var(--ok-soft);
     border-left: 4px solid var(--ok);
     padding: 10px 14px;
     border-radius: 8px;
-    margin: 10px 0 0;
+    margin: 10px 0;
   }
   .see b { color: var(--ok); }
   .badbox {
     background: var(--bad-soft);
-    color: var(--bad);
-    border-radius: 8px;
+    border-left: 4px solid var(--bad);
     padding: 10px 14px;
+    border-radius: 8px;
     margin: 10px 0;
   }
-  ol.steps { padding-left: 1.2em; }
-  ol.steps > li { margin: 18px 0; }
-  a { color: var(--blue); }
-  .stage {
-    background: linear-gradient(#f8fbff, #eef4fb);
-    border: 1px dashed #b7c8da;
-    border-radius: 16px;
-    padding: 28px 16px 18px;
-    margin-top: 8px;
-  }
-  .flow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .box {
-    width: 150px;
-    min-height: 84px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 650;
-    padding: 8px;
-    background: #fff;
-    flex: 0 0 auto;
-  }
-  .browser { border: 2px solid var(--blue); }
-  .adminer { border: 2px solid #e0a100; background: #fff7e8; }
-  .mysql { border: 2px solid var(--ok); background: var(--ok-soft); }
-  .link {
-    flex: 1;
-    min-width: 90px;
-    text-align: center;
-    font-size: 13px;
-  }
-  .link i {
-    display: block;
-    height: 3px;
-    margin: 6px 0;
-    border-radius: 3px;
-    transform-origin: left center;
-    animation: shoot 2.2s infinite;
-  }
-  .link.ok { color: var(--ok); }
-  .link.ok i { background: var(--ok); }
-  .link.bad { color: var(--bad); }
-  .link.bad i { background: var(--bad); animation-delay: 0.8s; }
-  @keyframes shoot {
-    0% { transform: scaleX(0.15); opacity: 0.3; }
-    60% { transform: scaleX(1); opacity: 1; }
-    100% { opacity: 0.45; }
-  }
-  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .card {
-    border: 1px solid var(--line); border-radius: 12px; padding: 14px;
-    background: #fff;
-  }
-  .card strong { display: block; margin-bottom: 6px; }
-  .card:nth-child(2) { animation: pop 2.4s infinite; }
-  @keyframes pop {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  }
-  table { border-collapse: collapse; width: 100%; font-size: 16px; }
-  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 6px; }
-  .mock.light { background: #fff; color: var(--ink); border: 1px solid var(--line); }
-  .form-row { display: grid; grid-template-columns: 88px 1fr; gap: 8px; margin: 6px 0; align-items: center; }
-  .form-row span { color: var(--muted); }
-  .form-row b { font-weight: 650; }
-  .pill { display: inline-block; background: var(--blue-soft); color: var(--blue); border-radius: 999px; padding: 2px 10px; font-size: 14px; }
-  nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  nav.jump a {
-    text-decoration: none; background: #23496e; color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 15px;
-  }
-  .note { font-size: 15px; color: var(--muted); }
+  .badbox b { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 16px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 10px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 650; }
   figure.shot { margin: 16px 0 8px; }
-  figure.shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  figure.shot img { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; display: block; }
   figure.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
-  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-  .compare article { border-radius: 14px; padding: 14px; border: 1px solid var(--line); }
-  .compare .messy { background: var(--bad-soft); }
-  .compare .same { background: var(--ok-soft); }
-  .pcs { display: flex; gap: 8px; margin-top: 10px; }
-  .pc {
-    flex: 1; background: #fff; border-radius: 10px; padding: 8px; text-align: center; font-size: 14px; font-weight: 650;
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pair figure.shot { margin: 8px 0; }
+  .tag { display: inline-block; font-size: 14px; font-weight: 650; padding: 1px 8px; border-radius: 6px; color: #fff; }
+  .tag.bad { background: var(--bad); }
+  .tag.ok { background: var(--ok); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .box {
+    border: 2px solid var(--blue);
+    border-radius: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    font-weight: 650;
+    text-align: center;
   }
-  .messy .pc { animation: shake 2.8s infinite; border: 1px solid #f3c0bb; }
-  .messy .pc:nth-child(2) { animation-delay: .2s; }
-  .messy .pc:nth-child(3) { animation-delay: .4s; }
-  .same .pc { border: 1px solid #b7e4c7; animation: settle 2.8s infinite; }
-  @keyframes shake {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
-  @keyframes settle {
-    0%, 100% { box-shadow: none; }
-    50% { box-shadow: 0 0 0 3px rgba(6,118,71,.15); }
-  }
-  @media (max-width: 800px) { .compare { grid-template-columns: 1fr; } }
-  @media (max-width: 800px) {
-    .cards, .flow { display: block; }
-    .box, .link { width: auto; margin: 8px 0; }
-  }
+  .arrow { color: var(--muted); }
+  a { color: var(--blue); }
+  ol.steps { padding-left: 1.2em; }
+  ol.steps > li { margin: 10px 0; }
+  nav.toc ol { columns: 2; margin: 0; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } nav.toc ol { columns: 1; } }
 </style>
 </head>
-<body class="mac">
+<body>
 <header class="top">
-  <h1>第一部分讲义：Docker 是什么，怎样把项目跑起来</h1>
-  <p>顺序是：先讲 Git，用 GitHub Desktop 克隆到本地并看懂本地仓库，再把项目跑起来。最后做随堂测验：在自己的仓库新建分支、提交、推送，并在网页上合并。绿字是要对照的结果。先选你的系统，后面的菜单和命令会跟着变。</p>
-  <div class="os" role="tablist">
-    <button type="button" id="btn-mac" class="on" onclick="setOs('mac')">macOS</button>
-    <button type="button" id="btn-win" onclick="setOs('win')">Windows</button>
-  </div>
-  <nav class="jump">
-    <a href="#preview">先看页面</a>
-    <a href="#git-idea">先讲 Git</a>
-    <a href="#git-install">安装 GitHub Desktop</a>
-    <a href="#git-clone">克隆到本地</a>
-    <a href="#idea">再讲 Docker，把项目跑起来</a>
-    <a href="#git-ops">随堂测验：网页上合并</a>
-  </nav>
+  <h1>第一部分 · 拿到代码，把系统跑起来</h1>
+  <p>第 10 周，2 课时。老师按下面的顺序一步步演示，你把代码下载下来，对照页面、代码和数据库看。</p>
 </header>
 <main>
 
-<section id="preview">
-  <h2>先看页面：这两次课要做出什么</h2>
-  <p class="lead">先看终点。周三下课前，你的电脑上要跑起一个仓库管理系统：浏览器打开 <code>http://localhost:5173</code>，用 <code>admin</code> / <code>Admin@123</code> 登录，点左边「仓库管理」，再点 WH-001 那一行的「库区库位」，看到下面这一页。</p>
-  <figure class="shot">
-    <img src="figures/18-page-warehouse-tree.png" alt="仓库管理页展开库区库位">
-    <figcaption>一个仓库分成几个库区，每个库区里有一个个格子，叫库位。WH-001 华东原料仓下面有两个库区；A 区有两个库位 A-01-01、A-01-02，B 区有一个库位 B-01-01。后面几部分的货就放在这些库位上。</figcaption>
-  </figure>
-
-  <h3>这一页背后要跑着四样东西</h3>
-  <p>浏览器里只看到一个页面，背后其实有四个程序在一起工作：</p>
-  <table>
-    <tr><th>程序</th><th>做什么</th><th>地址</th><th>怎么跑起来</th></tr>
-    <tr><td>前端</td><td>浏览器里看到的页面。现成的，不用自己写</td><td style="white-space:nowrap">5173</td><td>在前端文件夹里执行一条命令</td></tr>
-    <tr><td>后端（应用）</td><td>页面上每点一下，都由它查数据、写数据。这门课写的就是它</td><td style="white-space:nowrap">8080</td><td>Docker 容器</td></tr>
-    <tr><td>MySQL</td><td>数据库，仓库、库位、用户都存在这里</td><td style="white-space:nowrap">3306</td><td>Docker 容器</td></tr>
-    <tr><td>Adminer</td><td>在浏览器里看数据库里有哪些表、表里有什么的工具</td><td style="white-space:nowrap">8081</td><td>Docker 容器</td></tr>
-  </table>
-  <p>Docker 把每个程序连同它要用的东西装进一个独立的「容器」，所以自己电脑上不用安装 MySQL，也不用安装 Java。项目里的 <code>docker-compose.dev.yml</code> 写清楚要起哪几个容器，一条命令就能全部起来。起来以后，在 Docker Desktop 里能看到它们：</p>
-  <figure class="shot">
-    <img src="figures/10-docker-desktop.png" alt="Docker Desktop 的 Containers 页面">
-    <figcaption>Docker Desktop 的 Containers 页面。周一先起 MySQL 和 Adminer 这两个容器，周三再把后端加进来。</figcaption>
-  </figure>
-
-  <h3>这两次课的重点：容器里的 localhost 指的是谁</h3>
-  <p>在自己电脑上，<code>localhost</code> 指的是「这台电脑」。到了容器里，<code>localhost</code> 指的是「这个容器自己」。Adminer 和 MySQL 是两个容器，Adminer 在自己的容器里找 MySQL，是找不到的。周一就会碰到这件事：</p>
-  <figure class="shot">
-    <img src="figures/12-adminer-fail.png" alt="Adminer 服务器填 localhost 后的红字">
-    <figcaption>Adminer 登录页的「服务器」填 <code>localhost</code>，点登录，出现红字，连不上：Adminer 的容器里没有 MySQL。</figcaption>
-  </figure>
-
-  <figure class="shot">
-    <img src="figures/13-adminer-ok.png" alt="Adminer 里看到 pro_skill 的表">
-    <figcaption>「服务器」改填 <code>mysql</code>，就能进去，看到 <code>pro_skill</code> 库里的表。<code>mysql</code> 是 Compose 文件里给 MySQL 那个容器起的名字，几个容器之间用这个名字互相找。</figcaption>
-  </figure>
-
-  <p>周三后端放进容器以后也一样：后端连数据库要写 <code>mysql</code>，不能写 <code>localhost</code>。而在自己电脑的浏览器里，仍然用 <code>localhost:8080</code>、<code>localhost:8081</code> 打开它们，因为 Docker 把容器的端口接到了这台电脑上。</p>
-  <h3>这两次课按什么顺序做</h3>
-  <table>
-    <tr><th>要做到</th><th>在哪一节</th></tr>
-    <tr><td>项目代码在自己电脑上，能切到「第一部分」分支</td><td>先讲 Git、克隆到本地</td></tr>
-    <tr><td>MySQL 和 Adminer 跑起来，Adminer 用 <code>mysql</code> 连上数据库</td><td>第一次课：只启动 MySQL 和 Adminer</td></tr>
-    <tr><td>后端打成镜像、放进容器，启动时自己建好表、写入初始数据，<code>admin</code> 能登录</td><td>第二次课：把应用放进同一个文件</td></tr>
-    <tr><td>前端跑起来，页面上的请求能到后端</td><td>第二次课最后：用前端页面登录</td></tr>
-  </table>
-  <p>做到最后一行，回来对照开头那张图。</p>
-</section>
-
-<section id="git-idea">
-  <h2>先讲 Git</h2>
-  <p class="lead">这一节先不安装。Git 是管「代码的历史」的。GitHub Desktop 是它的窗口，不是另一种 Git。</p>
-  <h3>它要解决的问题</h3>
-  <p>项目文件会改很多遍。没有历史时，只能靠复制文件夹：<code>项目-最终</code>、<code>项目-最终2</code>、<code>项目-真的最终</code>。两个人同时改同一个文件，后来的人会把前面的人盖掉。看不出谁在什么时候改了哪一行。</p>
-  <p>Git 把每一次完成的修改记成一条提交。提交堆在一条分支上。远程仓库是放在网上的那一份，本地仓库是你电脑里的那一份。两边不会自动变成一样。Commit 先记在本地，Push 送到网上，网页上的合并再写进主分支，Pull 把这个结果拿回来。</p>
-  <h3>Git 是什么</h3>
-  <p>Git 只记录文件的变化，不负责把 Java 跑起来。你在本地改文件、做提交，历史先存在自己电脑上。网上的仓库叫远程，这份课堂仓库的远程在 Gitee，不在 GitHub。GitHub Desktop 这个软件可以管理任何 Git 地址，所以用它来克隆 Gitee，不要求先注册 GitHub。</p>
-  <h3>用在什么场景</h3>
-  <ul>
-    <li>把教师的项目下载到自己电脑，而且以后还能更新。</li>
-    <li>自己做了修改，留在一条新分支上，再推到自己的远程仓库。</li>
-    <li>在网页上申请把这条分支并进主分支，自己点合并。</li>
-  </ul>
-  <h3>这门课为什么先讲它</h3>
-  <p>作业一要求有个人 Gitee。项目要先到本地，才能往下装 Docker、把系统跑起来。所以顺序是：先拿到课堂仓库，再跑项目，最后在自己的仓库上做一次网页合并。</p>
-  <div class="cards">
-    <div class="card"><strong>仓库</strong>一个项目的全部历史。本地一份，远程一份。</div>
-    <div class="card"><strong>提交</strong>一次记下来的修改，有说明。History 里的一行就是一条提交。</div>
-    <div class="card"><strong>分支</strong>一条独立的修改线。课堂代码在分支「第一部分」，练习不要直接改这条线。</div>
-  </div>
-</section>
-
-<section id="git-install">
-  <h2>安装 GitHub Desktop</h2>
-  <p class="lead">窗口里的按钮两边一样。不一样的是安装，以及菜单栏在哪里。</p>
-  <div data-os="mac">
-    <ol class="steps">
-      <li>打开 <a href="https://desktop.github.com/">desktop.github.com</a>，点 Download for macOS。</li>
-      <li>到「下载」文件夹，双击得到的 zip。解压后再双击里面的 GitHub Desktop。</li>
-      <li>如果问是否打开从网络下载的应用，选打开。程序会出现在「应用程序」里。</li>
-      <li>菜单在屏幕最上方，不在窗口里面。用到的是 File 和 Branch。</li>
-    </ol>
-  </div>
-  <div data-os="win">
-    <ol class="steps">
-      <li>打开 <a href="https://desktop.github.com/">desktop.github.com</a>，点 Download for Windows。需要 64 位 Windows 10 或更新版本。</li>
-      <li>到「下载」文件夹，双击 GitHub Desktop 的安装程序。安装完它会自己打开。</li>
-      <li>菜单在 GitHub Desktop 窗口的顶上。用到的是 File 和 Branch，名字和 Mac 相同。</li>
-    </ol>
-  </div>
-  <p>第一次打开如果要求登录 GitHub，选择跳过。课堂仓库不在 GitHub 上，不登录也能克隆。</p>
-</section>
-
-<section id="git-clone">
-  <h2>克隆到本地，先学会看本地仓库</h2>
-  <p>克隆就是把远程仓库完整抄到你的电脑，包括历史和分支。地址用 HTTPS，这个地址可以匿名读取，写讲义时确认过远程上有 <code>main</code>、<code>备课</code>、<code>第一部分</code> 三个分支。</p>
-  <pre data-os="both">https://gitee.com/dingsaier/warehouse-backend.git</pre>
-  <ol class="steps">
-    <li>菜单 File，点 Clone Repository。</li>
-    <li>点 URL 这个标签，不要停在 GitHub.com 那个列表上。把上面的地址粘进去。</li>
-    <li>Local Path 旁边点 Choose，选一个你找得到的文件夹，例如桌面或文稿。最后一级文件夹名可以用 <code>warehouse-backend</code>。</li>
-    <li>点 Clone。等它结束，窗口标题变成这个仓库。</li>
+<nav class="toc">
+<section>
+  <h2>这一份讲义的顺序</h2>
+  <ol>
+    <li><a href="#end">先看终点</a></li>
+    <li><a href="#git">用 GitHub Desktop 拿到代码</a></li>
+    <li><a href="#backend">把后端跑起来</a></li>
+    <li><a href="#frontend">把前端跑起来</a></li>
+    <li><a href="#case">一个案例：点「库区库位」发生了什么</a></li>
+    <li><a href="#pr">老师演示：分支、提交、Pull Request</a></li>
   </ol>
-  <div class="see"><b>你应该看到</b> 上方有 Current Branch。第一次往往停在 <code>main</code>。点 Current Branch，选「第一部分」。History 里能看到已经有的提交。这就是本地仓库，文件已经在你刚选的文件夹里。</div>
-  <p class="note">下面的图是在 Mac 上打开 GitHub Desktop 3.6.6 后截的，红圈是要点的位置。Windows 上这些按钮的英文一样。差别只在菜单：Mac 在屏幕最上方，Windows 在软件窗口的顶上。</p>
+</section>
+</nav>
+
+<section id="end">
+  <h2>1. 先看终点</h2>
+  <p>这节课结束时，你的电脑上会跑着这个仓库管理系统。浏览器打开 <code>http://localhost:5173</code>，用 <code>admin</code> / <code>Admin@123</code> 登录，点「仓库管理」，再点 WH-001 的「库区库位」：</p>
   <figure class="shot">
-    <img src="figures/01-file-clone.png" alt="File 菜单里的 Clone Repository">
-    <figcaption>第 1 步。菜单 File，点 Clone Repository。</figcaption>
+    <img src="figures/w1-01-page-tree.png" alt="仓库管理页展开库区库位">
+    <figcaption>一个仓库分几个库区，库区里一个个格子叫库位。A-01-01 这样的编码，后面入库时要用。</figcaption>
   </figure>
-  <figure class="shot">
-    <img src="figures/02-clone-dialog.png" alt="克隆窗口，先点 URL 再粘贴地址">
-    <figcaption>第 2 步。先点 URL。地址粘贴 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>。Local Path 选你自己的文件夹，图里的 Desktop 只是教师电脑上的例子。最后点 Clone。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/06-fetch-branch.png" alt="Current Branch 和 Fetch origin">
-    <figcaption>克隆完成后点 Current Branch，换成「第一部分」。窗口上的 Fetch origin 这次不用点。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/03-branch-list.png" alt="分支列表里的 New Branch 和第一部分">
-    <figcaption>克隆完成后，点 Current Branch，勾选「第一部分」。跑项目时停在这一条。随堂测验不要在这个仓库里建分支。</figcaption>
-  </figure>
-  <p>跑项目时 Current Branch 停在「第一部分」。新建分支、提交、推送和在网页上合并，是这堂课最后的随堂测验，用你自己的 Gitee 仓库做，不要在这个课堂仓库里做。</p>
+
+  <p>它由三样东西组成：浏览器里的<b>前端</b>页面（现成的），处理请求的<b>后端</b>（这门课写的部分），存数据的 <b>MySQL</b>。</p>
 </section>
 
-<section id="idea">
-  <h2>先讲 Docker</h2>
-  <p class="lead">这一节不安装，也不敲命令。讲完再往下。</p>
+<section id="git">
+  <h2>2. 用 GitHub Desktop 拿到代码</h2>
+  <p>代码放在 Gitee 上的仓库里。Git 记下代码的每一次修改（提交），同一份代码可以有几条修改线（分支）。这门课每一部分是一个分支，这一周用「第二部分」。</p>
+  <ol>
+    <li>到 <a href="https://desktop.github.com">desktop.github.com</a> 下载 GitHub Desktop 并安装，第一次打开时跳过登录。</li>
+    <li>File → Clone Repository → 点 URL，粘贴后端地址 <code>https://gitee.com/dingsaier/warehouse-backend.git</code>，选一个本地文件夹，点 Clone。</li>
+    <li>同样再克隆前端 <code>https://gitee.com/dingsaier/warehouse-frontend.git</code>。</li>
+    <li>两个仓库都点上方 Current Branch，选「第二部分」。</li>
+  </ol>
+  <figure class="shot">
+    <img src="figures/02-clone-dialog.png" alt="克隆窗口">
+    <figcaption>克隆窗口：先点 URL，再粘贴仓库地址。</figcaption>
+  </figure>
 
-  <h3>它要解决的问题</h3>
-  <p>同一份 Java 项目，换一台电脑就可能跑不起来。甲的电脑装了 MySQL 8，乙的还是 5.7，丙的 3306 端口被别的软件占着，丁根本没装数据库。代码没变，环境变了。所以常听到一句靠不住的话：在我电脑上是好的。</p>
-  <p>后面这门课还要把同一份东西放到 Linux 服务器上。如果每个人本机的装法都不一样，服务器上又是第三种装法，出了错就分不清是程序写错了，还是这台机器和那台机器不一样。</p>
-  <div class="compare">
-    <article class="messy">
-      <strong>每人自己装</strong>
-      <div class="pcs">
-        <div class="pc">甲<br>MySQL 8</div>
-        <div class="pc">乙<br>MySQL 5.7</div>
-        <div class="pc">丙<br>没装数据库</div>
-      </div>
-      <p class="note">项目相同，机器不同，结果对不上。</p>
-    </article>
-    <article class="same">
-      <strong>用同一份 Docker 描述</strong>
-      <div class="pcs">
-        <div class="pc">甲<br>mysql:8</div>
-        <div class="pc">乙<br>mysql:8</div>
-        <div class="pc">服务器<br>mysql:8</div>
-      </div>
-      <p class="note">Windows、Mac、以后的 Linux，启动的是同一份环境。</p>
-    </article>
-  </div>
+  <figure class="shot">
+    <img src="figures/03-branch-list.png" alt="分支列表">
+    <figcaption>点 Current Branch 打开分支列表，选「第二部分」。文件夹里的代码会跟着换成这个分支的。</figcaption>
+  </figure>
 
-  <h3>Docker 是什么</h3>
-  <p>Docker 把「程序」和「它要的环境」打在一起，然后在你的电脑里单独跑起来。你的 Windows 或 Mac 不用真的装一套 MySQL。你装的是 Docker。MySQL 跑在 Docker 里面，版本、端口、密码都写在一份文件里。</p>
-  <p>它不是一种编程语言，也不代替 Java。Java 还是我们写的。Docker 负责把 Java 要连的数据库，以及后面要加的 Redis、文件服务，用同一种办法启动。</p>
-
-  <h3>用在什么场景</h3>
-  <ul>
-    <li>一个项目依赖数据库、缓存、文件服务。这些东西不想在每台电脑上分别安装、分别卸载。</li>
-    <li>开发自己的电脑、同学的电脑、最后的服务器，希望用同一份启动方式，而不是三套安装说明。</li>
-    <li>要同时看「库有没有起来」和「程序有没有连上库」。它们各跑各的，互不影响你电脑上别的软件。</li>
-  </ul>
-
-  <h3>这门课为什么用它</h3>
-  <p>作业一就要能用 Compose 把 MySQL 拉起来，并且能登录。第 16 周要把同一份 Compose 放到 Linux 上。中间还要加 Redis 和 MinIO。如果这周不先把 Docker 讲清楚，后面每加一个软件都要再教一遍「怎么在 Windows 上装、怎么在 Mac 上装」。</p>
-  <p>所以这周的顺序是：先知道它解决什么问题，再安装 Docker，再只用它启动 MySQL 和一个看数据库的网页。我们自己的 Java 程序，第二次课再放进去。</p>
-
-  <h3>三个词，对应刚才说的事</h3>
-  <p class="lead">词是后起的名字。先记住它们各自指什么，安装的时候还会再见到。</p>
-  <div class="cards">
-    <div class="card"><strong>镜像</strong>打包好的软件，还没运行。今天会用到 <code>mysql:8</code> 和 <code>adminer:4</code>。可以把它想成安装包。</div>
-    <div class="card"><strong>容器</strong>镜像跑起来的那一个。可以启动，也可以停止。停掉之后，没放进数据卷的东西就没了。</div>
-    <div class="card"><strong>Compose</strong>一个文件里写好要一起启动哪些容器。文件名是 <code>docker-compose.dev.yml</code>。</div>
-  </div>
-  <h3>等一下会碰到的一件事</h3>
-  <p>浏览器地址栏里的 <code>localhost</code> 是你的电脑。MySQL 和看数据库的网页各自跑在一个容器里。网页如果要连数据库，却填写 <code>localhost</code>，它找的是自己那个容器，不是旁边的 MySQL。第一次课会亲手做一次这个错误。先看下面两行，知道差别在哪。</p>
-  <div class="stage" aria-hidden="true">
-    <div class="flow">
-      <div class="box browser">浏览器<br>localhost:8081</div>
-      <div class="link ok">这是你的电脑<i></i></div>
-      <div class="box adminer">Adminer 容器</div>
-      <div class="link bad">填 localhost，停在这里<i></i></div>
-      <div class="box" style="border:2px dashed var(--bad); color:var(--bad); background:var(--bad-soft)">连不上<br>旁边的 MySQL</div>
-    </div>
-    <div class="flow" style="margin-top:16px">
-      <div class="box browser">浏览器<br>localhost:8081</div>
-      <div class="link ok">这是你的电脑<i></i></div>
-      <div class="box adminer">Adminer 容器</div>
-      <div class="link ok">填 mysql<i></i></div>
-      <div class="box mysql">MySQL 容器</div>
-    </div>
-  </div>
 </section>
 
-<section id="install">
-  <h2>安装 Docker Desktop</h2>
-  <p class="lead">系统用页顶的 macOS / Windows 切换。装好之后，两边都要看到 Client 和 Server。</p>
-
-  <div data-os="mac">
-    <ol class="steps">
-      <li>点左上角苹果菜单，打开「关于本机」。看「芯片」。写着 Apple M 的，下载 Apple 芯片版。写着 Intel 的，下载 Intel 版。两个安装包不能混。</li>
-      <li>打开官方页面 <a href="https://docs.docker.com/desktop/setup/install/mac-install/">Install Docker Desktop on Mac</a>。Apple 芯片用 <a href="https://desktop.docker.com/mac/main/arm64/Docker.dmg">Docker.dmg（Apple 芯片）</a>。Intel 用 <a href="https://desktop.docker.com/mac/main/amd64/Docker.dmg">Docker.dmg（Intel）</a>。这两个地址在写讲义前确认过可以下载。</li>
-      <li>双击 <code>Docker.dmg</code>。把 Docker 图标拖进「应用程序」文件夹。</li>
-      <li>打开「应用程序」里的 Docker。第一次会问是否接受协议，点 Accept。等菜单栏的鲸鱼图标不再转圈。</li>
-      <li>按 Command + 空格，输入 <code>Terminal</code>，打开「终端」。</li>
-    </ol>
-    <p class="note">Docker Desktop 4.88 以前的安装窗口会问 Use recommended settings。出现的话选它，并输入开机密码。4.94 这一版打开后接受协议即可，不再要密码。</p>
-  </div>
-
-  <div data-os="win">
-    <ol class="steps">
-      <li>大多数教室电脑是 64 位 Intel 或 AMD。打开 <a href="https://docs.docker.com/desktop/setup/install/windows-install/">Install Docker Desktop on Windows</a>，下载 <a href="https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe">Docker Desktop Installer.exe</a>。这个地址在写讲义前确认过可以下载。只有电脑明确是 ARM 时，才用页面上的 Windows Arm。</li>
-      <li>双击安装包。安装方式选 <b>per-user</b>（安装程序里的默认项，不需要管理员）。</li>
-      <li>Configuration 那一页选 <b>Use WSL 2 instead of Hyper-V</b>。电脑只支持一种后端时，安装程序会自己选上。</li>
-      <li>如果提示还没有 WSL：用管理员身份打开 PowerShell，执行 <code>wsl --install</code>，按提示重启，再继续安装 Docker。</li>
-      <li>安装结束点 Close。Docker Desktop 不会自己打开。在开始菜单搜索 Docker，打开 Docker Desktop，接受协议，等左下角不再是 Starting。</li>
-      <li>开始菜单搜索 PowerShell，打开「Windows PowerShell」。后面的 Windows 命令都在这个窗口里敲。不要用普通「命令提示符」里的 <code>curl</code>，那个不是同一个程序。</li>
-    </ol>
-  </div>
-
-  <h3>安装对了没有</h3>
-  <pre data-os="mac">docker version</pre>
-  <pre data-os="win">docker version</pre>
-  <div class="see"><b>你应该看到</b> 两段字：<code>Client</code> 和 <code>Server</code>。这台 Mac 上 Server 那一段写着 <code>Docker Desktop 4.94.0</code>。你的版本号可以不同。只有 Client、没有 Server，就是 Docker Desktop 还没准备好，回到上一步等它启动完。</div>
-  <p><code>docker version</code> 的意思：问这台电脑，Docker 程序在不在，引擎有没有跑起来。Client 是你敲命令的这一端，Server 是真正跑容器的那一端。缺 Server 就先把 Docker Desktop 打开。</p>
-  <figure class="shot">
-    <img src="figures/11-terminal-ps.png" alt="终端里的 docker version 和 docker compose ps">
-    <figcaption>这台 Mac 的终端。上面红圈是 Server 已经在。下面红圈是 ps 打出来的两行：adminer 的端口是 8081，mysql 的状态是 healthy，端口是 3306。</figcaption>
-  </figure>
-</section>
-
-<section id="day1">
-  <h2>第一次课：只启动 MySQL 和 Adminer</h2>
-  <p class="lead">先不要管应用。仓库根目录里要能看到 <code>docker-compose.dev.yml</code> 和 <code>pom.xml</code>。下面的命令都在这个目录执行。</p>
-
-  <h3>1. 进入仓库目录</h3>
-  <pre data-os="both">cd 你的仓库路径</pre>
-  <div class="see"><b>你应该看到</b> 执行 <code>ls</code>（Mac）或 <code>dir</code>（Windows）时，列表里有 <code>docker-compose.dev.yml</code>。</div>
-
-  <h3>2. 打开文件，只读两段</h3>
-  <p>用编辑器打开 <code>docker-compose.dev.yml</code>。今天只看 <code>mysql</code> 和 <code>adminer</code>。下面的 <code>app</code> 第二次课再看。</p>
-  <table>
-    <tr><th>文件里的字</th><th>讲的时候说什么</th></tr>
-    <tr><td><code>image: mysql:8</code></td><td>用 MySQL 8 这个镜像</td></tr>
-    <tr><td><code>container_name: pro-skill-mysql</code></td><td>容器的名字</td></tr>
-    <tr><td><code>"3306:3306"</code></td><td>冒号左边是你电脑的端口，右边是容器里面的端口</td></tr>
-    <tr><td><code>"8081:8080"</code></td><td>Adminer 在容器里是 8080，浏览器要开 8081</td></tr>
-    <tr><td><code>MYSQL_ROOT_PASSWORD: root</code></td><td>数据库密码</td></tr>
-    <tr><td><code>MYSQL_DATABASE: pro_skill</code></td><td>自动建这个库</td></tr>
-    <tr><td><code>ADMINER_DEFAULT_SERVER: mysql</code></td><td>默认要连的主机名，是服务名 mysql</td></tr>
-    <tr><td><code>volumes</code></td><td>表存在数据卷里，容器停了数据还在</td></tr>
-  </table>
-  <figure class="shot">
-    <img src="figures/14-compose-mysql-adminer.png" alt="docker-compose.dev.yml 的 mysql 和 adminer">
-    <figcaption>文件里的这两段。第 15 行镜像 <code>mysql:8</code>，第 16 行容器名。第 19–20 行密码 <code>root</code>、自动建库 <code>pro_skill</code>。第 22 行端口 3306。第 24 行数据卷，表存在这里。第 25–30 行健康检查，ps 里的 healthy 就是它通过了。第 33 行镜像 <code>adminer:4</code>，第 37 行浏览器开 8081，第 39 行登录页默认的服务器是 <code>mysql</code>。第 40–42 行等 MySQL 健康以后才启动 Adminer。</figcaption>
-  </figure>
-
-  <h3>3. 启动这两个容器</h3>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml up -d mysql adminer</pre>
-  <ul>
-    <li><code>docker compose</code>：按一份清单，把好几个容器一起管起来。</li>
-    <li><code>-f docker-compose.dev.yml</code>：用仓库里的这一份清单，不自己猜文件名。</li>
-    <li><code>up</code>：没有的容器就创建，然后启动。</li>
-    <li><code>-d</code>：放到后台跑。命令结束后容器还在，终端可以继续敲下一条。</li>
-    <li><code>mysql adminer</code>：清单里还有应用，这里只启动这两个。第一次课先不要带上 app。</li>
-  </ul>
-  <p>第一次会下载镜像。屏幕停在 Downloading 或 Pulling 时不要关窗口。这台电脑上镜像本来就有，所以很快结束。你们第一次要等它下完。</p>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
-  <p><code>ps</code> 的意思：列出这一份清单里的容器现在怎么样。<code>healthy</code> 是健康检查通过了。<code>0.0.0.0:8081-&gt;8080</code> 的意思：你电脑的 8081 端口，转进容器里面的 8080。</p>
-  <div class="see"><b>你应该看到</b> 两行：<code>pro-skill-mysql</code> 的状态里有 healthy，<code>pro-skill-adminer</code> 的状态是 Up。如果 MySQL 还是 health: starting，等十几秒再执行一次 ps。列表里如果已经有 <code>pro-skill-app</code>，先执行 <code>docker compose -f docker-compose.dev.yml stop app</code>。第一次课不用它。<code>stop</code> 是停下，不删除数据。</div>
-  <figure class="shot">
-    <img src="figures/10-docker-desktop.png" alt="Docker Desktop 的 Containers 页面">
-    <figcaption>打开 Docker Desktop，点左边 Containers。mysql:8 那一行端口是 3306:3306。adminer:4 那一行端口是 8081:8080。底下 Engine running 表示引擎在跑。</figcaption>
-  </figure>
-
-  <h3>4. 打开网页，先填错</h3>
-  <p>浏览器打开 <a href="http://localhost:8081">http://localhost:8081</a>。页面是中文时，格子名是：系统、服务器、用户名、密码、数据库。服务器一栏可能已经写着 <code>mysql</code>，那是文件里的默认值。先把它改成 <code>localhost</code>。</p>
-  <div class="mock light">
-    <div class="form-row"><span>系统</span><b>MySQL</b></div>
-    <div class="form-row"><span>服务器</span><b>localhost</b></div>
-    <div class="form-row"><span>用户名</span><b>root</b></div>
-    <div class="form-row"><span>密码</span><b>root</b></div>
-    <div class="form-row"><span>数据库</span><b>pro_skill</b></div>
-  </div>
-  <p>点「登录」。</p>
-  <div class="badbox">No such file or directory</div>
-  <figure class="shot">
-    <img src="figures/12-adminer-fail.png" alt="Adminer 服务器填 localhost 后的红字">
-    <figcaption>这是浏览器里实际点登录之后的画面。服务器一栏是 localhost，上面的红字是 No such file or directory。地址栏仍是 localhost:8081，那个不用改。</figcaption>
-  </figure>
-  <p>这行红字是这台电脑上实际点出来的。MySQL 容器当时仍是 healthy。失败只出在服务器这一格：Adminer 在自己的容器里，<code>localhost</code> 指的是它自己。</p>
-
-  <h3>5. 改成服务名</h3>
-  <p>服务器改成 <code>mysql</code>，其他四格不变，再登录。</p>
-  <div class="see"><b>你应该看到</b> 标题是「数据库: pro_skill」。表有这五张：<code>flyway_schema_history</code>、<code>tb_user</code>（大约 4 行）、<code>warehouse</code>（大约 3 行）、<code>warehouse_location</code>（大约 3 行）、<code>warehouse_zone</code>（大约 2 行）。</div>
-  <figure class="shot">
-    <img src="figures/13-adminer-ok.png" alt="Adminer 里看到 pro_skill 的表">
-    <figcaption>服务器改成 mysql 之后。点表名 tb_user。如果先进去的是结构，再点上面的「选择数据」，第一行用户名是 admin。</figcaption>
-  </figure>
-  <p>点 <code>tb_user</code>。如果先进去的是表结构，再点上面的「选择数据」。</p>
-  <div class="see"><b>你应该看到</b> 第一行用户名 <code>admin</code>，显示名称是系统管理员，角色是 ADMIN。另外还有 <code>wh_manager</code>、<code>operator</code>、<code>business</code>。</div>
-  <p>再把服务器改回 <code>localhost</code>，又出现那行红字。改回 <code>mysql</code>，又能看见表。</p>
-  <p>浏览器地址栏的 <code>localhost:8081</code> 是对的，那是网页从容器映射到你的电脑。页面里要填的数据库主机，是容器之间的名字 <code>mysql</code>。这两个 localhost 不是同一个地方。</p>
-
-  <h3>6. 停止和再启动</h3>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml stop
-docker compose -f docker-compose.dev.yml start</pre>
-  <div class="see"><b>你应该看到</b> stop 之后 ps 里的容器是 Exited。start 之后再用服务器 <code>mysql</code> 登录，<code>tb_user</code> 里的 admin 还在。数据在数据卷里，不在被停掉的那个容器里面。</div>
-  <p>这次课不要执行 <code>docker compose down -v</code>。<code>-v</code> 会把数据卷删掉。</p>
-</section>
-
-<section id="day2">
-  <h2>第二次课：把应用放进同一个文件</h2>
-  <p>先确认 MySQL 和 Adminer 还在。不在就执行 start。</p>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
-
-  <h3>7. 读 app 这一段</h3>
-  <p><code>build: .</code> 表示用当前目录的 Dockerfile，把我们的程序打成镜像。<code>container_name</code> 是 <code>pro-skill-app</code>。端口是 <code>8080:8080</code>。环境变量 <code>APP_LESSON_DATASOURCE_HOST</code> 是程序去连数据库时用的主机名。没另外设置时，这个值是 <code>mysql</code>，和周一 Adminer 改对的服务器名一样。</p>
-  <figure class="shot">
-    <img src="figures/15-compose-app.png" alt="docker-compose.dev.yml 的 app">
-    <figcaption>第 45 行 <code>build: .</code>：用仓库根目录的 Dockerfile 做镜像。第 47 行容器名 <code>pro-skill-app</code>。第 50 行数据库主机，没另外设置时是 <code>mysql</code>。第 51 行是后面课程用的开关，这节保持 <code>off</code>。第 55 行端口 8080。第 57–58 行等 MySQL 健康再启动。第 59–64 行健康检查，ps 里应用变成 healthy 就是它通过了。</figcaption>
-  </figure>
-  <p>仓库里还有 <code>docker-compose.localhost.yml</code>，会把这个值改回 <code>localhost</code>。那是周一已经复现过的错，这节课不用它。第 15 周排错时再叠上去。</p>
-
-  <h3>Dockerfile：镜像是怎么做出来的</h3>
-  <p>Compose 的 app 段里没有 <code>./mvnw spring-boot:run</code>。容器每次启动，只执行 Dockerfile 最后一行：<code>java -jar app.jar</code>。编译发生在做镜像的时候，不发生在每次启动的时候。</p>
-  <p>打开项目根目录的 <code>Dockerfile</code>。它分成两段，中间用第二个 <code>FROM</code> 切开。</p>
-  <figure class="shot">
-    <img src="figures/16-dockerfile.png" alt="Dockerfile">
-    <figcaption>第 1–6 行是第一段：带编译器的 JDK，把源码拷进来，第 6 行在镜像里打出 jar。第 8–12 行是第二段：第 8 行换成更小的 JRE，第 10 行只从第一段拷 jar 过来，第 12 行是容器每次启动执行的命令。</figcaption>
-  </figure>
-  <ul>
-    <li>第一段（第 1–6 行）<code>AS build</code> 用带编译器的 JDK。它把源码拷进镜像，在镜像里面执行 <code>./mvnw package</code>，得到 jar。学生电脑上不用先装 Maven，也不用自己跑这条命令。</li>
-    <li>第二段（第 8–12 行）换成更小的 JRE，只把打好的 jar 拷过来，命名为 <code>app.jar</code>。编译器用过就丢掉，运行时的镜像里没有源码，也没有 Maven。</li>
-    <li>第 12 行 <code>ENTRYPOINT</code> 是容器每次启动时执行的命令。所以 Compose 里看不到 <code>mvnw</code>，也看不到 <code>java</code>。它们写在这里。</li>
-    <li><code>--build</code> 才会重做镜像。源码没改时，后面的 <code>up</code> 不用再带 <code>--build</code>。</li>
-  </ul>
-
-  <h3>8. 启动应用</h3>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml up -d --build app</pre>
-  <ul>
-    <li><code>--build</code>：按 Dockerfile 把我们的程序打成镜像。第一次大约要几分钟。</li>
-    <li>最后的 <code>app</code>：只动应用这一个，MySQL 和 Adminer 继续跑。</li>
-  </ul>
-  <p>第一次会构建镜像。这台 Mac 上这一步大约五分钟，屏幕长时间停在 Downloading 是正常的。等到命令自己结束，再看状态。等十几秒，直到 ps 里应用是 healthy。这台电脑上构建结束后大约十秒。</p>
-  <pre data-os="both">docker compose -f docker-compose.dev.yml ps</pre>
-  <p><code>curl</code> 是从这台电脑发一次网页请求。<code>-s</code> 是少打印进度，只看结果。Windows 要写成 <code>curl.exe</code>，因为 PowerShell 里单独的 curl 是另一个命令。</p>
-  <pre data-os="mac">curl -s http://localhost:8080/actuator/health</pre>
-  <pre data-os="win">curl.exe -s http://localhost:8080/actuator/health</pre>
-  <div class="see"><b>你应该看到</b> 一段 JSON，里面有 <code>"status":"UP"</code>。这台电脑上完整内容是 <code>{"groups":["liveness","readiness"],"status":"UP"}</code>。这里的 localhost:8080 是你的浏览器，走的是端口映射。应用在容器里面连数据库用的是服务名 <code>mysql</code>，和周一 Adminer 填对的那个名字一样。</div>
-  <pre data-os="mac">curl -s -X POST http://localhost:8080/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"Admin@123"}'</pre>
-  <pre data-os="win">curl.exe -s -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin@123\"}"</pre>
-  <div class="see"><b>你应该看到</b> JSON 里有 <code>token</code>，<code>username</code> 是 <code>admin</code>，<code>role</code> 是 <code>ADMIN</code>。页面怎么点，留到第 11 周周一。地址是 <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a>。</div>
-  <p>日志里如果看到空的 <code>[]</code>，这节不用管。那是请求编号还没打开。第 15 周周三（第六部分）排错时再讲它是什么、解决什么、代码写在哪。</p>
+<section id="backend">
+  <h2>3. 把后端跑起来</h2>
+  <p>需要 JDK 21 和 MySQL 8。老师电脑上的 MySQL 跑在 Docker 里，你用自己装过的 MySQL 就行，端口 3306。</p>
+  <ol>
+    <li><b>账号密码。</b>后端默认用 <code>root</code> / <code>root</code> 连本机 MySQL。不一样的话，在 <code>src/main/resources</code> 里把 <code>application-local.properties.example</code> 复制一份，改名 <code>application-local.properties</code>，改成自己的账号密码。这个文件不会提交到仓库。</li>
+    <li><b>启动。</b>用 IDEA 打开后端文件夹，运行 <code>ProSkillApplication</code>。不用 IDEA 时，在后端文件夹里执行 <code>./mvnw spring-boot:run</code>（Windows 是 <code>mvnw.cmd spring-boot:run</code>）。</li>
+    <li><b>看结果。</b>控制台出现 <code>Started ProSkillApplication</code> 就起来了。启动时会自动建库 <code>pro_skill</code>、建表、写入初始数据，用你平时的 MySQL 工具打开 <code>pro_skill</code> 能看到这些表。</li>
+  </ol>
+  <div class="see"><b>你应该看到</b> 浏览器打开 <code>http://localhost:8080/actuator/health</code>，内容里有 <code>"status":"UP"</code>。</div>
 </section>
 
 <section id="frontend">
-  <h2>第二次课最后：用前端页面登录</h2>
-  <p class="lead">后端跑起来以后，接上现成的前端。前端仓库是 <code>https://gitee.com/dingsaier/warehouse-frontend.git</code>，用 GitHub Desktop 克隆。前端的分支名和后端一样：后端在「第一部分」，前端也切到「第一部分」。这门课不要求自己写前端代码，课上用它点页面、看接口返回。</p>
-  <p>前端要装 Node.js 20 或更新的版本。在前端文件夹里打开终端，执行：</p>
-  <pre data-os="both">npx pnpm@9 install
+  <h2>4. 把前端跑起来</h2>
+  <p>需要 Node.js 20 或更新的版本。在前端文件夹里打开终端：</p>
+  <pre>npx pnpm@9 install
 npx pnpm@9 dev</pre>
-  <p>第一条装依赖，第一次和换分支后执行。第二条启动，终端里出现 <code>http://localhost:5173</code> 以后，用浏览器打开它，账号 <code>admin</code>，密码 <code>Admin@123</code>。</p>
-  <figure class="shot">
-    <img src="figures/17-vite-proxy.png" alt="vite.config.ts 里的代理">
-    <figcaption>前端 <code>vite.config.ts</code>。页面上的请求都发到 <code>/api</code> 开头的地址。第 63 行：凡是 <code>/api</code> 开头的，交给第 65 行写的后端，默认是本机 8080，也就是上面 Compose 映射出来的端口。第 67 行把 <code>/api</code> 去掉，所以页面发 <code>/api/auth/login</code>，后端收到的是 <code>/auth/login</code>，和上面 curl 的地址一样。</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="figures/18-page-warehouse-tree.png" alt="仓库管理页展开库区库位">
-    <figcaption>登录后点左边「仓库管理」，再点 WH-001 那一行的「库区库位」。下面列出两个库区、三个库位。第二部分入库时填的 <code>A-01-01</code>、<code>A-01-02</code>、<code>B-01-01</code> 就是这里的库位编码。</figcaption>
-  </figure>
-  <p>点「库区库位」这一下的数据流：页面调 <code>warehousesApi.getTree(1)</code>，浏览器发 <code>GET /api/warehouses/1/tree</code>，Vite 去掉 <code>/api</code> 交给后端 <code>GET /warehouses/{id}/tree</code>，后端查 <code>warehouse</code>、<code>warehouse_zone</code>、<code>warehouse_location</code> 三张表，拼成一棵树返回。</p>
-  <p>后端不在 8080 时，启动前端前设置后端地址，例如后端在 8090：</p>
-  <pre data-os="mac">VITE_PROXY_TARGET=http://localhost:8090 npx pnpm@9 dev</pre>
-  <pre data-os="win">$env:VITE_PROXY_TARGET="http://localhost:8090"; npx pnpm@9 dev</pre>
-  <div class="see"><b>你应该看到</b> 左边菜单有仪表盘、用户管理、仓库管理三项。仓库管理里有一行 WH-001 华东原料仓，展开后是 Z-STORAGE-01 和 Z-PICK-01 两个库区。货品、入库、出库三页从第二部分、第三部分的前端分支开始有。</div>
+  <p>第一条装依赖，只在第一次和换分支后执行；第二条启动。终端里出现 <code>http://localhost:5173</code> 后，浏览器打开它登录，就是第 1 节的页面。页面发出的请求都以 <code>/api</code> 开头，前端把 <code>/api</code> 去掉后转给 8080 上的后端。</p>
 </section>
 
-<section id="git-ops">
-  <h2>随堂测验：新建分支，网页上合并</h2>
-  <p class="lead">教师先按下面做完一遍，学生看，先不要跟着点。看完后，每人用自己的 Gitee 账号再做一遍。课堂仓库 <code>warehouse-backend</code> 只能克隆，不能推送，这次不要用它。</p>
-  <p>做完的样子：你自己的仓库里有一条新分支，上面有一个写着你名字的文件。网页上有一条已经合并的 Pull Request。目标分支里能打开这个文件。</p>
-
-  <h3>1. 在网页上新建一个属于你的仓库</h3>
-  <p>浏览器打开 <a href="https://gitee.com">gitee.com</a>，登录。右上角「+」，点「新建仓库」。</p>
-  <ul>
-    <li>仓库名称写 <code>lesson-practice</code>。路径会跟着变成这个名字。</li>
-    <li>公开或私有都可以。私有只有你自己能看见。</li>
-    <li>勾选「使用 Readme 文件初始化这个仓库」。这样创建完就有一条已有的分支，后面才有合并目标。</li>
-    <li>点「创建」。</li>
-  </ul>
-  <p>这一步的意思：网上先有一份仓库。Push 和 Pull Request 都是对着这份仓库做的。勾选 Readme，是为了先有一条主分支。仓库页左上角写着 <code>master</code> 就是 <code>master</code>，写着 <code>main</code> 就是 <code>main</code>。记下这个名字。</p>
-  <p>点「克隆/下载」，复制 HTTPS 地址。样子是 <code>https://gitee.com/你的个性地址/lesson-practice.git</code>。个性地址在网址里，不是页面上的昵称。</p>
-
-  <h3>2. 生成私人令牌</h3>
-  <p>推送时 Gitee 不收网页登录密码。头像，设置，安全设置，私人令牌，生成新令牌。描述写「课堂测验」，勾选 <code>projects</code>。生成后立刻复制，这个页面关掉就再也看不到。</p>
-  <p>这一步的意思：令牌是给 GitHub Desktop 用的推送凭证。用户名填个性地址，密码框粘贴令牌。</p>
-
-  <h3>3. 克隆你自己的仓库</h3>
-  <p>GitHub Desktop 里，菜单 File，Clone Repository，点 URL。粘贴刚才的 HTTPS 地址。Local Path 选一个新文件夹，不要选已经克隆的 <code>warehouse-backend</code>。点 Clone。</p>
-  <p>这一步的意思：把网上那份抄到电脑。课堂仓库继续用来跑项目。这个新仓库只用来交测验。</p>
-  <div class="see"><b>你应该看到</b> Current Branch 是 <code>master</code> 或 <code>main</code>，和网页左上角一致。History 里有一条初始化 Readme 的提交。</div>
-
-  <h3>4. 从当前分支拉出一条新分支</h3>
-  <p>点 Current Branch，点 New Branch。名字写 <code>practice-你的学号</code>。基于当前这条主分支创建。</p>
-  <p>这一步的意思：新分支是一条独立的修改线。文件先改在这条线上，主分支先不动。合并发生在后面的网页上，不要点 Branch 菜单里的 Merge。</p>
+<section id="case">
+  <h2>5. 一个案例：点「库区库位」发生了什么</h2>
+  <p>系统里每个操作都走同一条路：页面 → 前端发请求 → Controller → Service → Mapper 执行 SQL → 数据库表。看懂这一个，别的照着看。</p>
   <figure class="shot">
-    <img src="figures/03-branch-list.png" alt="分支列表里的 New Branch">
-    <figcaption>点 Current Branch，再点 New Branch。图里的「第一部分」是课堂仓库的分支，测验仓库里没有它。测验只新建 practice-学号。</figcaption>
+    <img src="figures/w1-02-front.png" alt="前端：点按钮发请求">
+    <figcaption>前端。点「库区库位」执行 <code>showTree</code>，调 <code>warehousesApi.getTree(1)</code>，浏览器发出 <code>GET /api/warehouses/1/tree</code>。</figcaption>
   </figure>
 
-  <h3>5. 改一个文件，提交到本地</h3>
-  <p>在这个新仓库的文件夹里新建 <code>我的练习.txt</code>，里面写你的名字。回到 GitHub Desktop，左侧 Changes 里出现这个文件。勾上它。Summary 写「记下我的名字」。点 Commit。</p>
-  <p>这一步的意思：Commit 只写进你电脑上的这条分支。网页上还没有这个文件。</p>
   <figure class="shot">
-    <img src="figures/07-commit.png" alt="Summary 和 Commit 按钮">
-    <figcaption>Summary 写「记下我的名字」，再点 Commit。点完先不要关窗口。</figcaption>
+    <img src="figures/w1-03-controller.png" alt="WarehouseController">
+    <figcaption>Controller。路径里的 1 进到参数 <code>id</code>，交给 Service。</figcaption>
   </figure>
-  <div class="see"><b>你应该看到</b> Changes 变空。History 最上面一条是「记下我的名字」。上方还没有出现这个文件的网页链接。</div>
 
-  <h3>6. 把这条分支推上去</h3>
-  <p>上方按钮写着 Publish branch 或 Push origin 时，点它。第一次会问账号。用户名填 Gitee 个性地址，密码框粘贴私人令牌，不是网页登录密码。</p>
-  <p>这一步的意思：Push 把本地有、网上还没有的提交送到你的仓库。Publish branch 是这条分支第一次上线，网上会因此多出 <code>practice-你的学号</code>。不要点 Force push。</p>
-  <div class="see"><b>你应该看到</b> 按钮不再要求推送。用浏览器打开你的仓库，分支列表里有 <code>practice-你的学号</code>。点进去能看到 <code>我的练习.txt</code>。主分支上还没有这个文件。</div>
+  <figure class="shot">
+    <img src="figures/w1-04-service.png" alt="WarehouseService">
+    <figcaption>Service。先查仓库，再查它下面的库区，再查每个库区的库位，拼成一棵树返回。</figcaption>
+  </figure>
 
-  <h3>7. 在网页上创建 Pull Request</h3>
-  <p>仓库页点「Pull Requests」，再点「新建 Pull Request」。源分支选 <code>practice-你的学号</code>，目标分支选第 1 步记下的 <code>master</code> 或 <code>main</code>。标题写「记下我的名字」。点「创建」。</p>
-  <p>这一步的意思：Pull Request 是一张合并申请，请仓库把源分支上的提交并进目标分支。创建它不会自动改主分支。你是这个仓库的管理员，所以申请人和合并的人可以是你自己。</p>
-  <div class="see"><b>你应该看到</b> 一个打开状态的 Pull Request。里面能看到 <code>我的练习.txt</code> 是新增文件。主分支此时仍然没有这个文件。</div>
+  <figure class="shot">
+    <img src="figures/w1-05-mappers.png" alt="三个 Mapper">
+    <figcaption>Mapper。三条 SQL 分别查 <code>warehouse</code>、<code>warehouse_zone</code>、<code>warehouse_location</code> 三张表。</figcaption>
+  </figure>
 
-  <h3>8. 在网页上合并</h3>
-  <p>就在这个 Pull Request 页面，点「合并」，再按页面上的确认。不要回到 GitHub Desktop 里找 Merge。</p>
-  <p>这一步的意思：合并是网页把那条分支上的提交接进主分支。点完之后，主分支和练习分支都有这个文件。</p>
-  <div class="see"><b>你应该看到</b> Pull Request 变成已合并。打开主分支，能看到 <code>我的练习.txt</code>，里面是你的名字。把这个页面留着，给教师看。</div>
+  <figure class="shot">
+    <img src="figures/w1-06-db.png" alt="数据库里的三张表">
+    <figcaption>数据库里就是这几行。页面上的 Z-STORAGE-01、A-01-01 都来自这里。</figcaption>
+  </figure>
 
-  <h3>9. 把合并结果拿回本地</h3>
-  <p>回到 GitHub Desktop。Current Branch 选主分支（<code>master</code> 或 <code>main</code>）。上方如果变成 Pull origin，点它。</p>
-  <p>这一步的意思：网页上的合并发生在网上。Pull 是把网上主分支的新提交拿进你电脑。不点的话，本地主分支里仍然没有 <code>我的练习.txt</code>。</p>
-  <div class="see"><b>你应该看到</b> 本地主分支的文件夹里出现 <code>我的练习.txt</code>。History 里能看到刚才那次网页合并。</div>
+  <p>其余页面（用户、仓库列表）也是这个结构：前端在 <code>src/pages</code> 下，后端在 <code>controller</code>、<code>application</code>、<code>mapper</code> 三个文件夹里，课后自己对照着看。</p>
 </section>
 
-<section>
-  <h2>这堂课做完，手里有什么</h2>
-  <ul>
-    <li>GitHub Desktop 里能打开克隆下来的仓库，Current Branch 可以换成「第一部分」</li>
-    <li>在自己的 Gitee 仓库里新建分支、提交、推送，并在网页上创建 Pull Request、点合并。主分支上能打开写着自己名字的文件</li>
-    <li><code>docker version</code> 有 Client 和 Server</li>
-    <li>Adminer 用服务器名 <code>mysql</code> 能看见 <code>tb_user</code> 里的 admin</li>
-    <li>应用健康检查是 <code>"status":"UP"</code>，账号 <code>admin</code> / <code>Admin@123</code> 能登录</li>
-    <li>前端 <code>http://localhost:5173</code> 能登录，仓库管理里能展开 WH-001 的库区和库位</li>
-    <li>能指出 Dockerfile 第一段在镜像里编译，第二段只用 <code>java -jar app.jar</code> 启动</li>
-    <li>知道容器里面的 <code>localhost</code> 不是旁边那个容器</li>
-  </ul>
-  <p class="note">「你应该看到」里的红字、表、健康检查和登录结果，是 2026-10-09 在 macOS、Docker Desktop 4.94 上按这个顺序跑出来的。Windows 的安装点击来自 Docker 官方安装页。装好之后，除了讲义里单独写出的 PowerShell 命令，其余命令相同。</p>
+<section id="pr">
+  <h2>6. 老师演示：分支、提交、Pull Request</h2>
+  <p>改代码时，先拉一条自己的分支，改完提交，推到 Gitee，再在网页上提一个 Pull Request，请求合并进主分支。老师在 GitHub Desktop 和 Gitee 网页上演示一遍：</p>
+  <ol>
+    <li>Current Branch → New Branch，建一条新分支。</li>
+    <li>改一个文件，Summary 写一句说明，点 Commit。</li>
+    <li>点 Publish branch，推到 Gitee。</li>
+    <li>Gitee 网页上新建 Pull Request，源分支选新分支，目标分支选主分支，点合并。</li>
+  </ol>
+  <p>课堂仓库只能克隆，不能推送；作业用自己的 Gitee 仓库做这几步。</p>
 </section>
 </main>
-<script>
-function setOs(os) {
-  document.body.classList.remove("mac", "win");
-  document.body.classList.add(os);
-  document.getElementById("btn-mac").classList.toggle("on", os === "mac");
-  document.getElementById("btn-win").classList.toggle("on", os === "win");
-}
-</script>
 </body>
 </html>
