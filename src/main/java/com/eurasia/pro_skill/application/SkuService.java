@@ -12,25 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// 货品业务。创建时把请求里的三个字段补上时间，再交给 Mapper。
+// 货品业务。创建时先查编码有没有用过，再把请求里的三个字段补上时间，交给 Mapper。
 @Service // 注册成 Spring Bean，Controller 才能注入
-@RequiredArgsConstructor // 为下面三个 final 字段生成构造方法
+@RequiredArgsConstructor // 为下面两个 final 字段生成构造方法
 @Transactional // 这个类里的方法默认开事务，插入失败会回滚
 public class SkuService {
 
     private final SkuMapper skuMapper; // 执行 SQL
     private final SkuConverter skuConverter; // 表的一行转回 Sku
-    private final LessonSwitches lessonSwitches; // sku-code-check 决定插入前查不查编码
 
     public Sku create(String code, String name, String unit) { // 三个参数来自 Controller，此时还没有 id
-        if (lessonSwitches.skuCodeCheck()) { // off 时跳过这一段，直接插入
-            SkuEntity existing = skuMapper.getByCode(code); // 按编码查表里有没有这一行，没有是 null
-            if (existing != null) { // 查到了，说明这个编码已经占用
-                // 停在这里，不再 insert。页面收到 400，message 里有 SKU_CODE_DUPLICATED
-                throw new BusinessException(
-                        "SKU_CODE_DUPLICATED",
-                        "SKU_CODE_DUPLICATED：货品编码已存在：" + code);
-            }
+        SkuEntity existing = skuMapper.getByCode(code); // 按编码查表里有没有这一行，没有是 null
+        if (existing != null) { // 查到了，说明这个编码已经占用
+            // 停在这里，不再 insert。页面收到 400，message 里有 SKU_CODE_DUPLICATED
+            throw new BusinessException(
+                    "SKU_CODE_DUPLICATED",
+                    "SKU_CODE_DUPLICATED：货品编码已存在：" + code);
         }
         SkuEntity entity = new SkuEntity(); // 准备要写入表的那一行
         entity.setCode(code); // 编码放进这一行

@@ -13,5 +13,4 @@ public class SkuEntity {
     private String name; // 对应列 name
     private String unit; // 对应列 unit
     private LocalDateTime createdAt; // 对应列 created_at，Java 用驼峰，表用下划线
-    private Integer onHand; // 对应列 on_hand，这张货品上的数量合计
 }

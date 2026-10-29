@@ -2,15 +2,14 @@ spring:
   application:
     name: pro-skill
 
-  # 导入本地开发数据库配置（文件存在则加载，不存在则跳过）
-  # 开发者需在 src/main/resources/ 中创建 application-local.properties 并填写本机 DB 信息，该文件已被 .gitignore 忽略
+  # 本机 MySQL 的账号密码不是 root / root 时，在同一个文件夹建 application-local.properties 覆盖，
+  # 写法见 application-local.properties.example。没有这个文件就跳过。
   config:
     import: optional:classpath:application-local.properties
 
-  # 数据源。本机运行时由 application-local.properties 覆盖 URL。
-  # 容器里不要用 localhost：那是容器自己。Compose 用环境变量 APP_LESSON_DATASOURCE_HOST=mysql。
+  # 数据源：连本机 3306 上的 pro_skill 库。库不存在时自动建（createDatabaseIfNotExist），表由下面的 Flyway 建。
   datasource:
-    url: jdbc:mysql://${app.lesson.datasource-host}:3306/${db.name}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${app.lesson.datasource-host}:3306/${db.name}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${db.username}
     password: ${db.password}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -52,8 +51,6 @@ logging:
 
 # ===== 课堂开关 =====
 # trace-id：off 不写入请求号；on 写入 MDC 和响应头 X-Trace-Id。
-# sku-code-check：off 创建货品直接插入，相同编码也进得去；on 先按编码查，已有就返回 SKU_CODE_DUPLICATED。
-# inbound-stock：sku 入库数量加在 sku.on_hand，不分库位；location 按货品 + 库位记进 inventory。
 # datasource-host：本机进程用 localhost；容器里必须是 Compose 服务名 mysql。
 db:
   name: pro_skill
@@ -63,8 +60,6 @@ db:
 app:
   lesson:
     trace-id: off
-    sku-code-check: off
-    inbound-stock: sku
     datasource-host: localhost
   jwt:
     # 256-bit Base64 编码的 HMAC-SHA256 签名密钥（生产环境请通过环境变量覆盖）

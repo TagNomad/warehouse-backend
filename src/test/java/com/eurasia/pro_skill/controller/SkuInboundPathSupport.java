@@ -10,7 +10,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-// 第二部分两份测试共用：登录、建库位、调接口、查表。
+// 货品和入库测试用：登录、建库位、调接口、查表。
 abstract class SkuInboundPathSupport {
 
     @Autowired
@@ -53,10 +53,6 @@ abstract class SkuInboundPathSupport {
 
     protected int skuRows(String code) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sku WHERE code=?", Integer.class, code);
-    }
-
-    protected int onHand(String code) {
-        return jdbcTemplate.queryForObject("SELECT on_hand FROM sku WHERE code=?", Integer.class, code);
     }
 
     protected Integer inventory(String skuCode, String locationCode) {

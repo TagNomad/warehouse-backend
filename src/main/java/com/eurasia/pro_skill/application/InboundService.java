@@ -28,10 +28,9 @@ public class InboundService {
 
     private final InboundOrderMapper orderMapper; // 写 inbound_order
     private final InboundOrderLineMapper lineMapper; // 写 inbound_order_line
-    private final SkuMapper skuMapper; // 按编码或主键找货品，inbound-stock=sku 时改 on_hand
+    private final SkuMapper skuMapper; // 按编码或主键找货品
     private final WarehouseLocationMapper locationMapper; // 按编码或主键找库位
-    private final InventoryMapper inventoryMapper; // inbound-stock=location 时按货品 + 库位记账
-    private final LessonSwitches lessonSwitches; // inbound-stock 决定数量记在哪
+    private final InventoryMapper inventoryMapper; // 完成入库时按货品 + 库位记数量
 
     public InboundOrder create() { // 没有页面字段。单号和状态都在这里生成
         InboundOrderEntity entity = new InboundOrderEntity(); // 准备要插入的那一行，此时还没有 id
@@ -70,12 +69,7 @@ public class InboundService {
             throw new BusinessException("INBOUND_LINE_REQUIRED", "入库单还没有行");
         }
         for (InboundOrderLineEntity line : lines) { // 一行一行加，每行都带着货品主键、库位主键、数量
-            if (lessonSwitches.stockByLocation()) { // inbound-stock=location
-                addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity()); // 记到这个格子自己的那一行
-            } else { // inbound-stock=sku
-                // 只把货品主键和数量传下去，行上的 locationId 没用上，两个格子加到同一个 on_hand
-                skuMapper.addOnHand(line.getSkuId(), line.getQuantity());
-            }
+            addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity()); // 记到这个格子自己的那一行
         }
         order.setStatus(InboundOrder.COMPLETED); // 数量加完，把草稿改成完成
         orderMapper.updateStatus(order); // SQL 只改 status 这一列，和上面加数量在同一个事务里
