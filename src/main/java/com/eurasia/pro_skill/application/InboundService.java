@@ -42,7 +42,6 @@ public class InboundService {
     private final WarehouseLocationMapper locationMapper; // 按编码或主键找库位
     private final InventoryMapper inventoryMapper; // 按货品 + 库位记账
     private final StockFlowMapper stockFlowMapper; // 和入库同一次提交时用它写流水
-    private final StockFlowWriter stockFlowWriter; // 开关关掉时，流水用另一个事务先提交
     private final LessonSwitches switches;
     private final LessonRedis redis; // 入库完成后往 Stream 追加一条消息
     private final InventoryCache inventoryCache; // 加了数量以后删缓存
@@ -85,7 +84,7 @@ public class InboundService {
         }
         for (InboundOrderLineEntity line : lines) { // 每一行单独记到自己的货品和库位
             addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity());
-            writeFlow(order.getOrderNo(), line); // 流水。开关决定它跟不跟下面的状态在同一个事务
+            writeFlow(order.getOrderNo(), line); // 流水，和下面改状态在同一个事务里
             publishCompleted(order.getOrderNo(), line); // 消息。开关决定是马上发还是提交之后发
         }
         if (switches.inboundFailBeforeStatus()) { // 演示用：主事务在改状态前失败
@@ -114,18 +113,13 @@ public class InboundService {
     }
 
     private void writeFlow(String orderNo, InboundOrderLineEntity line) {
-        if (switches.flowAfterCommit()) { // on：流水和改状态在 InboundService 这一个事务里
-            StockFlowEntity row = new StockFlowEntity(); // 准备 stock_flow 的一行
-            row.setBizNo(orderNo); // 写进 biz_no：入库单号，例如 IN-3
-            row.setSkuId(line.getSkuId()); // 写进 sku_id：来自入库行
-            row.setLocationId(line.getLocationId()); // 写进 location_id：来自入库行
-            row.setQuantity(line.getQuantity()); // 写进 quantity：这一行入库的数量
-            row.setCreatedAt(java.time.LocalDateTime.now()); // 写进 created_at
-            stockFlowMapper.insert(row); // 还没提交。主事务回滚时，这一行一起没了
-            return;
-        }
-        // off：交给另一个 Bean，用 REQUIRES_NEW 另开事务。这一行马上提交，主事务回滚也撤不掉
-        stockFlowWriter.write(orderNo, line.getSkuId(), line.getLocationId(), line.getQuantity());
+        StockFlowEntity row = new StockFlowEntity(); // 准备 stock_flow 的一行
+        row.setBizNo(orderNo); // 写进 biz_no：入库单号，例如 IN-3
+        row.setSkuId(line.getSkuId()); // 写进 sku_id：来自入库行
+        row.setLocationId(line.getLocationId()); // 写进 location_id：来自入库行
+        row.setQuantity(line.getQuantity()); // 写进 quantity：这一行入库的数量
+        row.setCreatedAt(java.time.LocalDateTime.now()); // 写进 created_at
+        stockFlowMapper.insert(row); // 还没提交。主事务回滚时，这一行一起没了
     }
 
     private void publishCompleted(String orderNo, InboundOrderLineEntity line) {

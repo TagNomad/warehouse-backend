@@ -31,8 +31,9 @@ public class RedisLessonRedis implements LessonRedis {
     private final RedisClient client;
     private final StatefulRedisConnection<String, String> connection;
 
-    public RedisLessonRedis(@Value("${app.lesson.redis-host:redis}") String host) {
-        this.client = RedisClient.create("redis://" + host + ":6379"); // 6379 是 Redis 默认端口
+    public RedisLessonRedis(@Value("${app.lesson.redis-host:redis}") String host,
+                            @Value("${app.lesson.redis-port:6379}") int port) { // 6379 是 Redis 默认端口
+        this.client = RedisClient.create("redis://" + host + ":" + port);
         this.connection = client.connect(); // 一条连接，多个线程共用
     }
 

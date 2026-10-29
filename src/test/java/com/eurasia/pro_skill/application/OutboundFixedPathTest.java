@@ -21,9 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "app.lesson.outbound-check=on",
         "app.lesson.optimistic-lock=on",
-        "app.lesson.flow-after-commit=on",
         "app.lesson.inbound-fail-before-status=true",
         "app.lesson.outbound-read-pause-ms=500",
         "app.lesson.stock-lock=after-check"
