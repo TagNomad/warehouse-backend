@@ -73,12 +73,22 @@ public class InboundService {
         if (lines.isEmpty()) { // 没有行就没有数量可记
             throw new BusinessException("INBOUND_LINE_REQUIRED", "入库单还没有行");
         }
+        if (switches.inboundCompleteOnce()) { // 默认 on；off 保留原来的缺陷路径供对照。
+            // 必须在任何库存/流水写入之前竞争同一张单的状态，不能依赖前面的普通 SELECT。
+            int claimed = orderMapper.completeIfDraft(order.getId());
+            if (claimed == 0) { // 另一事务已完成该单；本次不再写库存和流水。
+                throw new BusinessException("INBOUND_NOT_DRAFT", "INBOUND_NOT_DRAFT：入库单已被完成：" + order.getOrderNo());
+            }
+            // 此次改状态与下面加库存、写流水共用事务；后续任一步失败，状态也回滚成 DRAFT。
+        }
         for (InboundOrderLineEntity line : lines) { // 每一行单独记到自己的货品和库位
             addInventory(line.getSkuId(), line.getLocationId(), line.getQuantity());
             writeFlow(order.getOrderNo(), line); // 流水，和下面改状态在同一个事务里
         }
         order.setStatus(InboundOrder.COMPLETED); // 数量记下之后，同一事务里把草稿改成完成
-        orderMapper.updateStatus(order); // SQL 只改 status 这一列
+        if (!switches.inboundCompleteOnce()) {
+            orderMapper.updateStatus(order); // off 仍在最后无条件改状态，保留旧路径用于复现。
+        }
         return toDomain(orderMapper.getById(order.getId())); // 再查一次，返回的 status 是 COMPLETED
     }
 
@@ -124,7 +134,7 @@ public class InboundService {
             throw new BusinessException("INBOUND_NOT_FOUND", "入库单不存在：" + orderId);
         }
         if (!InboundOrder.DRAFT.equals(order.getStatus())) { // 已完成的单不能再加行，也不能再完成
-            throw new BusinessException("INBOUND_NOT_DRAFT", "只有草稿可以继续：" + order.getOrderNo());
+            throw new BusinessException("INBOUND_NOT_DRAFT", "INBOUND_NOT_DRAFT：只有草稿可以继续：" + order.getOrderNo());
         }
         return order;
     }

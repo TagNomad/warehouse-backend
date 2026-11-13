@@ -26,6 +26,11 @@ public interface InboundOrderMapper {
     @Update("UPDATE inbound_order SET status = #{status} WHERE id = #{id}")
     int updateStatus(InboundOrderEntity entity); // 改到这一行就返回 1
 
+    // 数据库原子比较并更新：同一张单只有仍为 DRAFT 的那一次能改到 1 行。
+    // InnoDB 对同一行的 UPDATE 串行执行，等待者会在前者提交后重新检查 status，返回 0。
+    @Update("UPDATE inbound_order SET status = 'COMPLETED' WHERE id = #{id} AND status = 'DRAFT'")
+    int completeIfDraft(Long id);
+
     // #{id} 是调用时传入的主键，不是写死的 1。查不到返回 null。
     @Select("SELECT * FROM inbound_order WHERE id = #{id}")
     InboundOrderEntity getById(Long id);
