@@ -34,6 +34,7 @@ public class InboundService {
     private final WarehouseLocationMapper locationMapper; // 按编码或主键找库位
     private final InventoryMapper inventoryMapper; // 按货品 + 库位记账
     private final StockFlowMapper stockFlowMapper; // 写流水，和入库同一次提交
+    private final LessonSwitches switches; // 作业一的对照开关及实验读后暂停参数
 
     public InboundOrder create() { // 没有页面字段。单号和状态都在这里生成
         InboundOrderEntity entity = new InboundOrderEntity(); // 准备要插入的那一行，此时还没有 id
@@ -67,6 +68,7 @@ public class InboundService {
 
     public InboundOrder complete(Long orderId) { // 路径上只有主键，没有新的数量
         InboundOrderEntity order = requireDraft(orderId); // 不是草稿就不能再完成一次
+        pauseAfterDraftRead(); // 只扩大复现窗口；正式运行默认 0，修复不能依靠等待
         List<InboundOrderLineEntity> lines = lineMapper.listByOrderId(order.getId()); // 这张单上已经加过的行
         if (lines.isEmpty()) { // 没有行就没有数量可记
             throw new BusinessException("INBOUND_LINE_REQUIRED", "入库单还没有行");
@@ -92,6 +94,18 @@ public class InboundService {
             return;
         }
         inventoryMapper.addQuantity(skuId, locationId, quantity); // 已有这一行：quantity 加上，version 加一
+    }
+
+    private void pauseAfterDraftRead() {
+        if (switches.inboundReadPauseMs() <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(switches.inboundReadPauseMs());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("入库实验等待被中断", e); // 让当前事务回滚，不带着中断继续写库存
+        }
     }
 
     private void writeFlow(String orderNo, InboundOrderLineEntity line) {

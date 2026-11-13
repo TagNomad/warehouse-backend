@@ -62,6 +62,10 @@ app:
   lesson:
     trace-id: off
     optimistic-lock: on
+    # 作业一：默认 on 防止同一张入库单重复完成；off 仅用于对照复现。
+    inbound-complete-once: on
+    # 实验时可设 1000 扩大两次请求读到 DRAFT 的窗口；默认不等待。
+    inbound-read-pause-ms: 0
     outbound-read-pause-ms: 0
     datasource-host: localhost
   jwt:
